@@ -1,10 +1,9 @@
 import pygame
+import sys
 from game.constants import *
 from game.game_state import GameState
-# Remove direct Player/Market imports if not needed here anymore
-# from game.player import Player
-# from game.market import Market
 from game.ui.ui_manager import UIManager
+from game.utils.sound_manager import sound_manager # <<< Import sound manager instance
 
 def main():
     pygame.init()
@@ -12,38 +11,40 @@ def main():
     pygame.display.set_caption(GAME_TITLE)
     clock = pygame.time.Clock()
 
-    # GameState now handles initialization of player, market, and data loading
-    game_state = GameState()
+    # --- Load Sounds ---
+    sound_manager.load_sound("click", SOUND_CLICK)
+    sound_manager.load_sound("buy_sell", SOUND_BUY_SELL)
+    sound_manager.load_sound("upgrade", SOUND_UPGRADE)
+    sound_manager.load_sound("error", SOUND_ERROR)
+    sound_manager.load_sound("win", SOUND_WIN)
+    sound_manager.load_sound("lose", SOUND_LOSE)
+    # --- End Load Sounds ---
 
-    # Pass screen and game_state to UIManager
-    # UIManager will access player, market, etc. through game_state
+    game_state = GameState()
     ui_manager = UIManager(screen, game_state)
 
     running = True
     while running:
-        dt = clock.tick(FPS) / 1000.0  # Time delta
+        dt = clock.tick(FPS) / 1000.0 # Delta time in seconds
 
-        # --- Event Handling ---
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            # Pass events to UI Manager for processing
-            ui_manager.handle_event(event)
+            ui_manager.handle_event(event) # Pass event to UI manager
 
-        # --- Updates ---
-        game_state.update(dt) # Keep for potential future frame-based updates
-        ui_manager.update(dt) # If UI needs timed updates
+        # Update game state (if needed, e.g., for animations, timed events)
+        ui_manager.update(dt) # Update UI elements (like feedback timers)
+        # game_state.update(dt) # Currently only checks win/loss, called less often now
 
-        # --- Rendering ---
-        screen.fill(COLOR_BACKGROUND) # Clear screen with background color
-        # game_state.render(screen) # GameState render might not be needed if UI handles all
-        ui_manager.render() # UIManager now renders the active view
-
-        pygame.display.flip() # Update the full display Surface to the screen
+        # Render
+        screen.fill(COLOR_BACKGROUND) # Clear screen
+        ui_manager.render() # Render current view
+        pygame.display.flip() # Update the display
 
     pygame.quit()
+    sys.exit()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     # Create dummy data files if they don't exist for testing
     import os
     import json

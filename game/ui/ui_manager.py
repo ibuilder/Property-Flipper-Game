@@ -8,6 +8,8 @@ from .upgrades_list_view import UpgradesListView # <<< NEW IMPORT
 from .market_status_view import MarketStatusView # <<< NEW IMPORT
 from .win_screen import WinScreen # <<< NEW IMPORT
 from .game_over_screen import GameOverScreen # <<< NEW IMPORT
+from .skills_view import SkillsView # <<< NEW IMPORT
+from .help_view import HelpView # <<< NEW IMPORT
 
 class UIManager:
     def __init__(self, screen, game_state):
@@ -24,6 +26,8 @@ class UIManager:
             "market_status_view": MarketStatusView(game_state), # <<< NEW VIEW INSTANCE
             "win_screen": WinScreen(game_state), # <<< NEW VIEW INSTANCE
             "game_over_screen": GameOverScreen(game_state), # <<< NEW VIEW INSTANCE
+            "skills_view": SkillsView(game_state), # <<< NEW VIEW INSTANCE
+            "help_view": HelpView(game_state), # <<< NEW VIEW INSTANCE
         }
         # Add placeholder views for buttons that don't have a class yet
         # This prevents errors if a button is clicked before its view is implemented

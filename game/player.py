@@ -1,7 +1,10 @@
+import math # Needed for skill cost calculation
 from .constants import ( # Import contractor constants
     MAX_LOAN_AMOUNT, LOAN_INCREMENT, LOAN_INTEREST_RATE_DAILY,
     PROPERTY_TAX_RATE_DAILY, CONTRACTOR_DAILY_WAGE, CONTRACTOR_SPEED_MULTIPLIER,
-    NEGOTIATION_SKILL_BONUS, HANDINESS_COST_MULTIPLIER, HANDINESS_SPEED_MULTIPLIER # Import skill constants
+    MAX_SKILL_LEVEL, SKILL_UPGRADE_COST_BASE, SKILL_UPGRADE_COST_FACTOR,
+    NEGOTIATION_BONUS_PER_LEVEL, HANDINESS_COST_REDUCTION_PER_LEVEL, HANDINESS_SPEED_REDUCTION_PER_LEVEL,
+    MARKETING_SELL_PRICE_BONUS_PER_LEVEL # Import marketing constant
 )
 
 class Player:
@@ -10,6 +13,65 @@ class Player:
         self.properties = []  # List of owned Property objects
         self.current_loan = 0 # Amount of loan currently outstanding
         self.has_contractor = False # Track if contractor is hired
+        self.game_state_ref = None # Reference to GameState
+
+        # Skill levels
+        self.skills = {
+            "negotiation": 1,
+            "handiness": 1,
+            "marketing": 1 # <<< ADD MARKETING SKILL
+        }
+
+    # --- Skill Calculation Methods ---
+    def get_negotiation_bonus(self):
+        """Calculates the current negotiation bonus based on skill level."""
+        return self.skills["negotiation"] * NEGOTIATION_BONUS_PER_LEVEL
+
+    def get_handiness_cost_multiplier(self):
+        """Calculates the current handiness cost multiplier."""
+        # Reduction is capped, e.g., cannot go below 10% cost
+        reduction = self.skills["handiness"] * HANDINESS_COST_REDUCTION_PER_LEVEL
+        return max(0.1, 1.0 - reduction) # Ensure multiplier doesn't go too low
+
+    def get_handiness_speed_multiplier(self):
+        """Calculates the current handiness speed multiplier."""
+        # Reduction is capped, e.g., cannot go below 10% time
+        reduction = self.skills["handiness"] * HANDINESS_SPEED_REDUCTION_PER_LEVEL
+        return max(0.1, 1.0 - reduction) # Ensure multiplier doesn't go too low
+
+    def get_marketing_bonus(self):
+        """Calculates the current marketing sell price bonus."""
+        return self.skills["marketing"] * MARKETING_SELL_PRICE_BONUS_PER_LEVEL
+
+    def get_skill_upgrade_cost(self, skill_name):
+        """Calculates the cost to upgrade a skill to the next level."""
+        current_level = self.skills.get(skill_name, 0)
+        if current_level >= MAX_SKILL_LEVEL:
+            return float('inf') # Cannot upgrade further
+        # Cost = base * factor ^ current_level
+        cost = int(SKILL_UPGRADE_COST_BASE * (SKILL_UPGRADE_COST_FACTOR ** current_level))
+        return cost
+
+    def upgrade_skill(self, skill_name):
+        """Attempts to upgrade a skill."""
+        if skill_name not in self.skills:
+            print(f"Error: Unknown skill '{skill_name}'")
+            return False
+
+        current_level = self.skills[skill_name]
+        if current_level >= MAX_SKILL_LEVEL:
+            print(f"Skill '{skill_name}' is already at max level ({MAX_SKILL_LEVEL}).")
+            return False
+
+        cost = self.get_skill_upgrade_cost(skill_name)
+        if self.cash < cost:
+            print(f"Cannot upgrade '{skill_name}'. Need ${cost:,.0f}, have ${self.cash:,.0f}.")
+            return False
+
+        self.cash -= cost
+        self.skills[skill_name] += 1
+        print(f"Upgraded '{skill_name}' to level {self.skills[skill_name]}! Cost: ${cost:,.0f}.")
+        return True
 
     def buy_property(self, prop, market):
         """Buys a property from the market."""
@@ -19,8 +81,9 @@ class Player:
 
         # Calculate actual asking price (considering market value and negotiation skill)
         base_asking_price = prop.calculate_value(market, self.game_state_ref) # Assuming game_state_ref is set
-        # Apply player's negotiation skill for buying (pays slightly less)
-        negotiated_price = int(base_asking_price * (1.0 - NEGOTIATION_SKILL_BONUS))
+        # Apply negotiation skill bonus
+        negotiation_bonus = self.get_negotiation_bonus()
+        negotiated_price = int(base_asking_price * (1.0 - negotiation_bonus))
 
         if self.cash < negotiated_price:
             print(f"Error: Cannot afford property {prop.id}. Need ${negotiated_price:,.0f}, have ${self.cash:,.0f}.")
@@ -29,7 +92,7 @@ class Player:
         self.cash -= negotiated_price
         self.properties.append(prop)
         market.properties_for_sale.remove(prop)
-        print(f"Bought property {prop.id} for ${negotiated_price:,.0f}. Base price was ${base_asking_price:,.0f}.")
+        print(f"Bought property {prop.id} for ${negotiated_price:,.0f} (Nego Lvl {self.skills['negotiation']}). Base price was ${base_asking_price:,.0f}.")
         return True
 
     def sell_property(self, prop, market):
@@ -43,13 +106,19 @@ class Player:
 
         # Calculate actual selling price (considering market value and negotiation skill)
         base_market_value = prop.calculate_value(market, self.game_state_ref) # Assuming game_state_ref is set
-        # Apply player's negotiation skill for selling (gets slightly more)
-        negotiated_price = int(base_market_value * (1.0 + NEGOTIATION_SKILL_BONUS))
+        # Apply negotiation skill bonus
+        negotiation_bonus = self.get_negotiation_bonus()
+        # Apply marketing skill bonus
+        marketing_bonus = self.get_marketing_bonus()
+
+        # Combine bonuses (additively for simplicity)
+        total_bonus = negotiation_bonus + marketing_bonus
+        negotiated_price = int(base_market_value * (1.0 + total_bonus))
 
         self.cash += negotiated_price
         self.properties.remove(prop)
         # For simplicity, property just disappears. Could add back to market later.
-        print(f"Sold property {prop.id} for ${negotiated_price:,.0f}. Base value was ${base_market_value:,.0f}.")
+        print(f"Sold property {prop.id} for ${negotiated_price:,.0f} (Nego Lvl {self.skills['negotiation']}, Mark Lvl {self.skills['marketing']}). Base value was ${base_market_value:,.0f}.")
         # Trigger market refresh potentially?
         # market.request_market_refresh() # If such a method exists
         return True
@@ -68,8 +137,8 @@ class Player:
         # Calculate actual cost (consider event modifiers AND handiness skill)
         cost_modifier_event = game_state.get_active_event_modifier(prop.location, "upgrade_cost_multiplier")
         base_cost = upgrade.cost * cost_modifier_event
-        # Apply Handiness skill cost reduction
-        actual_cost = int(base_cost * HANDINESS_COST_MULTIPLIER)
+        handiness_cost_mult = self.get_handiness_cost_multiplier() # Get current multiplier
+        actual_cost = int(base_cost * handiness_cost_mult)
 
         if self.cash < actual_cost:
             print(f"Error: Cannot afford upgrade '{upgrade.name}'. Need ${actual_cost:,.0f}, have ${self.cash:,.0f}.")
@@ -85,13 +154,13 @@ class Player:
         else:
             time_after_contractor = base_time_required
 
-        # Apply Handiness skill speed bonus
-        actual_time_required = time_after_contractor * HANDINESS_SPEED_MULTIPLIER
+        handiness_speed_mult = self.get_handiness_speed_multiplier() # Get current multiplier
+        actual_time_required = time_after_contractor * handiness_speed_mult
 
         # Deduct cash and start renovation
         self.cash -= actual_cost
         prop.start_renovation(upgrade, actual_time_required)
-        print(f"Started renovation '{upgrade.name}' on {prop.id}. Cost: ${actual_cost:,.0f} (Base: ${upgrade.cost:,.0f}). Time: {actual_time_required:.1f} days.")
+        print(f"Started renovation '{upgrade.name}' on {prop.id}. Cost: ${actual_cost:,.0f} (Handi Lvl {self.skills['handiness']}). Time: {actual_time_required:.1f} days.")
         return True
 
     def take_loan(self, amount):

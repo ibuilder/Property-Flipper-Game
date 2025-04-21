@@ -2,6 +2,8 @@ import json
 import os
 from ..entities.property import Property # Need Property for reconstruction
 from ..entities.upgrade import Upgrade # Need Upgrade for reconstruction
+from ..player import Player # Ensure Player is imported
+from ..constants import STARTING_CASH # Ensure STARTING_CASH is imported
 
 SAVE_DIR = "saves"
 SAVE_FILENAME = "savegame.json"
@@ -117,7 +119,8 @@ def save_game(game_state):
             "cash": game_state.player.cash,
             "properties": [serialize_property(prop) for prop in game_state.player.properties],
             "current_loan": game_state.player.current_loan,
-            "has_contractor": game_state.player.has_contractor # <<< SAVE CONTRACTOR STATUS
+            "has_contractor": game_state.player.has_contractor,
+            "skills": game_state.player.skills # <<< SAVE SKILLS
         },
         "properties_for_sale": [serialize_property(prop) for prop in game_state.properties_for_sale],
         "active_events": game_state.active_events, # <<< SAVE ACTIVE EVENTS
@@ -161,11 +164,18 @@ def load_game(game_state):
 
         # Load player
         player_data = save_data.get("player", {})
-        # Re-initialize player object to ensure methods are current
         game_state.player = Player(player_data.get("cash", STARTING_CASH))
         game_state.player.current_loan = player_data.get("current_loan", 0)
         game_state.player.has_contractor = player_data.get("has_contractor", False)
-        game_state.player.link_game_state(game_state) # <<< Link game_state after loading
+
+        # Load skills, providing defaults for any missing skills
+        default_skills = {"negotiation": 1, "handiness": 1, "marketing": 1}
+        loaded_skills_data = player_data.get("skills", {})
+        # Merge loaded data with defaults, ensuring all skills exist
+        final_skills = {**default_skills, **loaded_skills_data}
+        game_state.player.skills = final_skills # <<< LOAD SKILLS WITH DEFAULTS
+
+        game_state.player.link_game_state(game_state)
 
         # Load player properties
         game_state.player.properties = []

@@ -1,245 +1,57 @@
-### Project Structure
+# Property Flipper Game
 
-First, let's define the project structure based on the provided information:
+A simple simulation game where you buy, renovate, and sell properties for profit. Built with Python and Pygame.
 
-```
-house-flipper/
-│
-├── main.py
-├── game/
-│   ├── __init__.py
-│   ├── game_state.py
-│   ├── constants.py
-│   ├── player.py
-│   ├── market.py
-│   ├── ui/
-│   │   ├── __init__.py
-│   │   ├── ui_manager.py
-│   │   ├── main_menu.py
-│   │   ├── property_view.py
-│   │   ├── market_view.py
-│   │   ├── upgrades_view.py
-│   │   ├── skills_view.py
-│   │   └── objectives_view.py
-│   ├── entities/
-│   │   ├── __init__.py
-│   │   ├── property.py
-│   │   ├── upgrade.py
-│   │   └── market_event.py
-│   └── utils/
-│       ├── __init__.py
-│       ├── file_handlers.py
-│       └── calculations.py
-├── assets/
-│   ├── images/
-│   └── fonts/
-├── data/
-│   ├── properties.json
-│   ├── upgrades.json
-│   ├── market_events.json
-│   ├── locations.json
-│   └── levels.json
-└── saves/
-```
+## Description
 
-### Step 1: Game Constants
+Start with a limited amount of cash and aim to reach the target wealth goal by strategically flipping properties. Buy low, add value through upgrades, and sell high, while managing loans, taxes, market fluctuations, and staff costs.
 
-Create a `constants.py` file to define game constants.
+## Features
 
-```python
-# game/constants.py
+*   **Property Market:** Buy properties from a dynamic market with varying types, locations, and conditions.
+*   **Renovations:** Choose from various upgrades (kitchen, bathroom, etc.) to improve property condition and value. Renovations take time and cost money.
+*   **Dynamic Market:** Market conditions change over time, influenced by random events (booms, crashes, material shortages) affecting property values, upgrade costs, and renovation times.
+*   **Financial Management:**
+    *   Take out loans (up to a limit) with daily interest.
+    *   Pay daily property taxes based on current property values.
+*   **Staff:** Hire a contractor crew to speed up renovations, but incur a daily wage cost.
+*   **Player Skills:** Upgrade skills (Negotiation, Handiness, Marketing) using cash to gain passive bonuses on buying/selling prices, renovation costs/speed, and sale prices.
+*   **Events:** Random events occur, impacting the market positively or negatively for a limited duration.
+*   **Win/Loss Conditions:** Win by reaching a target cash amount; lose by going bankrupt.
+*   **Save/Load:** Persist game progress.
+*   **Basic UI:** Simple Pygame interface for managing properties, market, skills, etc.
+*   **Sound Effects:** Basic audio feedback for key actions.
+*   **Help Screen:** In-game instructions on how to play.
 
-SCREEN_WIDTH = 1024
-SCREEN_HEIGHT = 768
-FPS = 60
-GAME_TITLE = "Property Flipper"
-STARTING_CASH = 100000
-COLOR_BACKGROUND = (240, 240, 240)
-```
+## How to Run
 
-### Step 2: Game State Management
+1.  **Ensure Dependencies:** Make sure you have Python 3 and Pygame installed.
+    ```bash
+    pip install pygame
+    ```
+2.  **Clone/Download:** Get the project files onto your local machine.
+3.  **Navigate:** Open a terminal or command prompt and navigate to the project's root directory (`Property-Flipper-Game`).
+4.  **Run:** Execute the main script.
+    ```bash
+    python main.py
+    ```
+    *(Note: Ensure you have sound files like `click.wav`, `buy_sell.wav`, etc., in an `assets/sounds` directory if you want sound effects).*
 
-Create a `game_state.py` file to manage the game state.
+## Dependencies
 
-```python
-# game/game_state.py
+*   Python 3.x
+*   Pygame (`pip install pygame`)
 
-class GameState:
-    def __init__(self):
-        self.game_time = 0  # Time in days
-        self.properties = []  # List of all properties in the game
-        self.property_types = {}  # Types of properties available
-        self.upgrade_types = {}  # Types of upgrades available
-        self.market_events = {}  # Possible market events
-        self.active_events = []  # Currently active market events
-        self.current_view = "main_menu"  # Current UI view
-        self.player = None  # Reference to the player
-        self.market = None  # Reference to the market
-        
-    def update(self, dt):
-        """Update game state based on time delta"""
-        self.game_time += dt * 0.1  # Advance game time
-        
-    def render(self, screen):
-        """Render the game world"""
-        pass  # Placeholder for rendering logic
-```
+## Potential Future Ideas
 
-### Step 3: Property Class
-
-Create a `property.py` file to define the `Property` class.
-
-```python
-# game/entities/property.py
-
-class Property:
-    def __init__(self, property_id, property_type, location, condition=50):
-        self.id = property_id
-        self.type = property_type  # Reference to property type data
-        self.location = location  # Location data
-        self.condition = condition  # 0-100 scale
-        self.upgrades = []  # Applied upgrades
-        
-    def calculate_value(self, market):
-        """Calculate the current property value"""
-        base_value = self.type["base_value"]
-        condition_modifier = 0.5 + (self.condition / 100)
-        upgrades_value = sum(upgrade["value_increase"] for upgrade in self.upgrades)
-        location_modifier = market.get_location_multiplier(self.location)
-        total_value = (base_value * condition_modifier + upgrades_value) * location_modifier
-        return int(total_value)
-```
-
-### Step 4: Market Simulation
-
-Create a `market.py` file to define the `Market` class.
-
-```python
-# game/market.py
-
-class Market:
-    def __init__(self):
-        self.location_multipliers = {
-            "downtown": 1.2,
-            "suburbs": 1.0,
-            "rural": 0.7,
-            "beachfront": 1.5
-        }
-        
-    def get_location_multiplier(self, location):
-        return self.location_multipliers.get(location, 1.0)
-```
-
-### Step 5: Player Class
-
-Create a `player.py` file to define the `Player` class.
-
-```python
-# game/player.py
-
-class Player:
-    def __init__(self, initial_cash=50000):
-        self.cash = initial_cash
-        self.properties = []  # List of owned properties
-        
-    def buy_property(self, property, market):
-        if self.cash >= property.calculate_value(market):
-            self.cash -= property.calculate_value(market)
-            self.properties.append(property)
-            return True
-        return False
-```
-
-### Step 6: User Interface Management
-
-Create a `ui_manager.py` file to manage the UI.
-
-```python
-# game/ui/ui_manager.py
-
-import pygame
-
-class UIManager:
-    def __init__(self, screen, game_state):
-        self.screen = screen
-        self.game_state = game_state
-        
-    def render(self):
-        # Render UI elements here
-        pass
-```
-
-### Step 7: Main Game Loop
-
-Create the `main.py` file to run the game.
-
-```python
-# main.py
-
-import pygame
-from game.constants import *
-from game.game_state import GameState
-from game.player import Player
-from game.market import Market
-from game.ui.ui_manager import UIManager
-
-def main():
-    pygame.init()
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption(GAME_TITLE)
-    clock = pygame.time.Clock()
-    
-    game_state = GameState()
-    market = Market()
-    player = Player(initial_cash=STARTING_CASH)
-    ui_manager = UIManager(screen, game_state)
-    
-    running = True
-    while running:
-        dt = clock.tick(FPS) / 1000.0  # Time delta
-        
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-        
-        game_state.update(dt)
-        ui_manager.render()
-        
-        pygame.display.flip()
-    
-    pygame.quit()
-
-if __name__ == "__main__":
-    main()
-```
-
-### Step 8: Data Files
-
-Create JSON files for properties, upgrades, and market events in the `data` directory.
-
-**Example: `properties.json`**
-
-```json
-{
-  "starter_home": {
-    "name": "Starter Home",
-    "base_value": 80000,
-    "size": 1,
-    "max_upgrades": 4
-  },
-  "suburban_house": {
-    "name": "Suburban House",
-    "base_value": 150000,
-    "size": 2,
-    "max_upgrades": 6
-  }
-}
-```
-
-### Step 9: Implementing Renovation and Selling Mechanics
-
-You can expand the `Property` class to include methods for renovation and selling properties, as well as updating the `Player` class to handle selling properties.
-
-### Conclusion
-
-This structure provides a solid foundation for your house flipping game. You can expand upon this by adding more features, such as a detailed UI, sound effects, and more complex market dynamics. Each component can be developed and tested independently, allowing for a modular design that is easier to manage and update.
+*   More property types and locations.
+*   More diverse upgrades with different effects.
+*   More complex event types and chains.
+*   More staff types (e.g., specialists, real estate agents).
+*   Player XP and leveling system alongside cash-based skill upgrades.
+*   More detailed market simulation (e.g., neighborhood gentrification).
+*   Improved UI/UX (visual property representations, better graphs, tooltips, scrolling text).
+*   Auctions or bidding system for properties.
+*   Tenant management simulation aspect.
+*   More sophisticated AI competitors.
+*   Difficulty levels.

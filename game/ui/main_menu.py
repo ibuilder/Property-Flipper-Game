@@ -2,6 +2,7 @@
 import pygame
 from ..constants import * # Import all constants including loan related
 from ..utils.file_handlers import save_game, load_game
+from ..utils.sound_manager import sound_manager # <<< Import sound manager
 
 class MainMenu:
     def __init__(self, game_state):
@@ -16,18 +17,19 @@ class MainMenu:
         self.feedback_message = ""
         self.feedback_timer = 0
         self.feedback_color = COLOR_SUCCESS
+        self.font_small_button = pygame.font.SysFont(None, 28) # Renamed from font_loan_button
 
         # Button definitions (Adjust layout slightly)
         button_width = 250
-        button_height = 50
-        button_y_start = 160 # Move down slightly
-        button_spacing = 55
+        button_height = 45 # Slightly smaller main buttons
+        button_y_start = 140 # Adjust start slightly
+        button_spacing = 48 # Adjust spacing slightly
         button_x = (SCREEN_WIDTH - button_width) // 2
 
         # Smaller button dimensions
         small_button_width = 120
-        small_button_height = 40
-        small_button_spacing = 10 # Space between small buttons
+        small_button_height = 35 # Smaller small buttons
+        small_button_spacing = 10
 
         self.buttons = [
             {"rect": pygame.Rect(button_x, button_y_start, button_width, button_height),
@@ -38,34 +40,37 @@ class MainMenu:
              "text": "Market Status", "view": "market_status_view"},
             {"rect": pygame.Rect(button_x, button_y_start + 3 * button_spacing, button_width, button_height),
              "text": "Upgrades List", "view": "upgrades_list_view"},
+            {"rect": pygame.Rect(button_x, button_y_start + 4 * button_spacing, button_width, button_height),
+             "text": "Player Skills", "view": "skills_view"}, # <<< NEW SKILLS BUTTON
+            {"rect": pygame.Rect(button_x, button_y_start + 5 * button_spacing, button_width, button_height),
+             "text": "How to Play", "view": "help_view"}, # <<< NEW HELP BUTTON
 
-            # Loan Buttons (Row 1 of small buttons)
-            {"rect": pygame.Rect(button_x - small_button_width/2 - small_button_spacing/2, button_y_start + 4.2 * button_spacing, small_button_width, small_button_height),
-             "text": f"Borrow ${LOAN_INCREMENT//1000}k", "action": "borrow", "font": self.font_loan_button},
-            {"rect": pygame.Rect(button_x + small_button_width/2 + small_button_spacing/2, button_y_start + 4.2 * button_spacing, small_button_width, small_button_height),
-             "text": f"Repay ${LOAN_INCREMENT//1000}k", "action": "repay", "font": self.font_loan_button},
+            # Loan Buttons (Row 1 of small buttons) - Move down
+            {"rect": pygame.Rect(button_x - small_button_width/2 - small_button_spacing/2, button_y_start + 6.2 * button_spacing, small_button_width, small_button_height),
+             "text": f"Borrow ${LOAN_INCREMENT//1000}k", "action": "borrow", "font": self.font_small_button}, # Use generic name
+            {"rect": pygame.Rect(button_x + small_button_width/2 + small_button_spacing/2, button_y_start + 6.2 * button_spacing, small_button_width, small_button_height),
+             "text": f"Repay ${LOAN_INCREMENT//1000}k", "action": "repay", "font": self.font_small_button}, # Use generic name
 
-            # Contractor Buttons (Row 2 of small buttons)
-            {"rect": pygame.Rect(button_x - small_button_width/2 - small_button_spacing/2, button_y_start + 5.0 * button_spacing, small_button_width, small_button_height),
-             "text": "Hire Crew", "action": "hire_contractor", "font": self.font_loan_button}, # Use same smaller font
-            {"rect": pygame.Rect(button_x + small_button_width/2 + small_button_spacing/2, button_y_start + 5.0 * button_spacing, small_button_width, small_button_height),
-             "text": "Fire Crew", "action": "fire_contractor", "font": self.font_loan_button},
+            # Contractor Buttons (Row 2 of small buttons) - Move down
+            {"rect": pygame.Rect(button_x - small_button_width/2 - small_button_spacing/2, button_y_start + 7.0 * button_spacing, small_button_width, small_button_height),
+             "text": "Hire Crew", "action": "hire_contractor", "font": self.font_small_button}, # Use generic name
+            {"rect": pygame.Rect(button_x + small_button_width/2 + small_button_spacing/2, button_y_start + 7.0 * button_spacing, small_button_width, small_button_height),
+             "text": "Fire Crew", "action": "fire_contractor", "font": self.font_small_button}, # Use generic name
 
-            # Save/Load/Quit below small buttons
-            {"rect": pygame.Rect(button_x, button_y_start + 6.0 * button_spacing, button_width, button_height),
-             "text": "Save Game", "action": "save"},
-            {"rect": pygame.Rect(button_x, button_y_start + 7.0 * button_spacing, button_width, button_height),
-             "text": "Load Game", "action": "load"},
+            # Save/Load/Quit below small buttons - Move down
             {"rect": pygame.Rect(button_x, button_y_start + 8.0 * button_spacing, button_width, button_height),
+             "text": "Save Game", "action": "save"},
+            {"rect": pygame.Rect(button_x, button_y_start + 9.0 * button_spacing, button_width, button_height),
+             "text": "Load Game", "action": "load"},
+            {"rect": pygame.Rect(button_x, button_y_start + 10.0 * button_spacing, button_width, button_height),
              "text": "Quit Game", "action": "quit"}
         ]
-        self.font_loan_button = pygame.font.SysFont(None, 32) # Font for small buttons
 
         # Next Day Button
         self.next_day_button_rect = pygame.Rect(SCREEN_WIDTH - 170, SCREEN_HEIGHT - 70, 150, 50)
 
         self.event_display_y = 80 # Position for event text
-        self.info_y = self.event_display_y + 30 # Position for cash/time/loan/status
+        self.info_y = self.event_display_y + 30 # Adjust info Y if needed
 
     def handle_input(self, event):
         """Handles user input for the main menu."""
@@ -79,35 +84,30 @@ class MainMenu:
                         break
 
                 if clicked_button:
+                    sound_manager.play("click") # <<< Play click sound
                     action = clicked_button.get("action")
                     view = clicked_button.get("view")
 
                     if action == "quit":
                         pygame.event.post(pygame.event.Event(pygame.QUIT))
                     elif action == "save":
-                        if save_game(self.game_state): self.show_feedback("Game Saved!")
-                        else: self.show_feedback("Save Failed!", error=True)
+                        if save_game(self.game_state): self.show_feedback("Game Saved!") # Sound played on click
+                        else: self.show_feedback("Save Failed!", error=True); sound_manager.play("error")
                     elif action == "load":
-                        if load_game(self.game_state): self.show_feedback("Game Loaded!")
-                        else: self.show_feedback("Load Failed!", error=True)
+                        if load_game(self.game_state): self.show_feedback("Game Loaded!") # Sound played on click
+                        else: self.show_feedback("Load Failed!", error=True); sound_manager.play("error")
                     elif action == "borrow":
-                        if self.game_state.player.take_loan(LOAN_INCREMENT):
-                            self.show_feedback(f"Borrowed ${LOAN_INCREMENT:,.0f}")
-                        else:
-                            # Player method prints specific error
-                            self.show_feedback("Borrow Failed!", error=True)
+                        if self.game_state.player.take_loan(LOAN_INCREMENT): self.show_feedback(f"Borrowed ${LOAN_INCREMENT:,.0f}") # Sound played on click
+                        else: self.show_feedback("Borrow Failed!", error=True); sound_manager.play("error")
                     elif action == "repay":
-                        if self.game_state.player.repay_loan(LOAN_INCREMENT):
-                            self.show_feedback(f"Repaid ${LOAN_INCREMENT:,.0f}")
-                        else:
-                            # Player method prints specific error
-                            self.show_feedback("Repay Failed!", error=True)
+                        if self.game_state.player.repay_loan(LOAN_INCREMENT): self.show_feedback(f"Repaid ${LOAN_INCREMENT:,.0f}") # Sound played on click
+                        else: self.show_feedback("Repay Failed!", error=True); sound_manager.play("error")
                     elif action == "hire_contractor": # <<< HANDLE HIRE
-                        if self.game_state.player.hire_contractor(): self.show_feedback("Contractor Hired!")
-                        else: self.show_feedback("Already Hired", error=True)
+                        if self.game_state.player.hire_contractor(): self.show_feedback("Contractor Hired!") # Sound played on click
+                        else: self.show_feedback("Already Hired", error=True); sound_manager.play("error")
                     elif action == "fire_contractor": # <<< HANDLE FIRE
-                        if self.game_state.player.fire_contractor(): self.show_feedback("Contractor Fired!")
-                        else: self.show_feedback("Not Hired", error=True)
+                        if self.game_state.player.fire_contractor(): self.show_feedback("Contractor Fired!") # Sound played on click
+                        else: self.show_feedback("Not Hired", error=True); sound_manager.play("error")
                     elif view:
                         if view == "upgrades_list_view":
                             self.game_state.selected_property_for_renovation = None
@@ -117,6 +117,7 @@ class MainMenu:
 
                 # Check Next Day button
                 if self.next_day_button_rect.collidepoint(event.pos):
+                    sound_manager.play("click") # <<< Play click sound
                     self.game_state.advance_day()
                     # Feedback moved to advance_day printout
                     # self.show_feedback(f"Advanced to Day {int(self.game_state.game_time)}")
@@ -194,7 +195,7 @@ class MainMenu:
         # Render Buttons
         for button in self.buttons:
             # Use specified font or default button font
-            font = button.get("font", self.font_button)
+            font = button.get("font", self.font_button) # Default is the larger font
             text_surf = font.render(button["text"], True, COLOR_BUTTON_TEXT)
             text_rect = text_surf.get_rect(center=button["rect"].center)
 
