@@ -31,7 +31,8 @@ class GameState:
 
         # Initialize core components
         self.market = Market(self.locations) # Pass location data to Market
-        self.player = Player(initial_cash=STARTING_CASH)
+        self.player = Player(STARTING_CASH)
+        self.player.link_game_state(self) # <<< Link game_state to player
 
         # Link components (optional, could pass GameState around instead)
         # self.player.game_state = self # If player needs access
@@ -201,8 +202,8 @@ class GameState:
         self.game_time += days_to_advance
         print(f"--- Advancing to Day {int(self.game_time)} ---")
 
-        # Player update (handles interest and renovations daily)
-        self.player.update(days_to_advance, self.market) # <<< Player update now handles daily interest/reno
+        # Player update (handles interest, taxes, and renovations daily)
+        self.player.update(days_to_advance, self.market, self) # <<< PASS self (game_state)
 
         # --- Market Updates ---
         self._update_market_events(days_to_advance)

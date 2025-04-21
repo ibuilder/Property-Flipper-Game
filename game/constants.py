@@ -27,3 +27,19 @@ WIN_CONDITION_CASH = 1000000 # Target cash to win
 MAX_LOAN_AMOUNT = 200000 # Maximum loan player can have
 LOAN_INTEREST_RATE_DAILY = 0.001 # 0.1% daily interest (approx 3% monthly)
 LOAN_INCREMENT = 10000 # Amount to borrow/repay at a time
+
+# --- Holding Costs ---
+PROPERTY_TAX_RATE_DAILY = 0.0001 # 0.01% of property value per day (approx 0.3% monthly)
+
+# --- Staff/Contractors ---
+CONTRACTOR_DAILY_WAGE = 150       # Cost per day to keep contractor hired
+CONTRACTOR_SPEED_MULTIPLIER = 0.7 # Renovations take 70% of the normal time (30% faster)
+
+# --- Player Skills (Initial Bonuses) ---
+# Negotiation: Affects buy/sell price slightly. 1.0 = no effect. >1 = better selling, <1 = better buying.
+# We'll use a small bonus for now. E.g., 0.01 means 1% better prices.
+NEGOTIATION_SKILL_BONUS = 0.01 # Player gets 1% better sell prices and pays 1% less on buy
+
+# Handiness: Affects renovation cost and speed. 1.0 = no effect. <1 = cheaper/faster.
+HANDINESS_COST_MULTIPLIER = 0.98 # Player pays 2% less for upgrades
+HANDINESS_SPEED_MULTIPLIER = 0.98 # Player renovates 2% faster

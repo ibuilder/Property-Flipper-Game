@@ -116,7 +116,8 @@ def save_game(game_state):
         "player": {
             "cash": game_state.player.cash,
             "properties": [serialize_property(prop) for prop in game_state.player.properties],
-            "current_loan": game_state.player.current_loan # <<< SAVE LOAN
+            "current_loan": game_state.player.current_loan,
+            "has_contractor": game_state.player.has_contractor # <<< SAVE CONTRACTOR STATUS
         },
         "properties_for_sale": [serialize_property(prop) for prop in game_state.properties_for_sale],
         "active_events": game_state.active_events, # <<< SAVE ACTIVE EVENTS
@@ -160,8 +161,13 @@ def load_game(game_state):
 
         # Load player
         player_data = save_data.get("player", {})
-        game_state.player.cash = player_data.get("cash", STARTING_CASH)
-        game_state.player.current_loan = player_data.get("current_loan", 0) # <<< LOAD LOAN
+        # Re-initialize player object to ensure methods are current
+        game_state.player = Player(player_data.get("cash", STARTING_CASH))
+        game_state.player.current_loan = player_data.get("current_loan", 0)
+        game_state.player.has_contractor = player_data.get("has_contractor", False)
+        game_state.player.link_game_state(game_state) # <<< Link game_state after loading
+
+        # Load player properties
         game_state.player.properties = []
         loaded_player_props = player_data.get("properties", [])
         for prop_data in loaded_player_props:
@@ -189,7 +195,7 @@ def load_game(game_state):
         # Ensure market multipliers reflect loaded events
         game_state.market.reset_multipliers()
 
-        print(f"Game loaded successfully from {save_path}. Win: {game_state.game_won}, Lost: {game_state.game_lost}, Loan: ${game_state.player.current_loan:,.0f}") # Add loan to log
+        print(f"Game loaded successfully from {save_path}. Win: {game_state.game_won}, Lost: {game_state.game_lost}, Loan: ${game_state.player.current_loan:,.0f}, Contractor: {game_state.player.has_contractor}") # Add contractor to log
         return True
 
     except Exception as e:

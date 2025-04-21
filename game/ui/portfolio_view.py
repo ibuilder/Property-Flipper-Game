@@ -1,6 +1,6 @@
 # filepath: c:\Users\iphoe\OneDrive\Documents\GitHub\Property-Flipper-Game\game\ui\portfolio_view.py
 import pygame
-from ..constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from ..constants import * # Import constants
 
 class PortfolioView:
     def __init__(self, game_state):
@@ -10,6 +10,7 @@ class PortfolioView:
         self.font_button = pygame.font.SysFont(None, 32) # Smaller button font
         self.font_prop = pygame.font.SysFont(None, 28)
         self.font_status = pygame.font.SysFont(None, 24) # For renovation status
+        self.font_small_info = pygame.font.SysFont(None, 28) # For tax info
 
         # Button dimensions
         self.button_width = 80
@@ -64,15 +65,29 @@ class PortfolioView:
         self.renovate_buttons.clear()
 
         # Title
-        title_surf = self.font_title.render("My Portfolio", True, (0, 0, 0))
+        title_surf = self.font_title.render("Your Portfolio", True, COLOR_TEXT)
         title_rect = title_surf.get_rect(center=(SCREEN_WIDTH // 2, 50))
         screen.blit(title_surf, title_rect)
 
-        # Player Cash
+        # Info (Cash, Loan, Estimated Daily Tax)
         cash_text = f"Cash: ${self.game_state.player.cash:,.0f}"
-        cash_surf = self.font_info.render(cash_text, True, (0, 100, 0))
-        cash_rect = cash_surf.get_rect(topright=(SCREEN_WIDTH - 20, 20))
-        screen.blit(cash_surf, cash_rect)
+        loan_text = f"Loan: ${self.game_state.player.current_loan:,.0f}"
+
+        # Calculate estimated daily tax
+        total_daily_tax = 0
+        for prop in self.game_state.player.properties:
+            current_value = prop.calculate_value(self.game_state.market, self.game_state)
+            daily_tax = int(current_value * PROPERTY_TAX_RATE_DAILY)
+            total_daily_tax += daily_tax
+        tax_text = f"Est. Daily Tax: ${total_daily_tax:,.0f}"
+
+        cash_surf = self.font_info.render(cash_text, True, COLOR_TEXT)
+        loan_surf = self.font_info.render(loan_text, True, (180, 0, 0) if self.game_state.player.current_loan > 0 else COLOR_TEXT)
+        tax_surf = self.font_small_info.render(tax_text, True, COLOR_INFO) # Smaller font for tax
+
+        screen.blit(cash_surf, (20, 80))
+        screen.blit(loan_surf, (20, 110))
+        screen.blit(tax_surf, (SCREEN_WIDTH - tax_surf.get_width() - 20, 85)) # Position tax info top-right
 
         # Back Button
         pygame.draw.rect(screen, (180, 180, 180), self.back_button_rect)
@@ -82,77 +97,83 @@ class PortfolioView:
         screen.blit(back_text_surf, back_text_rect)
 
         # Property Listings
-        start_y = 120
+        start_y = 150 # Start listings below info
         line_height = 25
-        prop_area_height = SCREEN_HEIGHT - start_y - 80
-        button_spacing = 10 # Horizontal space between buttons
-
+        button_width = 100
+        button_height = 35
         current_y = start_y
-        for prop in self.game_state.player.properties:
-            if current_y + 100 > start_y + prop_area_height: # Estimate height needed
-                 break # Stop rendering if out of space
-
-            # Property Details
-            prop_name = prop.type.get("name", "Unknown Type")
-            prop_loc = self.game_state.locations.get(prop.location, {}).get("name", prop.location)
-            prop_cond = prop.condition
-            prop_val = prop.calculate_value(self.game_state.market)
-            upgrades_count = len(prop.upgrades)
-
-            line1 = f"{prop_name} ({prop.id})"
-            line2 = f"Location: {prop_loc} | Condition: {int(prop_cond)}/100 | Upgrades: {upgrades_count}"
-            line3 = f"Current Value: ${prop_val:,.0f}"
-
-            surf1 = self.font_prop.render(line1, True, (0, 0, 0))
-            surf2 = self.font_prop.render(line2, True, (50, 50, 50))
-            surf3 = self.font_prop.render(line3, True, (0, 80, 0))
-
-            screen.blit(surf1, (40, current_y))
-            screen.blit(surf2, (40, current_y + line_height))
-            screen.blit(surf3, (40, current_y + 2 * line_height))
-
-            # Renovation Status
-            status_y = current_y + 3 * line_height + 2
-            if prop.renovation_progress:
-                upgrade_name = prop.renovation_progress['upgrade'].name
-                time_left = prop.renovation_progress['time_left']
-                status_text = f"Renovating: {upgrade_name} ({time_left:.1f} days left)"
-                status_color = (200, 100, 0) # Orange-ish
-                status_surf = self.font_status.render(status_text, True, status_color)
-                screen.blit(status_surf, (40, status_y))
-
-
-            # Buttons (Sell, Renovate)
-            button_y = current_y + line_height # Align vertically with middle line
-            sell_button_x = SCREEN_WIDTH - self.button_width * 2 - button_spacing - 40
-            renovate_button_x = SCREEN_WIDTH - self.button_width - 40
-
-            # Sell Button
-            sell_rect = pygame.Rect(sell_button_x, button_y, self.button_width, self.button_height)
-            self.sell_buttons[prop.id] = sell_rect
-            sell_color = (200, 0, 0) if not prop.renovation_progress else (100, 100, 100) # Grey out if renovating
-            pygame.draw.rect(screen, sell_color, sell_rect)
-            pygame.draw.rect(screen, (0, 0, 0), sell_rect, 2)
-            sell_text_surf = self.font_button.render("Sell", True, (255, 255, 255))
-            sell_text_rect = sell_text_surf.get_rect(center=sell_rect.center)
-            screen.blit(sell_text_surf, sell_text_rect)
-
-            # Renovate Button
-            renovate_rect = pygame.Rect(renovate_button_x, button_y, self.button_width, self.button_height)
-            self.renovate_buttons[prop.id] = renovate_rect
-            renovate_color = (0, 0, 200) if not prop.renovation_progress else (100, 100, 100) # Grey out if renovating
-            pygame.draw.rect(screen, renovate_color, renovate_rect)
-            pygame.draw.rect(screen, (0, 0, 0), renovate_rect, 2)
-            renovate_text_surf = self.font_button.render("Renovate", True, (255, 255, 255))
-            renovate_text_rect = renovate_text_surf.get_rect(center=renovate_rect.center)
-            screen.blit(renovate_text_surf, renovate_text_rect)
-
-
-            # Draw separator line
-            current_y += 4 * line_height + 15 # Move down for next property + spacing (added space for status)
-            pygame.draw.line(screen, (200, 200, 200), (20, current_y - 7), (SCREEN_WIDTH - 20, current_y - 7), 1)
 
         if not self.game_state.player.properties:
-             no_prop_surf = self.font_info.render("You do not own any properties.", True, (100, 100, 100))
-             no_prop_rect = no_prop_surf.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-             screen.blit(no_prop_surf, no_prop_rect)
+            no_prop_surf = self.font_info.render("You don't own any properties yet.", True, COLOR_INFO)
+            no_prop_rect = no_prop_surf.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+            screen.blit(no_prop_surf, no_prop_rect)
+        else:
+            for prop in self.game_state.player.properties:
+                # Property Details
+                prop_type_name = prop.type.get('name', 'Unknown Type')
+                prop_loc_name = self.game_state.locations.get(prop.location, {}).get('name', prop.location)
+                prop_val = prop.calculate_value(self.game_state.market, self.game_state)
+                prop_cond = int(prop.condition)
+
+                line1 = f"{prop_type_name} ({prop.id}) in {prop_loc_name}"
+                line2 = f"Value: ${prop_val:,.0f} | Condition: {prop_cond}/100"
+
+                # Renovation Status
+                status_text = "Ready"
+                status_color = (0, 150, 0) # Green
+                if prop.renovation_progress:
+                    remaining_days = prop.renovation_progress['time_left']
+                    upgrade_name = prop.renovation_progress['upgrade'].name
+                    status_text = f"Renovating: {upgrade_name} ({remaining_days:.1f}d left)"
+                    status_color = (200, 100, 0) # Orange
+
+                status_surf = self.font_status.render(status_text, True, status_color)
+
+                # Render Text
+                surf1 = self.font_prop.render(line1, True, COLOR_TEXT)
+                surf2 = self.font_prop.render(line2, True, COLOR_INFO)
+                screen.blit(surf1, (40, current_y))
+                screen.blit(surf2, (40, current_y + line_height))
+                screen.blit(status_surf, (40, current_y + 2 * line_height))
+
+                # Buttons (Sell / Start Renovation)
+                button_x_start = SCREEN_WIDTH - 2 * button_width - 60
+                sell_rect = pygame.Rect(button_x_start, current_y + line_height, button_width, button_height)
+                reno_rect = pygame.Rect(button_x_start + button_width + 10, current_y + line_height, button_width, button_height)
+
+                # Sell Button (Always show if not renovating)
+                if not prop.renovation_progress:
+                    self.sell_buttons[prop.id] = sell_rect
+                    pygame.draw.rect(screen, (200, 50, 50), sell_rect) # Reddish button
+                    pygame.draw.rect(screen, COLOR_BUTTON_BORDER, sell_rect, 2)
+                    sell_text_surf = self.font_button.render("Sell", True, (255, 255, 255))
+                    sell_text_rect = sell_text_surf.get_rect(center=sell_rect.center)
+                    screen.blit(sell_text_surf, sell_text_rect)
+                else:
+                    # Optionally draw disabled sell button
+                    pygame.draw.rect(screen, (100, 100, 100), sell_rect)
+                    pygame.draw.rect(screen, COLOR_BUTTON_BORDER, sell_rect, 2)
+                    sell_text_surf = self.font_button.render("Sell", True, (180, 180, 180))
+                    sell_text_rect = sell_text_surf.get_rect(center=sell_rect.center)
+                    screen.blit(sell_text_surf, sell_text_rect)
+
+
+                # Renovate Button (Only show if not currently renovating)
+                if not prop.renovation_progress:
+                    self.renovate_buttons[prop.id] = reno_rect
+                    pygame.draw.rect(screen, (50, 50, 200), reno_rect) # Bluish button
+                    pygame.draw.rect(screen, COLOR_BUTTON_BORDER, reno_rect, 2)
+                    reno_text_surf = self.font_button.render("Renovate", True, (255, 255, 255))
+                    reno_text_rect = reno_text_surf.get_rect(center=reno_rect.center)
+                    screen.blit(reno_text_surf, reno_text_rect)
+                else:
+                     # Optionally draw disabled renovate button
+                    pygame.draw.rect(screen, (100, 100, 100), reno_rect)
+                    pygame.draw.rect(screen, COLOR_BUTTON_BORDER, reno_rect, 2)
+                    reno_text_surf = self.font_button.render("Renovate", True, (180, 180, 180))
+                    reno_text_rect = reno_text_surf.get_rect(center=reno_rect.center)
+                    screen.blit(reno_text_surf, reno_text_rect)
+
+                # Separator
+                current_y += 3 * line_height + 20
+                pygame.draw.line(screen, (200, 200, 200), (20, current_y - 10), (SCREEN_WIDTH - 20, current_y - 10), 1)
