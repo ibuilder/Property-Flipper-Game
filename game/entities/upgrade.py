@@ -1,37 +1,9 @@
-house-flipper/
-│
-├── main.py
-├── game/
-│   ├── __init__.py
-│   ├── game_state.py
-│   ├── constants.py
-│   ├── player.py
-│   ├── market.py
-│   ├── ui/
-│   │   ├── __init__.py
-│   │   ├── ui_manager.py
-│   │   ├── main_menu.py
-│   │   ├── property_view.py
-│   │   ├── market_view.py
-│   │   ├── upgrades_view.py
-│   │   ├── skills_view.py
-│   │   └── objectives_view.py
-│   ├── entities/
-│   │   ├── __init__.py
-│   │   ├── property.py
-│   │   ├── upgrade.py
-│   │   └── market_event.py
-│   └── utils/
-│       ├── __init__.py
-│       ├── file_handlers.py
-│       └── calculations.py
-├── assets/
-│   ├── images/
-│   └── fonts/
-├── data/
-│   ├── properties.json
-│   ├── upgrades.json
-│   ├── market_events.json
-│   ├── locations.json
-│   └── levels.json
-└── saves/
+# This file defines the Upgrade class, which represents an upgrade that can be applied to a property.
+class Upgrade:
+    def __init__(self, upgrade_id, name, cost, value_increase, condition_increase=0, time_required=1):
+        self.id = upgrade_id
+        self.name = name
+        self.cost = cost
+        self.value_increase = value_increase
+        self.condition_increase = condition_increase # How much it improves property condition
+        self.time_required = time_required # Time units (e.g., days) to complete
