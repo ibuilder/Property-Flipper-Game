@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Basic Kitchen Remodel",
+    "base_cost": 5000,
+    "base_time_days": 10,
+    "value_increase_percent": 0.10
+  },
+  {
+    "name": "Basic Bathroom Remodel",
+    "base_cost": 3000,
+    "base_time_days": 7,
+    "value_increase_percent": 0.08
+  },
+  {
+    "name": "New Roof",
+    "base_cost": 8000,
+    "base_time_days": 14,
+    "value_increase_percent": 0.12
+  },
+  {
+    "name": "Landscaping",
+    "base_cost": 2000,
+    "base_time_days": 5,
+    "value_increase_percent": 0.05
+  },
+  {
+    "name": "Paint Job",
+    "base_cost": 1500,
+    "base_time_days": 4,
+    "value_increase_percent": 0.04
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "type": "Small House",
+    "base_value": 80000,
+    "base_condition": 0.6
+  },
+  {
+    "type": "Medium House",
+    "base_value": 150000,
+    "base_condition": 0.7
+  },
+  {
+    "type": "Large House",
+    "base_value": 250000,
+    "base_condition": 0.8
+  },
+  {
+    "type": "Apartment",
+    "base_value": 60000,
+    "base_condition": 0.5
+  }
+]

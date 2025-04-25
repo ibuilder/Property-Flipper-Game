@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Housing Boom",
+    "description": "Property values are soaring!",
+    "effects": {
+      "value_modifier": 1.15,
+      "cost_modifier": 1.0,
+      "time_modifier": 1.0
+    }
+  },
+  {
+    "name": "Market Crash",
+    "description": "Property values are plummeting!",
+    "effects": {
+      "value_modifier": 0.80,
+      "cost_modifier": 1.0,
+      "time_modifier": 1.0
+    }
+  },
+  {
+    "name": "Material Shortage",
+    "description": "Renovation costs and times have increased.",
+    "effects": {
+      "value_modifier": 1.0,
+      "cost_modifier": 1.25,
+      "time_modifier": 1.3
+    }
+  },
+  {
+    "name": "Low Interest Rates",
+    "description": "Borrowing is cheaper, stimulating the market slightly.",
+    "effects": {
+      "value_modifier": 1.05,
+      "cost_modifier": 1.0,
+      "time_modifier": 1.0
+    }
+  }
+]

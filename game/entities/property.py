@@ -1,61 +1,86 @@
+import uuid
+
 class Property:
-    def __init__(self, property_id, property_type, location, condition=50):
-        self.id = property_id
-        self.type = property_type  # Reference to property type data (loaded from JSON)
-        self.location = location  # Location data (string key like "downtown")
-        self.condition = condition  # 0-100 scale
-        self.upgrades = []  # List of applied Upgrade objects
-        self.renovation_progress = None # Tracks ongoing renovation { 'upgrade': upgrade_obj, 'time_left': time }
+    def __init__(self, property_id, property_type, location):
+        self.property_id = property_id # Unique identifier
+        self.property_type = property_type
+        self.location = location
+        self.condition = 0.5 # Default starting condition
+        self.applied_upgrades = [] # List of upgrade dicts applied
+        self.renovation_progress = None # Dict like {"upgrade": {...}, "total_days": X, "days_passed": Y} or None
 
-    def calculate_value(self, market, game_state): # <<< ADD game_state parameter
+        # Attributes to be set after creation (from GameState._generate_initial_market)
+        self.base_value_from_data = 50000 # Default placeholder
+        self.base_condition = 0.5 # Default placeholder
+        self.location_modifier = 1.0 # Default placeholder
+
+    def calculate_value(self, game_state): # Removed 'market' if not used, check if game_state is needed
         """Calculates the current market value of the property."""
-        base_value = self.type.get("base_value", 0)
+        # Base value from data adjusted by location
+        value = self.base_value_from_data * self.location_modifier
 
-        # Condition multiplier (e.g., 0.5 at 0 condition to 1.0 at 100 condition)
-        condition_multiplier = 0.5 + (self.condition / 200.0)
+        # Adjust value based on current condition (e.g., linear scaling)
+        # A property at 1.0 condition might be worth more than base, 0.5 worth base, 0.0 worth much less
+        condition_multiplier = 0.2 + (self.condition * 1.6) # Example: 0.2 at 0 cond, 1.0 at 0.5 cond, 1.8 at 1.0 cond
+        value *= condition_multiplier
 
-        # Location multiplier (fetch current multiplier considering events)
-        location_multiplier = market.get_current_multiplier(self.location, game_state) # <<< USE NEW METHOD
+        # Add value from applied upgrades
+        upgrade_value_multiplier = 1.0
+        for upgrade in self.applied_upgrades:
+            upgrade_value_multiplier += upgrade.get('value_increase_percent', 0)
+        value *= upgrade_value_multiplier
 
-        # Upgrade value
-        upgrade_value = sum(up.value_increase for up in self.upgrades)
+        # Apply market event modifiers from GameState
+        if game_state: # Check if game_state was passed
+             # FIX: Use game_state.get_market_modifiers() which doesn't rely on game_time
+             event_value_mod, _, _ = game_state.get_market_modifiers()
+             value *= event_value_mod
+        # else:
+             # print("Warning: Calculating property value without game_state (market events).") # Optional warning
 
-        # Combine factors
-        # Simple model: (Base * Condition * Location) + UpgradeValue
-        value = (base_value * condition_multiplier * location_multiplier) + upgrade_value
+        # Ensure value is not negative
+        return max(0, int(value))
 
-        # Apply global market event modifiers? (Could be done here or in market multiplier)
-        # global_event_modifier = game_state.get_active_event_modifier('all', 'value_multiplier')
-        # value *= global_event_modifier
+    def get_state_dict(self):
+        """Returns a dictionary representing the property's state."""
+        return {
+            'property_id': self.property_id,
+            'property_type': self.property_type,
+            'location': self.location,
+            'condition': self.condition,
+            'applied_upgrades': self.applied_upgrades, # Assuming upgrade dicts are serializable
+            'renovation_progress': self.renovation_progress, # Assuming this dict is serializable
+            'base_value_from_data': self.base_value_from_data,
+            'base_condition': self.base_condition,
+            'location_modifier': self.location_modifier
+        }
 
-        return int(value) # Return integer value
+    @classmethod
+    def from_state_dict(cls, state_dict):
+        """Creates a Property instance from a state dictionary."""
+        # Create instance with required args
+        prop = cls(
+            property_id=state_dict.get('property_id', str(uuid.uuid4())), # Generate new ID if missing
+            property_type=state_dict.get('property_type', 'Unknown Type'),
+            location=state_dict.get('location', 'Unknown Location')
+        )
+        # Set other attributes
+        prop.condition = state_dict.get('condition', 0.5)
+        prop.applied_upgrades = state_dict.get('applied_upgrades', [])
+        prop.renovation_progress = state_dict.get('renovation_progress') # Can be None
+        prop.base_value_from_data = state_dict.get('base_value_from_data', 50000)
+        prop.base_condition = state_dict.get('base_condition', 0.5)
+        prop.location_modifier = state_dict.get('location_modifier', 1.0)
+        return prop
 
-    def start_renovation(self, upgrade):
-        """Begin applying an upgrade."""
-        # Check if max upgrades reached (requires type data)
-        if isinstance(self.type, dict) and len(self.upgrades) >= self.type.get("max_upgrades", 99):
-             print(f"Cannot add more upgrades to property {self.id}. Max reached.")
-             return False
-        if self.renovation_progress is None:
-            self.renovation_progress = {'upgrade': upgrade, 'time_left': upgrade.time_required}
-            print(f"Started renovation '{upgrade.name}' on property {self.id}.")
-            return True
-        else:
-            print(f"Property {self.id} is already undergoing renovation.")
-            return False
-
-    def update_renovation(self, days_passed):
-        """Update ongoing renovation progress based on days passed."""
+    # __str__ and __repr__ methods for easier debugging (optional)
+    def __str__(self):
+        status = f"Condition: {self.condition:.2f}"
         if self.renovation_progress:
-            self.renovation_progress['time_left'] -= days_passed # Decrease time left by days passed
-            if self.renovation_progress['time_left'] <= 0:
-                self.complete_renovation()
+            upgrade_name = self.renovation_progress['upgrade'].get('name', 'N/A')
+            days_left = self.renovation_progress['total_days'] - self.renovation_progress['days_passed']
+            status = f"Renovating '{upgrade_name}' ({days_left:.1f} days left)"
+        return f"ID: {self.property_id[:8]} | Type: {self.property_type} | Loc: {self.location} | Value: ${self.calculate_value(None):,.0f} | Status: {status}" # Pass None for game_state in str
 
-    def complete_renovation(self):
-        """Finalize the renovation."""
-        if self.renovation_progress:
-            completed_upgrade = self.renovation_progress['upgrade']
-            self.upgrades.append(completed_upgrade)
-            self.condition = min(100, self.condition + completed_upgrade.condition_increase)
-            print(f"Completed renovation '{completed_upgrade.name}' on property {self.id}. Condition: {self.condition}")
-            self.renovation_progress = None
+    def __repr__(self):
+        return f"Property(id='{self.property_id}', type='{self.property_type}', loc='{self.location}')"

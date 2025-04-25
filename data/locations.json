@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Downtown",
+    "market_modifier": 1.2
+  },
+  {
+    "name": "Suburbs",
+    "market_modifier": 1.0
+  },
+  {
+    "name": "Rural",
+    "market_modifier": 0.8
+  },
+  {
+    "name": "Industrial",
+    "market_modifier": 0.6
+  }
+]
