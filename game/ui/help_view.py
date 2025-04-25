@@ -1,7 +1,7 @@
 # filepath: c:\Users\iphoe\OneDrive\Documents\GitHub\Property-Flipper-Game\game\ui\help_view.py
 import pygame
 from ..constants import *
-from ..utils.text_wrap import draw_text # Assuming you have or create a text wrapping utility
+from ..utils.sound_manager import sound_manager # Keep sound manager import
 
 class HelpView:
     def __init__(self, game_state):
@@ -38,7 +38,7 @@ class HelpView:
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1: # Left click
                 if self.back_button_rect.collidepoint(event.pos):
-                    sound_manager.play("click")
+                    sound_manager.play("click") # Use sound manager
                     self.game_state.current_view = "main_menu"
                     return
 
@@ -61,8 +61,7 @@ class HelpView:
 
         current_y = text_area_rect.top + 10
         for line in self.help_text:
-            # Use text wrapping utility here if available
-            # For simplicity now, just render line by line
+            # Current code renders line by line, not using draw_text
             if line:
                 text_surf = self.font_text.render(line, True, COLOR_TEXT)
                 screen.blit(text_surf, (text_area_rect.left + 10, current_y))
@@ -79,8 +78,8 @@ class HelpView:
         pass
 
 # --- Placeholder for Text Wrapping Utility ---
-# You might need a utility like this if text gets long
-# (Create game/utils/text_wrap.py if needed)
+# If you need text wrapping later, you can create game/utils/text_wrap.py
+# and implement the draw_text function there.
 # Example structure:
 # def draw_text(surface, text, color, rect, font, aa=False, bkg=None):
 #     # ... implementation to wrap text within the rect ...

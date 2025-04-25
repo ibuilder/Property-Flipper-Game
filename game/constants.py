@@ -1,53 +1,41 @@
-# filepath: c:\Users\iphoe\OneDrive\Documents\GitHub\Property-Flipper-Game\game\constants.py
-# Screen dimensions
+import pygame
+import os # <<< Import os module
+
+# --- Screen ---
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
-
-# Game Title
-GAME_TITLE = "Property Flipper Tycoon"
-
-# Colors
-COLOR_BACKGROUND = (240, 240, 240) # Light gray
-COLOR_TEXT = (0, 0, 0)
-COLOR_BUTTON = (180, 180, 180)
-COLOR_BUTTON_BORDER = (0, 0, 0)
-COLOR_BUTTON_TEXT = (0, 0, 0)
-COLOR_SUCCESS = (0, 150, 0)
-COLOR_ERROR = (200, 0, 0)
-COLOR_INFO = (50, 50, 50)
-
-# Gameplay Constants
-STARTING_CASH = 50000
+GAME_TITLE = "Property Flipper"
 FPS = 60
 
-# --- Game Goal ---
-WIN_CONDITION_CASH = 1000000 # Target cash to win
+# --- Colors ---
+COLOR_BACKGROUND = (240, 240, 240)
+COLOR_TEXT = (10, 10, 10)
+COLOR_BUTTON = (200, 200, 200)
+COLOR_BUTTON_BORDER = (150, 150, 150)
+COLOR_BUTTON_TEXT = (0, 0, 0)
+COLOR_BUTTON_HOVER = (220, 220, 220)
+COLOR_SUCCESS = (0, 150, 0)
+COLOR_ERROR = (200, 0, 0)
+COLOR_INFO = (0, 0, 150)
+COLOR_PROPERTY_GOOD = (0, 180, 0)
+COLOR_PROPERTY_MEDIUM = (200, 180, 0)
+COLOR_PROPERTY_POOR = (180, 0, 0)
+COLOR_RENOVATING = (0, 100, 200)
 
-# --- Loan System ---
-MAX_LOAN_AMOUNT = 200000 # Maximum loan player can have
-LOAN_INTEREST_RATE_DAILY = 0.001 # 0.1% daily interest (approx 3% monthly)
-LOAN_INCREMENT = 10000 # Amount to borrow/repay at a time
+# --- Game Logic ---
+STARTING_CASH = 50000
+WIN_CONDITION_CASH = 1000000 # Example win condition
+LOAN_INCREMENT = 10000
+MAX_LOAN_AMOUNT = 100000
+LOAN_INTEREST_RATE_DAILY = 0.001 # 0.1% daily interest
+PROPERTY_TAX_RATE_DAILY = 0.0005 # 0.05% of property value per day
+CONTRACTOR_DAILY_WAGE = 200
+CONTRACTOR_SPEED_MULTIPLIER = 2.0 # Renovations are twice as fast
 
-# --- Holding Costs ---
-PROPERTY_TAX_RATE_DAILY = 0.0001 # 0.01% of property value per day (approx 0.3% monthly)
-
-# --- Staff/Contractors ---
-CONTRACTOR_DAILY_WAGE = 150       # Cost per day to keep contractor hired
-CONTRACTOR_SPEED_MULTIPLIER = 0.7 # Renovations take 70% of the normal time (30% faster)
-
-# --- Player Skills (Initial Bonuses) ---
-# Negotiation: Affects buy/sell price slightly. 1.0 = no effect. >1 = better selling, <1 = better buying.
-# We'll use a small bonus for now. E.g., 0.01 means 1% better prices.
-# NEGOTIATION_SKILL_BONUS = 0.01 # Player gets 1% better sell prices and pays 1% less on buy
-
-# Handiness: Affects renovation cost and speed. 1.0 = no effect. <1 = cheaper/faster.
-# HANDINESS_COST_MULTIPLIER = 0.98 # Player pays 2% less for upgrades
-# HANDINESS_SPEED_MULTIPLIER = 0.98 # Player renovates 2% faster
-
-# --- Player Skills ---
+# --- Skills ---
 MAX_SKILL_LEVEL = 10
 SKILL_UPGRADE_COST_BASE = 5000
-SKILL_UPGRADE_COST_FACTOR = 1.5 # Cost increases by 50% each level (cost = base * factor^level)
+SKILL_UPGRADE_COST_FACTOR = 1.5 # Cost multiplier per level
 
 # How skills translate to bonuses (per level)
 NEGOTIATION_BONUS_PER_LEVEL = 0.005 # 0.5% better buy/sell price per level
@@ -58,3 +46,21 @@ MARKETING_SELL_PRICE_BONUS_PER_LEVEL = 0.004 # 0.4% higher sell price per level 
 # Skill effect caps
 MIN_HANDINESS_COST_MULTIPLIER = 0.1 # Minimum cost multiplier (e.g., 10% of base cost)
 MIN_HANDINESS_SPEED_MULTIPLIER = 0.1 # Minimum speed multiplier (e.g., 10% of base time)
+
+# --- File Paths ---
+DATA_DIR = "data"
+SAVE_DIR = "saves"
+SOUND_DIR = "assets/sounds" # <<< DEFINE SOUND DIRECTORY PATH
+
+# --- Sound Effects ---
+# Define filenames for sounds (relative to SOUND_DIR)
+SOUND_CLICK = "click.wav"
+SOUND_BUY_SELL = "buy_sell.wav"
+SOUND_UPGRADE = "upgrade.wav"
+SOUND_ERROR = "error.wav"
+SOUND_WIN = "win.wav"
+SOUND_LOSE = "lose.wav"
+
+# --- Market Events ---
+EVENT_DURATION_DAYS = 30 # How long events last
+EVENT_CHANCE_PER_DAY = 0.05 # 5% chance of an event starting each day

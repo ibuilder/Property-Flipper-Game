@@ -2,7 +2,24 @@
 import pygame
 from ..constants import * # Import all constants including loan related
 from ..utils.file_handlers import save_game, load_game
-from ..utils.sound_manager import sound_manager # <<< Import sound manager
+
+# --- Optional Sound Manager Import ---
+try:
+    from ..utils.sound_manager import sound_manager
+    if not sound_manager.is_initialized:
+        # If mixer failed to init, create a dummy manager
+        class DummySoundManager:
+            def play(self, name): pass
+        sound_manager = DummySoundManager()
+        print("MainMenu: Sound manager not initialized, using dummy.")
+except ImportError:
+    # If sound_manager module is missing, create a dummy manager
+    print("MainMenu: Sound manager module not found, creating dummy.")
+    class DummySoundManager:
+        def play(self, name): pass
+    sound_manager = DummySoundManager()
+# --- End Optional Sound Manager Import ---
+
 
 class MainMenu:
     def __init__(self, game_state):
@@ -69,8 +86,9 @@ class MainMenu:
         # Next Day Button
         self.next_day_button_rect = pygame.Rect(SCREEN_WIDTH - 170, SCREEN_HEIGHT - 70, 150, 50)
 
-        self.event_display_y = 80 # Position for event text
-        self.info_y = self.event_display_y + 30 # Adjust info Y if needed
+        # Event display area
+        self.event_display_y = 80 # Y position for event text
+        self.info_y = self.event_display_y + 30 # Y position for cash/day info
 
     def handle_input(self, event):
         """Handles user input for the main menu."""
