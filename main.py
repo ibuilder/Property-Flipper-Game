@@ -41,8 +41,9 @@ def main():
         ui_manager.render() # Render current view
         pygame.display.flip() # Update the display
 
-    pygame.quit()
-    sys.exit()
+    # --- Cleanup ---
+    pygame.quit() # Uninitialize Pygame modules
+    sys.exit() # Exit the script cleanly
 
 if __name__ == '__main__':
     # Create dummy data files if they don't exist for testing
