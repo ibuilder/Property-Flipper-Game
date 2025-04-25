@@ -4,7 +4,9 @@ from .constants import ( # Import contractor constants
     PROPERTY_TAX_RATE_DAILY, CONTRACTOR_DAILY_WAGE, CONTRACTOR_SPEED_MULTIPLIER,
     MAX_SKILL_LEVEL, SKILL_UPGRADE_COST_BASE, SKILL_UPGRADE_COST_FACTOR,
     NEGOTIATION_BONUS_PER_LEVEL, HANDINESS_COST_REDUCTION_PER_LEVEL, HANDINESS_SPEED_REDUCTION_PER_LEVEL,
-    MARKETING_SELL_PRICE_BONUS_PER_LEVEL # Import marketing constant
+    MARKETING_SELL_PRICE_BONUS_PER_LEVEL, # Import marketing constant
+    MIN_HANDINESS_COST_MULTIPLIER, # <<< Import new constant
+    MIN_HANDINESS_SPEED_MULTIPLIER # <<< Import new constant
 )
 
 class Player:
@@ -31,13 +33,13 @@ class Player:
         """Calculates the current handiness cost multiplier."""
         # Reduction is capped, e.g., cannot go below 10% cost
         reduction = self.skills["handiness"] * HANDINESS_COST_REDUCTION_PER_LEVEL
-        return max(0.1, 1.0 - reduction) # Ensure multiplier doesn't go too low
+        return max(MIN_HANDINESS_COST_MULTIPLIER, 1.0 - reduction) # Ensure multiplier doesn't go too low
 
     def get_handiness_speed_multiplier(self):
         """Calculates the current handiness speed multiplier."""
         # Reduction is capped, e.g., cannot go below 10% time
         reduction = self.skills["handiness"] * HANDINESS_SPEED_REDUCTION_PER_LEVEL
-        return max(0.1, 1.0 - reduction) # Ensure multiplier doesn't go too low
+        return max(MIN_HANDINESS_SPEED_MULTIPLIER, 1.0 - reduction) # Ensure multiplier doesn't go too low
 
     def get_marketing_bonus(self):
         """Calculates the current marketing sell price bonus."""

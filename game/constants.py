@@ -54,3 +54,7 @@ NEGOTIATION_BONUS_PER_LEVEL = 0.005 # 0.5% better buy/sell price per level
 HANDINESS_COST_REDUCTION_PER_LEVEL = 0.01 # 1% cheaper upgrades per level
 HANDINESS_SPEED_REDUCTION_PER_LEVEL = 0.01 # 1% faster renovations per level
 MARKETING_SELL_PRICE_BONUS_PER_LEVEL = 0.004 # 0.4% higher sell price per level (stacks with negotiation)
+
+# Skill effect caps
+MIN_HANDINESS_COST_MULTIPLIER = 0.1 # Minimum cost multiplier (e.g., 10% of base cost)
+MIN_HANDINESS_SPEED_MULTIPLIER = 0.1 # Minimum speed multiplier (e.g., 10% of base time)
