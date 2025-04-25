@@ -18,15 +18,20 @@ class SoundManager:
         """Loads a sound file if the mixer is initialized."""
         if not self.is_initialized:
             return
+        
         path = os.path.join(SOUND_DIR, filename)
+        if not os.path.exists(path):
+            print(f"Warning: Sound file not found: {path}")
+            return
+            
         try:
             sound = pygame.mixer.Sound(path)
             self.sounds[name] = sound
             print(f"Loaded sound: {name} from {path}")
         except pygame.error as e:
             print(f"Error loading sound '{name}' from {path}: {e}")
-        except FileNotFoundError:
-            print(f"Warning: Sound file not found: {path}")
+        except Exception as e:
+            print(f"Unexpected error loading sound '{name}': {e}")
 
     def play(self, name):
         """Plays a loaded sound if the mixer is initialized."""
