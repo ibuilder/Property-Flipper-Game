@@ -73,6 +73,12 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     }
     return s;
   },
+  // v4 predates authored scenarios; campaign saves simply have none.
+  4: (s: any) => {
+    s.scenarioId = s.scenarioId ?? null;
+    s.scenario = s.scenario ?? null;
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {

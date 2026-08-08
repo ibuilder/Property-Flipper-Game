@@ -82,6 +82,19 @@ results are written to `balance-output.txt`.
 
 ## How the game works
 
+### Learn mode
+
+Five lessons, each isolating one way a flip goes wrong — the 70% rule, why the inspection pays, how
+comps mislead, what carry costs, and what leverage actually rents you. Each is a single authored
+deal with its own clock and pass mark, and the lesson text is shown on completion whether you passed
+or not.
+
+You can also **author a deal and share it as a code**. The code carries the whole scenario — house,
+which defects exist and which are disclosed, seller type, market conditions, starting cash, target
+profit — so an instructor can set a specific problem and hand it out with nothing hosted anywhere.
+That is the thing a spreadsheet cannot do, and it is why the research put this ahead of progression
+features.
+
 ### The loop
 
 1. **Screen the market.** Every listing shows an asking price and your estimate of as-is value.

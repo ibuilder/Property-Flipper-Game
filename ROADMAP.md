@@ -88,7 +88,7 @@ order.
 
 Effort is rough developer-days for one person.
 
-### Phase 1 — Make the state visible (~4–6 days)
+### Phase 1 — Make the state visible — **done**
 
 The single biggest gap, and the one the retention research points straight at.
 
@@ -108,16 +108,19 @@ The single biggest gap, and the one the retention research points straight at.
 No new stack — SVG and Canvas in the existing React app, ~20–30 kB. Explicitly **not** a game
 engine; see §6.
 
-### Phase 2 — Depth in the deal (~5–8 days)
+### Phase 2 — Depth in the deal — **partly done**
 
 Make the underwriting itself richer, since that is the differentiator.
 
-- **Pick your own comps.** Instead of being handed three, choose from a pool and defend the
-  selection. Bad comp selection is the most common real-world ARV error.
+- ~~**Pick your own comps.**~~ **Done.** Choose from a pool of seven; each is priced by the same
+  valuation model as the subject, so a bad selection is wrong in a direction you could have
+  predicted. Required adding a scale effect to valuation — smaller homes carry a higher price per
+  foot — without which a size-mismatched comp cost nothing and the warning was empty advice.
+- ~~**Seller archetypes.**~~ **Done.** Estate, tired landlord, relocating, retail, developer, each
+  with its own ask bias, reserve, patience, and — the one that matters — how much of a disclosed
+  defect it will concede.
 - **Appraisal gap.** The buyer's lender appraises below contract; renegotiate, eat the difference,
   or lose the deal.
-- **Seller archetypes** — estate sale, tired landlord, developer, retail seller — with different
-  reserve behaviour and negotiation dynamics, replacing the current scalar motivation.
 - **Financing menu** beyond one hard money product: private lender, cash-out refi, seller
   financing, partner splits.
 - **Permits and inspections as schedule risk**, tied to the existing permit-backlog event.
@@ -144,15 +147,18 @@ Make the underwriting itself richer, since that is the differentiator.
 - **Gentrification and decline** as multi-year neighborhood arcs rather than events.
 - **Event chains** — a rate spike leading into a correction leading into distressed inventory.
 
-### Phase 5 — Make it teach deliberately (~4–7 days)
+### Phase 5 — Make it teach deliberately — **mostly done**
 
 Where the professional-education market gets served.
 
-- **Deal post-mortems.** After each sale, compare what you projected against what happened, and name
-  the variance: ARV error, scope creep, days-on-market, change orders.
-- **Scenario editor.** Author a specific deal — an instructor sets ARV, defects, and market — and
-  share it as a link. This is the feature the Cornell/Wharton audience would actually use.
-- **Curriculum mode.** Guided lessons: the 70% rule, why carry kills, why the inspection pays.
+- ~~**Deal post-mortems.**~~ **Done.** The projection is captured at the moment of purchase and
+  compared against what happened, with the gap attributed to a named cause and the biggest miss
+  called out.
+- ~~**Scenario editor.**~~ **Done.** Author a deal — house, defects and which are disclosed, seller,
+  market, clock, pass mark — and share it as a self-contained code. Nothing has to be hosted.
+- ~~**Curriculum mode.**~~ **Done.** Five lessons, each isolating one failure: the 70% rule, why the
+  inspection pays, how comps mislead, what carry costs, what leverage rents you. The lesson text is
+  shown on completion either way, because failing is when you most need it.
 - **Shareable deal cards** — an image of your best or worst flip. Free distribution.
 
 ### Phase 6 — Distribution (~3–5 days)
@@ -167,6 +173,10 @@ Where the professional-education market gets served.
 ## 5. Suggested order
 
 Phase 1 → Phase 2 → Phase 5 → Phase 3 → Phase 4 → Phase 6.
+
+**Status:** Phase 1 complete. Phase 2's two highest-value items (comp selection, seller archetypes)
+and Phase 5's core (post-mortems, scenario editor, curriculum) are done. Next up is the rest of
+Phase 2 — appraisal gap, financing menu, scope templates — then Phase 3.
 
 Phase 5 is pulled ahead of 3 and 4 deliberately: post-mortems and the scenario editor are cheap,
 they compound the existing differentiator, and they serve the professional audience without needing

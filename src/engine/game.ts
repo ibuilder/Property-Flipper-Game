@@ -55,11 +55,14 @@ import {
   compFit,
   defaultCompSelection,
   estimateArv,
+  generateAddress,
+  generateCompPool,
   trueValue,
 } from './valuation';
 import { analyzeDeal } from './analyzer';
+import { buildScenarioProperty, type ScenarioDef } from './scenarios';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 /** How often the charts' time series is sampled, in days. */
 export const HISTORY_INTERVAL_DAYS = 5;
@@ -139,6 +142,8 @@ export function createGame(levelId: string, seed: number): GameState {
     log: [],
     closedDeals: [],
     history: [],
+    scenarioId: null,
+    scenario: null,
     distressDays: 0,
   };
 
@@ -152,6 +157,53 @@ export function createGame(levelId: string, seed: number): GameState {
 
   recordHistory(state);
   log(state, 'info', `${level.name} begins. You have $${level.startingCash.toLocaleString()}.`);
+  return state;
+}
+
+/**
+ * Start an authored deal.
+ *
+ * Built on the sandbox level so the world rules are shared, then overridden:
+ * the authored property is placed on the market alongside a few random
+ * distractors, so the lesson still requires recognising the right deal rather
+ * than clicking the only one available.
+ */
+export function createScenarioGame(def: ScenarioDef, seed: number): GameState {
+  const state = createGame('sandbox', seed);
+
+  state.scenarioId = def.id;
+  state.scenario = def;
+  state.cash = def.startingCash;
+  state.world.marketIndex = def.marketIndex;
+  state.world.baseRate = def.interestRate;
+  state.world.interestRate = def.interestRate;
+  state.ledger = [];
+  state.log = [];
+  state.history = [];
+
+  withRng(state, (rng) => {
+    const hero = buildScenarioProperty(
+      def.property,
+      `s_${def.id}`,
+      generateAddress(rng),
+      rng,
+    );
+    hero.compPool = generateCompPool(hero, state.world, state.day, rng);
+    hero.selectedComps = defaultCompSelection(hero, hero.compPool);
+    hero.appraisal = appraisalFromComps(
+      hero,
+      hero.compPool,
+      hero.selectedComps,
+      'comps',
+      state.skills.analysis,
+    );
+
+    const distractors = state.market.slice(0, Math.max(0, def.distractors));
+    state.market = [hero, ...distractors];
+  });
+
+  recordHistory(state);
+  log(state, 'info', `${def.name}. Target profit $${def.targetProfit.toLocaleString()}.`);
   return state;
 }
 
@@ -1077,6 +1129,39 @@ function checkDistress(state: GameState): void {
 
 function checkOutcome(state: GameState): void {
   if (state.phase !== 'playing') return;
+
+  // Authored deals have their own pass mark: complete a flip that clears the
+  // target profit. Net worth is the wrong measure here -- a scenario is about
+  // one deal done well, not a portfolio.
+  const scenario = state.scenario as ScenarioDef | null;
+  if (scenario) {
+    const best = state.closedDeals.reduce(
+      (m, d) => Math.max(m, d.netProfit),
+      Number.NEGATIVE_INFINITY,
+    );
+    if (state.closedDeals.length > 0 && best >= scenario.targetProfit) {
+      state.phase = 'won';
+      state.outcomeMessage = `Cleared the target with $${best.toLocaleString()} on the deal.`;
+      log(state, 'good', state.outcomeMessage);
+      return;
+    }
+    if (state.distressDays > ECON.DISTRESS_LIMIT_DAYS) {
+      state.phase = 'lost';
+      state.outcomeMessage = 'Insolvent. The scenario is over.';
+      log(state, 'bad', state.outcomeMessage);
+      return;
+    }
+    if (state.day > scenario.dayLimit) {
+      state.phase = 'lost';
+      state.outcomeMessage =
+        state.closedDeals.length > 0
+          ? `Time is up. Best deal returned $${best.toLocaleString()} against a $${scenario.targetProfit.toLocaleString()} target.`
+          : 'Time is up without completing a flip.';
+      log(state, 'bad', state.outcomeMessage);
+    }
+    return;
+  }
+
   const level = LEVELS_BY_ID[state.levelId];
   const worth = netWorth(state);
 

@@ -464,6 +464,13 @@ export interface GameState {
   closedDeals: ClosedDeal[];
   /** Sampled time series for the charts. */
   history: HistoryPoint[];
+  /**
+   * Set when playing an authored deal rather than a campaign. Carries its own
+   * win condition, so `levelId` is only a fallback for shared world settings.
+   */
+  scenarioId: string | null;
+  /** The authored deal itself, inlined so a save is self-contained. */
+  scenario: unknown | null;
   /** Consecutive days the player has been unable to service debt. */
   distressDays: number;
 }

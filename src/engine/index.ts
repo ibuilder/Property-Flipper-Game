@@ -8,4 +8,5 @@ export * from './renovation';
 export * from './analyzer';
 export * from './market';
 export * from './game';
+export * from './scenarios';
 export * from './save';

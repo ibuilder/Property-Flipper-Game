@@ -2,10 +2,12 @@ import { useCallback, useSyncExternalStore } from 'react';
 import {
   advanceDaysUntilAttention,
   createGame,
+  createScenarioGame,
   deserialize,
   serialize,
   type ActionResult,
   type GameState,
+  type ScenarioDef,
 } from '../engine';
 
 /**
@@ -95,6 +97,13 @@ export function dismissToast(): void {
 export function startGame(levelId: string, seed?: number): void {
   const actualSeed = seed ?? Math.floor(Math.random() * 2 ** 31);
   snapshot.state = createGame(levelId, actualSeed);
+  snapshot.toast = null;
+  emit();
+}
+
+export function startScenario(def: ScenarioDef, seed?: number): void {
+  const actualSeed = seed ?? Math.floor(Math.random() * 2 ** 31);
+  snapshot.state = createScenarioGame(def, actualSeed);
   snapshot.toast = null;
   emit();
 }

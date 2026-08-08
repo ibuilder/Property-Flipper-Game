@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import {
   ECON,
   LEVELS_BY_ID,
@@ -6,6 +6,7 @@ import {
   describeActiveEvents,
   netWorth,
   totalDebt,
+  type ScenarioDef,
 } from '../engine';
 import { gameDate, money, moneyShort, percent } from './format';
 import { advanceDays, quitToMenu, saveGame, useAction, useGame } from './store';
@@ -82,7 +83,12 @@ export default function GameShell() {
 
   if (!state) return null;
 
+  const scenario = state.scenario as ScenarioDef | null;
   const level = LEVELS_BY_ID[state.levelId];
+  // A scenario runs on the sandbox rules but is not the sandbox, so it names
+  // itself and shows its own clock and pass mark.
+  const title = scenario?.name ?? level.name;
+  const dayLimit = scenario?.dayLimit ?? level.dayLimit;
   const worth = netWorth(state);
   const debt = totalDebt(state);
   const events = describeActiveEvents(state.world);
@@ -98,14 +104,14 @@ export default function GameShell() {
       <header className="topbar">
         <div className="brand">
           Property Flipper
-          <span className="sub">{level.name}</span>
+          <span className="sub">{title}</span>
         </div>
 
         <div className="stat">
           <span className="label">Day</span>
           <span className="value">
             {state.day}
-            {level.dayLimit && <span className="faint"> / {level.dayLimit}</span>}
+            {dayLimit && <span className="faint"> / {dayLimit}</span>}
           </span>
         </div>
 
@@ -288,3 +294,4 @@ function seasonLabel(day: number): string {
   if (doy < 305) return 'Autumn';
   return 'Winter lull';
 }
+

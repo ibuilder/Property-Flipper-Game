@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { LEVELS } from '../engine';
 import { money } from './format';
 import { importSave, listSaves, loadGame, startGame } from './store';
+import ScenarioPicker from './views/ScenarioPicker';
 
 export default function MainMenu() {
   const [saves, setSaves] = useState<{ slot: string; modified: string }[]>([]);
   const [error, setError] = useState('');
+  const [learnOpen, setLearnOpen] = useState(false);
 
   useEffect(() => {
     listSaves().then(setSaves);
@@ -23,6 +25,22 @@ export default function MainMenu() {
         <p className="tagline">
           Buy distressed, underwrite honestly, and get out before the carry eats the margin.
         </p>
+
+        <div className="panel">
+          <div className="panel-head">
+            <h2>Learn</h2>
+            <button className="btn small" onClick={() => setLearnOpen(true)}>
+              Open lessons
+            </button>
+          </div>
+          <div className="panel-body">
+            <p className="dim" style={{ margin: 0, fontSize: 13 }}>
+              Five short scenarios, each isolating one way a flip goes wrong &mdash; the 70% rule,
+              why the inspection pays, how comps mislead, what carry costs, and what leverage really
+              rents you. You can also author a deal and share it as a code.
+            </p>
+          </div>
+        </div>
 
         <div className="panel">
           <div className="panel-head">
@@ -100,6 +118,8 @@ export default function MainMenu() {
           the same way. Saves capture the random stream exactly.
         </p>
       </div>
+
+      {learnOpen && <ScenarioPicker onClose={() => setLearnOpen(false)} />}
     </div>
   );
 }
