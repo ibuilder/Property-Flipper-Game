@@ -378,6 +378,44 @@ describe('game lifecycle', () => {
   });
 });
 
+describe('history series', () => {
+  it('records a point at creation and samples as days pass', () => {
+    const state = createGame('sandbox', 4321);
+    expect(state.history).toHaveLength(1);
+    expect(state.history[0].day).toBe(1);
+
+    for (let i = 0; i < 40; i++) advanceDay(state);
+    // Sampled every 5 days, so 40 days adds 8 points.
+    expect(state.history.length).toBe(9);
+    expect(state.history.at(-1)!.day).toBe(40);
+  });
+
+  it('captures a final point when the game ends, whatever the day', () => {
+    const state = createGame('first_flip', 99);
+    state.day = 137; // deliberately not on a sampling boundary
+    state.cash = 10_000_000;
+    advanceDay(state);
+    expect(state.phase).toBe('won');
+    expect(state.history.at(-1)!.day).toBe(138);
+  });
+
+  it('tracks net worth and market movement', () => {
+    const state = createGame('the_grind', 7);
+    for (let i = 0; i < 100; i++) advanceDay(state);
+    const pts = state.history;
+    expect(pts.every((p) => Number.isFinite(p.netWorth))).toBe(true);
+    expect(pts.every((p) => Number.isFinite(p.marketIndex))).toBe(true);
+    expect(Object.keys(pts.at(-1)!.neighborhoods).length).toBeGreaterThan(0);
+  });
+
+  it('stays small enough to keep saves portable', () => {
+    const state = createGame('the_grind', 11);
+    for (let i = 0; i < 900; i++) advanceDay(state);
+    // A full campaign must not accumulate an unbounded series.
+    expect(state.history.length).toBeLessThan(200);
+  });
+});
+
 describe('save files', () => {
   it('round-trips a game', () => {
     const state = createGame('leverage', SEED);
@@ -414,6 +452,20 @@ describe('save files', () => {
     const file = serialize(state);
     (file.state as any).levelId = 'not_a_level';
     expect(() => deserialize(file)).toThrow(SaveError);
+  });
+
+  it('migrates a v2 save by seeding the chart series', () => {
+    const state = createGame('first_flip', SEED);
+    for (let i = 0; i < 20; i++) advanceDay(state);
+    const file: any = serialize(state);
+    file.version = 2;
+    delete file.state.history;
+
+    const restored = deserialize(file);
+    // Charts must have something to draw rather than starting blank.
+    expect(restored.history.length).toBeGreaterThan(0);
+    expect(restored.history[0].day).toBe(restored.day);
+    expect(restored.history[0].netWorth).toBe(Math.round(restored.cash));
   });
 
   it('migrates a v1 save', () => {

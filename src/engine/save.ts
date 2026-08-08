@@ -37,6 +37,25 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.distressDays = s.distressDays ?? 0;
     return s;
   },
+  // v2 predates the charts, so it carries no time series. Seed one point from
+  // the current state rather than leaving the charts empty -- a loaded save
+  // then starts plotting from where it was rather than from nothing.
+  2: (s: any) => {
+    if (!Array.isArray(s.history) || s.history.length === 0) {
+      s.history = [
+        {
+          day: s.day ?? 1,
+          marketIndex: s.world?.marketIndex ?? 1,
+          interestRate: s.world?.interestRate ?? 0.065,
+          netWorth: Math.round(s.cash ?? 0),
+          cash: Math.round(s.cash ?? 0),
+          debt: 0,
+          neighborhoods: { ...(s.world?.neighborhoodIndex ?? {}) },
+        },
+      ];
+    }
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {
@@ -77,4 +96,5 @@ function validate(state: any): void {
   state.ledger = state.ledger ?? [];
   state.log = state.log ?? [];
   state.closedDeals = state.closedDeals ?? [];
+  state.history = state.history ?? [];
 }

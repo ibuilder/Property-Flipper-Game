@@ -9,6 +9,7 @@ import {
 } from '../../engine';
 import { money, percent } from '../format';
 import { useAction, useGame, useVersion } from '../store';
+import MarketCharts from './MarketCharts';
 
 const CATEGORY_LABEL: Record<LedgerCategory, string> = {
   acquisition: 'Acquisitions',
@@ -47,6 +48,8 @@ export default function FinanceView() {
   return (
     <div className="grid-2">
       <div>
+        <MarketCharts state={state} />
+
         <div className="panel">
           <div className="panel-head">
             <h2>Position</h2>

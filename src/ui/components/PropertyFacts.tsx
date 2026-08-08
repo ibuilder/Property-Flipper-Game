@@ -7,6 +7,7 @@ import {
   type Property,
 } from '../../engine';
 import { conditionLabel, money, percent } from '../format';
+import House from '../graphics/House';
 
 /** Facts, comparable sales, and whatever the player currently knows is wrong. */
 export default function PropertyFacts({ property }: { property: Property }) {
@@ -24,6 +25,7 @@ export default function PropertyFacts({ property }: { property: Property }) {
           <h2>The property</h2>
           <span className={`pill ${cond.tone}`}>{cond.text}</span>
         </div>
+        <House property={property} className="house-hero" />
         <div className="panel-body">
           <div className="kv">
             <span className="k">Area</span>

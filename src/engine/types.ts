@@ -325,6 +325,24 @@ export interface WorldState {
 
 export type GamePhase = 'playing' | 'won' | 'lost';
 
+/**
+ * A periodic snapshot of the things worth plotting.
+ *
+ * Sampled rather than recorded every day: a 900-day campaign at daily
+ * resolution is more points than any chart can usefully draw, and the save
+ * file has to stay small enough to hand around.
+ */
+export interface HistoryPoint {
+  day: number;
+  marketIndex: number;
+  interestRate: number;
+  netWorth: Money;
+  cash: Money;
+  debt: Money;
+  /** Per-neighborhood index at this sample. */
+  neighborhoods: Record<string, number>;
+}
+
 export interface GameState {
   version: number;
   seed: number;
@@ -345,6 +363,8 @@ export interface GameState {
   log: LogEntry[];
   /** Sale results, kept for the performance screen. */
   closedDeals: ClosedDeal[];
+  /** Sampled time series for the charts. */
+  history: HistoryPoint[];
   /** Consecutive days the player has been unable to service debt. */
   distressDays: number;
 }

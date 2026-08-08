@@ -4,6 +4,8 @@ import { conditionLabel, money, moneyShort } from '../format';
 import { useGame, useVersion } from '../store';
 import PropertyModal from './PropertyModal';
 import ClickableRow from '../components/ClickableRow';
+import NeighborhoodMap from '../graphics/NeighborhoodMap';
+import House from '../graphics/House';
 
 type SortKey = 'ask' | 'condition' | 'sqft' | 'estimate' | 'dom';
 
@@ -13,6 +15,7 @@ export default function MarketView() {
   const [selected, setSelected] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>('ask');
   const [hood, setHood] = useState<string>('all');
+  const [mapOpen, setMapOpen] = useState(true);
 
   const rows = useMemo(() => {
     if (!state) return [];
@@ -40,6 +43,23 @@ export default function MarketView() {
 
   return (
     <>
+      <div className="panel">
+        <div className="panel-head">
+          <h2>The town</h2>
+          <button className="btn small" onClick={() => setMapOpen((v) => !v)}>
+            {mapOpen ? 'Hide map' : 'Show map'}
+          </button>
+        </div>
+        {mapOpen && (
+          <div className="panel-body">
+            <NeighborhoodMap
+              state={state}
+              onSelect={(id) => setHood((h) => (h === id ? 'all' : id))}
+            />
+          </div>
+        )}
+      </div>
+
       <div className="panel">
         <div className="panel-head">
           <h2>Listings</h2>
@@ -76,6 +96,7 @@ export default function MarketView() {
             <table>
               <thead>
                 <tr>
+                  <th aria-label="Preview"></th>
                   <th>Address</th>
                   <th>Area</th>
                   <th>Type</th>
@@ -136,6 +157,9 @@ function MarketRow({
       selected={selected}
       label={`${prop.address}, asking ${money(ask)}`}
     >
+      <td style={{ padding: '4px 8px' }}>
+        <House property={prop} className="house-thumb" />
+      </td>
       <td style={{ fontWeight: 500 }}>{prop.address}</td>
       <td className="dim">{NEIGHBORHOODS_BY_ID[prop.neighborhoodId]?.name}</td>
       <td className="dim">{ARCHETYPES_BY_ID[prop.archetypeId]?.name}</td>

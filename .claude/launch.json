@@ -8,6 +8,12 @@
       "port": 5173
     },
     {
+      "name": "renderer-alt",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "5199", "--strictPort"],
+      "port": 5199
+    },
+    {
       "name": "production",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "preview", "--port", "4173", "--strictPort"],

@@ -18,6 +18,7 @@ import {
   originateLoan,
   sellingCosts,
   skillCost,
+  totalDebt,
 } from './finance';
 import {
   ageListing,
@@ -48,7 +49,10 @@ import type {
 } from './types';
 import { makeAppraisal, trueValue } from './valuation';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
+
+/** How often the charts' time series is sampled, in days. */
+export const HISTORY_INTERVAL_DAYS = 5;
 
 // ---------------------------------------------------------------------------
 // Plumbing
@@ -124,6 +128,7 @@ export function createGame(levelId: string, seed: number): GameState {
     ledger: [],
     log: [],
     closedDeals: [],
+    history: [],
     distressDays: 0,
   };
 
@@ -135,8 +140,22 @@ export function createGame(levelId: string, seed: number): GameState {
     }
   });
 
+  recordHistory(state);
   log(state, 'info', `${level.name} begins. You have $${level.startingCash.toLocaleString()}.`);
   return state;
+}
+
+/** Append a sample to the chart series. */
+function recordHistory(state: GameState): void {
+  state.history.push({
+    day: state.day,
+    marketIndex: state.world.marketIndex,
+    interestRate: state.world.interestRate,
+    netWorth: netWorth(state),
+    cash: Math.round(state.cash),
+    debt: totalDebt(state),
+    neighborhoods: { ...state.world.neighborhoodIndex },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -619,6 +638,10 @@ export function advanceDay(state: GameState): ActionResult {
   refreshAppraisals(state);
   checkDistress(state);
   checkOutcome(state);
+
+  if (state.day % HISTORY_INTERVAL_DAYS === 0 || state.phase !== 'playing') {
+    recordHistory(state);
+  }
 
   return { ok: true, message: `Day ${state.day}.` };
 }

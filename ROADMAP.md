@@ -1,0 +1,218 @@
+# Roadmap
+
+Where Property Flipper stands, what the market looks like, and what to build next.
+
+Last updated: August 2026.
+
+---
+
+## 1. Where it stands today
+
+The v2 rewrite delivered a complete, verified underwriting simulation:
+
+- Offer-versus-reserve buying, noisy ARV estimates with comps, pre-purchase inspections that force
+  seller concessions, line-item scope with change orders and contingency, the full cost stack, and
+  days-on-market selling.
+- A Deal Analyzer showing the 70% rule beside an itemised calculation.
+- Four campaigns, market cycles, seasonality, foreclosure.
+- 45 tests including a 30-seed balance harness that verifies discipline beats recklessness.
+- Ships as a Windows installer, a portable build, and a 308 kB browser demo.
+
+**What it does not have:** any visual representation of a property, any chart, any sense of place.
+It is a very good spreadsheet.
+
+---
+
+## 2. What the research says
+
+### The genre has a hole in the middle
+
+| | Renovation sims | Property Flipper | Idle / tycoon |
+| --- | --- | --- | --- |
+| Example | House Flipper | — | Landlord Go, Real Estate Tycoon |
+| Strength | Tactile, satisfying renovation | Deal underwriting | Accessible, endless progression |
+| Weakness | No financial model | No visuals | No decisions worth making |
+
+House Flipper is criticised specifically for the things this project already models. Reviewers note
+that finished homes go instantly to auction where a dozen buyers bid and keep buying regardless of
+how many they own, and that the simulation "lacks the financial complexity and logistical
+challenges of actual house flipping businesses." The Seattle Times covered the same gap between
+flipping on television and flipping in reality.
+
+Meanwhile the tycoon end of the market is built on clicker economics — arbitrage on price ticks,
+prestige resets, passive rent. Engaging, but nothing is being taught.
+
+**Positioning: the deal, not the drywall.** This is the only one of the three where being wrong
+about ARV costs you money.
+
+### There is a real professional market, and it runs on Excel
+
+Cornell (Real Estate Investment Modeling), Wharton with Wall Street Prep, A.CRE, RealData and REIA
+all sell underwriting education. Every one of them teaches through spreadsheets. An interactive
+simulation where a bad ARV estimate visibly destroys a deal is a genuinely differentiated format
+for that audience — and it is the audience this project's author already works in.
+
+### What retains players in management sims
+
+The consistent finding across genre analysis: progression has to keep the next goal just out of
+reach, and — directly relevant to the next phase — *the world should visibly transform as a result
+of the player's decisions*, not merely increment a counter. Long-term retention in this genre comes
+from a meta-progression layer that persists across runs.
+
+---
+
+## 3. Honouring the original wishlist
+
+The Pygame README listed the author's own future ideas. Status after v2:
+
+| Idea | Status |
+| --- | --- |
+| More property types and locations | **Done** — 7 archetypes, 6 neighborhoods |
+| More diverse upgrades | **Done** — 18 scope items across 8 categories |
+| More detailed market simulation (gentrification) | **Partial** — per-neighborhood indices and a revitalisation event |
+| More complex event types and chains | **Partial** — events exist, chains do not |
+| Improved UI/UX (visual properties, graphs, tooltips) | **Partial** — tooltips and copy done, visuals are Phase 1 |
+| Difficulty levels | **Partial** — four campaigns, no explicit difficulty setting |
+| More staff types (specialists, agents) | Phase 3 |
+| Player XP and levelling alongside cash-bought skills | Phase 3 |
+| Auctions and bidding | Phase 4 |
+| AI competitors | Phase 4 |
+| Tenant management | Phase 4 (BRRRR) |
+
+The roadmap below is largely a sequenced version of that list, with market research deciding the
+order.
+
+---
+
+## 4. Phases
+
+Effort is rough developer-days for one person.
+
+### Phase 1 — Make the state visible (~4–6 days)
+
+The single biggest gap, and the one the retention research points straight at.
+
+1. **Procedural house illustrations.** SVG facades generated from data the property already has:
+   archetype for silhouette, sqft for scale, `yearBuilt` for period detail, and `condition` for
+   decay — boarded windows, gapped shingles, stained siding, an overgrown yard. Seeded from the
+   existing `noiseSeed` so a house always looks like itself. Completed scope items visibly change
+   it: `roof_replace` fixes the roof, `landscaping_curb` fixes the yard.
+   *Why first:* condition is currently an invisible decimal driving the entire economy, and the
+   before/after of a flip is the emotional payload of the whole loop.
+2. **Charts.** Market index and rate history, net worth over time, per-neighborhood price trends,
+   and a P&L waterfall per closed deal. Requires a new sampled history series in `GameState` and a
+   save migration to v3.
+3. **Neighborhood map.** Stylized, heat-coloured by price index, holdings pinned. Makes cycles
+   spatial rather than tabular.
+
+No new stack — SVG and Canvas in the existing React app, ~20–30 kB. Explicitly **not** a game
+engine; see §6.
+
+### Phase 2 — Depth in the deal (~5–8 days)
+
+Make the underwriting itself richer, since that is the differentiator.
+
+- **Pick your own comps.** Instead of being handed three, choose from a pool and defend the
+  selection. Bad comp selection is the most common real-world ARV error.
+- **Appraisal gap.** The buyer's lender appraises below contract; renegotiate, eat the difference,
+  or lose the deal.
+- **Seller archetypes** — estate sale, tired landlord, developer, retail seller — with different
+  reserve behaviour and negotiation dynamics, replacing the current scalar motivation.
+- **Financing menu** beyond one hard money product: private lender, cash-out refi, seller
+  financing, partner splits.
+- **Permits and inspections as schedule risk**, tied to the existing permit-backlog event.
+- **Scope templates** — save a "cosmetic refresh" or "full gut" and apply it in one click.
+
+### Phase 3 — Progression that survives run three (~4–6 days)
+
+- **Reputation**, separate from cash: with lenders (better points and rates), agents (earlier access
+  to listings), and subs (fewer change orders, faster schedules). This is the meta-progression the
+  genre research says drives month-three retention, and it fits the domain honestly — reputation is
+  how the business actually compounds.
+- **Crew and staff** — the author's original idea. A retained GC reduces change-order probability;
+  an in-house agent cuts commission; a dedicated estimator narrows repair-cost error.
+- **XP and levelling** alongside the existing cash-bought skills.
+- **Explicit difficulty settings** layered over campaigns.
+
+### Phase 4 — A world with other people in it (~6–10 days)
+
+- **AI competitors** bidding on the same listings. Turns a static reserve into a live market and is
+  the biggest single realism upgrade available.
+- **Auctions** — trustee sales, sight-unseen, cash-only, with the risk profile that implies.
+- **BRRRR** — refinance and hold for rent instead of selling. Tenants, vacancy, maintenance.
+  Converts the game from a series of transactions into a portfolio business.
+- **Gentrification and decline** as multi-year neighborhood arcs rather than events.
+- **Event chains** — a rate spike leading into a correction leading into distressed inventory.
+
+### Phase 5 — Make it teach deliberately (~4–7 days)
+
+Where the professional-education market gets served.
+
+- **Deal post-mortems.** After each sale, compare what you projected against what happened, and name
+  the variance: ARV error, scope creep, days-on-market, change orders.
+- **Scenario editor.** Author a specific deal — an instructor sets ARV, defects, and market — and
+  share it as a link. This is the feature the Cornell/Wharton audience would actually use.
+- **Curriculum mode.** Guided lessons: the 70% rule, why carry kills, why the inspection pays.
+- **Shareable deal cards** — an image of your best or worst flip. Free distribution.
+
+### Phase 6 — Distribution (~3–5 days)
+
+- Code signing, so Windows SmartScreen and macOS Gatekeeper stop warning.
+- Verify the macOS and Linux builds on real hardware; only Windows has been tested.
+- itch.io first (the browser build is already the right shape), Steam if Phase 4 lands.
+- Playtesting with actual flippers to re-tune balance against humans rather than the bot.
+
+---
+
+## 5. Suggested order
+
+Phase 1 → Phase 2 → Phase 5 → Phase 3 → Phase 4 → Phase 6.
+
+Phase 5 is pulled ahead of 3 and 4 deliberately: post-mortems and the scenario editor are cheap,
+they compound the existing differentiator, and they serve the professional audience without needing
+the simulation to get any bigger. Phases 3 and 4 are what turn it into a game people play for
+twenty hours — worth doing, but only after the teaching case is fully made.
+
+---
+
+## 6. What we are deliberately not doing
+
+- **Unity or Unreal.** There is no simulated space, no physics, no real-time rendering. Adopting one
+  means a third full rewrite into C#/C++, kills the 308 kB browser demo, and swaps a fast accessible
+  UI for a toolkit that is bad at dense tables. The graphics this game needs are SVG and Canvas.
+- **3D or first-person renovation.** That is House Flipper's game, it is executed well there, and
+  competing on it means losing on it.
+- **Multiplayer.** The interesting competition is AI bidders, not other humans.
+- **Free-to-play monetisation.** The loop is deliberate, slow decisions. Timers and boosts would
+  destroy the thing the game is for.
+- **Real property data.** Landlord Go does GPS-linked real listings. It adds licensing and privacy
+  problems and teaches nothing extra.
+
+---
+
+## 7. Open question
+
+The one fork that changes prioritisation is **who this is for**:
+
+- **A game.** Ship on itch and Steam. Phases 3 and 4 matter most — progression, competitors,
+  auctions, BRRRR.
+- **A teaching tool.** Serve the market Cornell and Wharton charge for. Phases 2 and 5 matter most —
+  deal depth, post-mortems, the scenario editor, curriculum.
+- **Both.** Sequence as in §5, which is built to keep both doors open for as long as possible.
+
+The phases overlap heavily, so this is a question of order rather than direction — but it decides
+what gets built after Phase 1.
+
+---
+
+## Sources
+
+- [House Flipper review — Game Informer](https://gameinformer.com/review/house-flipper/a-definite-fixer-upper)
+- [House Flipper: The Ultimate Guide — Real Estate Skills](https://www.realestateskills.com/blog/house-flipper-game)
+- [For house flippers, reality doesn't match reality TV — Seattle Times](https://www.seattletimes.com/business/real-estate/for-house-flippers-reality-doesnt-match-reality-tv/)
+- [Real Estate Investment Modeling — eCornell](https://ecornell.cornell.edu/certificates/real-estate/real-estate-investment-modeling/)
+- [Real Estate Investing Certificate — Wharton Online & Wall Street Prep](https://wallstreetprep.wharton.upenn.edu/real-estate-investing-certificate/)
+- [Adventures in CRE](https://www.adventuresincre.com/)
+- [15 Best Property Management Simulation Games — Zeevou](https://zeevou.com/blog/property-management-simulation-games/)
+- [Idle vs Incremental vs Tycoon — André Guerrero](https://medium.com/tindalos-games/idle-vs-incremental-vs-tycoon-understanding-the-core-mechanics-f12d62f4b9f7)
+- [Roblox Tycoon Games 2026: Builds, Loops and Economies — Gaming Endsights](https://endsights.com/roblox-tycoon-games)

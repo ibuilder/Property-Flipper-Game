@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { NEIGHBORHOODS_BY_ID } from '../../engine';
 import { money, moneyShort, percent } from '../format';
 import { useGame } from '../store';
+import { Waterfall } from '../graphics/Charts';
 
 /**
  * Track record.
@@ -11,9 +13,16 @@ import { useGame } from '../store';
  */
 export default function DealsView() {
   const state = useGame();
+  const [selected, setSelected] = useState<string>('');
+  const deals = state?.closedDeals ?? [];
+
+  // Default to the most recent deal, and follow along as new ones close.
+  const key = (d: (typeof deals)[number]) => `${d.propertyId}-${d.soldDay}`;
+  const shown =
+    deals.find((d) => key(d) === selected) ?? (deals.length > 0 ? deals[deals.length - 1] : null);
+
   if (!state) return null;
 
-  const deals = state.closedDeals;
   if (deals.length === 0) {
     return (
       <div className="panel">
@@ -40,6 +49,47 @@ export default function DealsView() {
           sub={percent(wins / deals.length, 0)}
         />
         <Stat label="Average hold" value={`${Math.round(avgDays)} days`} sub={`best ROI ${percent(bestRoi, 0)} annualised`} />
+      </div>
+
+      <div className="panel">
+        <div className="panel-head">
+          <h2>Where the margin went</h2>
+          <select
+            className="btn small"
+            style={{ paddingRight: 24 }}
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+          >
+            {deals.map((d) => (
+              <option key={`${d.propertyId}-${d.soldDay}`} value={`${d.propertyId}-${d.soldDay}`}>
+                {d.address} — {money(d.netProfit)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="panel-body">
+          {shown && (
+            <>
+              <Waterfall
+                steps={[
+                  { label: 'Sale price', value: shown.salePrice },
+                  { label: 'Purchase', value: -shown.purchasePrice },
+                  { label: 'Closing', value: -shown.closingCosts },
+                  { label: 'Renovation', value: -shown.renovationSpend },
+                  { label: 'Carry', value: -shown.holdingCosts },
+                  ...(shown.financingCosts ? [{ label: 'Financing', value: -shown.financingCosts }] : []),
+                  { label: 'Commission', value: -shown.commission },
+                  ...(shown.concession ? [{ label: 'Concession', value: -shown.concession }] : []),
+                ]}
+                format={(n) => moneyShort(n)}
+              />
+              <p className="faint" style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}>
+                Held {shown.daysHeld} days. Sale price is rarely the story — the gap between the
+                first bar and the last is everything the business costs.
+              </p>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="panel">
