@@ -1,0 +1,71 @@
+name: Release
+
+# Tag a version to cut a release:  git tag v2.0.0 && git push origin v2.0.0
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: 'release/*.exe'
+          - os: macos-latest
+            artifact: 'release/*.dmg'
+          - os: ubuntu-latest
+            artifact: 'release/*.AppImage'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verify before shipping
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Package
+        run: npm run dist
+        env:
+          # Skip electron-builder's attempt to notarise / sign; these are
+          # unsigned community builds.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
+          body: |
+            Unsigned community builds. Windows SmartScreen and macOS Gatekeeper
+            will warn on first launch because these are not code-signed.
+
+            Saves live in your user data directory and survive reinstalling.

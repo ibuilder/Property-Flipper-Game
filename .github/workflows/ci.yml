@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Typecheck & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # The balance harness writes its table to a file rather than stdout,
+      # because vitest swallows console output. Surface it in the job summary
+      # so a run that quietly shifts the economics is visible in the PR.
+      - name: Publish balance report
+        if: always()
+        run: |
+          if [ -f balance-output.txt ]; then
+            {
+              echo '### Balance harness'
+              echo ''
+              echo '```'
+              cat balance-output.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  build:
+    name: Build renderer & main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm run bundle:web
