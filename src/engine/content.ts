@@ -5,6 +5,7 @@ import type {
   MarketEventDef,
   Neighborhood,
   ScopeItemDef,
+  SellerType,
 } from './types';
 
 // ---------------------------------------------------------------------------
@@ -566,7 +567,7 @@ export const LEVELS: LevelDef[] = [
     blurb:
       'Hard money lets you run two deals at once -- and turns a slow sale into a margin call. Points and interest come out of your profit either way.',
     startingCash: 160000,
-    goalNetWorth: 520000,
+    goalNetWorth: 450000,
     dayLimit: 600,
     neighborhoods: ['riverside_flats', 'maple_heights', 'old_town', 'millworks'],
     startingMarketIndex: 1.02,
@@ -577,9 +578,9 @@ export const LEVELS: LevelDef[] = [
     id: 'the_grind',
     name: 'Portfolio Builder',
     blurb:
-      'The full board, a longer clock, and a million-dollar target. You will sit through at least one correction. Plan your carry accordingly.',
+      'The full board, a longer clock, and a target north of a million. You will sit through at least one correction. Plan your carry accordingly.',
     startingCash: 220000,
-    goalNetWorth: 1000000,
+    goalNetWorth: 1500000,
     dayLimit: 900,
     neighborhoods: NEIGHBORHOODS.map((n) => n.id),
     startingMarketIndex: 1.0,
@@ -610,6 +611,71 @@ export const NEIGHBORHOODS_BY_ID: Record<string, Neighborhood> = Object.fromEntr
 
 export const ARCHETYPES_BY_ID: Record<string, Archetype> = Object.fromEntries(
   ARCHETYPES.map((a) => [a.id, a]),
+);
+
+// ---------------------------------------------------------------------------
+// Sellers
+//
+// Replaces a single scalar "motivation" with people who have reasons. Who you
+// are buying from changes the whole negotiation, and it is legible before you
+// offer -- an estate sale and a developer are not the same conversation.
+// ---------------------------------------------------------------------------
+
+export const SELLER_TYPES: SellerType[] = [
+  {
+    id: 'estate',
+    name: 'Estate sale',
+    blurb: 'Heirs settling a property they never wanted. Motivated, and rarely emotional about price.',
+    askBias: 0.97,
+    reserveBias: 0.94,
+    staleness: 1.4,
+    concedes: 0.95,
+    weight: 1.0,
+  },
+  {
+    id: 'tired_landlord',
+    name: 'Tired landlord',
+    blurb: 'Done with tenants and repairs. Knows what is wrong with it, and will discount to be finished.',
+    askBias: 0.99,
+    reserveBias: 0.96,
+    staleness: 1.2,
+    concedes: 0.9,
+    weight: 1.1,
+  },
+  {
+    id: 'relocating',
+    name: 'Relocating owner',
+    blurb: 'Has a start date in another city. Patient at first, then suddenly not.',
+    askBias: 1.02,
+    reserveBias: 1.0,
+    staleness: 1.6,
+    concedes: 0.8,
+    weight: 1.0,
+  },
+  {
+    id: 'retail',
+    name: 'Retail seller',
+    blurb: 'Lives there, loves it, priced it off the neighbour who got lucky. Slow to move.',
+    askBias: 1.06,
+    reserveBias: 1.04,
+    staleness: 0.7,
+    concedes: 0.6,
+    weight: 1.2,
+  },
+  {
+    id: 'developer',
+    name: 'Developer',
+    blurb: 'Runs the same numbers you do. Will not hand you a margin, and knows exactly what the defects cost.',
+    askBias: 1.03,
+    reserveBias: 1.06,
+    staleness: 0.5,
+    concedes: 0.45,
+    weight: 0.8,
+  },
+];
+
+export const SELLER_TYPES_BY_ID: Record<string, SellerType> = Object.fromEntries(
+  SELLER_TYPES.map((s) => [s.id, s]),
 );
 
 // ---------------------------------------------------------------------------

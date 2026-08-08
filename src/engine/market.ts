@@ -3,6 +3,8 @@ import {
   DEFECTS,
   DEFECTS_BY_ID,
   NEIGHBORHOODS_BY_ID,
+  SELLER_TYPES,
+  SELLER_TYPES_BY_ID,
 } from './content';
 import { eventModifiers } from './events';
 import { Rng } from './rng';
@@ -13,10 +15,18 @@ import type {
   Money,
   Property,
   PropertyId,
+  SellerTypeId,
   SkillId,
   WorldState,
 } from './types';
-import { defectRepairCost, generateAddress, makeAppraisal, trueValue } from './valuation';
+import {
+  appraisalFromComps,
+  defaultCompSelection,
+  defectRepairCost,
+  generateAddress,
+  generateCompPool,
+  trueValue,
+} from './valuation';
 
 /**
  * Property generation, the buy-side negotiation, and the sell-side buyer pool.
@@ -107,7 +117,11 @@ export function generateProperty(
       high: 0,
       confidence: 'comps',
       comps: [],
+      fitScore: 1,
     },
+    compPool: [],
+    selectedComps: [],
+    sellerType: pickSellerType(rng),
     listing: null,
     ownership: null,
     inspection: 'none',
@@ -137,18 +151,39 @@ export function generateProperty(
     burden -= worstCost;
   }
 
-  prop.appraisal = makeAppraisal(prop, world, day, 'comps', analysisSkill);
+  prop.compPool = generateCompPool(prop, world, day, rng);
+  prop.selectedComps = defaultCompSelection(prop, prop.compPool);
+  prop.appraisal = appraisalFromComps(
+    prop,
+    prop.compPool,
+    prop.selectedComps,
+    'comps',
+    analysisSkill,
+  );
   prop.listing = makeListing(prop, world, day, rng);
   return prop;
 }
 
+function pickSellerType(rng: Rng): SellerTypeId {
+  const total = SELLER_TYPES.reduce((s, t) => s + t.weight, 0);
+  let roll = rng.float(0, total);
+  for (const t of SELLER_TYPES) {
+    roll -= t.weight;
+    if (roll <= 0) return t.id;
+  }
+  return SELLER_TYPES[0].id;
+}
+
 function makeListing(prop: Property, world: WorldState, day: number, rng: Rng): Listing {
   const value = trueValue(prop, world, day);
+  const seller = SELLER_TYPES_BY_ID[prop.sellerType];
   const motivation = rng.float(0, 1);
 
   // Sellers generally ask above value, but a motivated seller with a problem
-  // house will list under it to move quickly.
-  const askPremium = rng.clampedNormal(0.05, 0.08, 2) - motivation * 0.06;
+  // house will list under it to move quickly. Who they are shifts both ends.
+  const askPremium =
+    (rng.clampedNormal(0.05, 0.08, 2) - motivation * 0.06) * (seller?.askBias ?? 1) +
+    ((seller?.askBias ?? 1) - 1);
   const askPrice = Math.max(1000, Math.round(value * (1 + askPremium)));
 
   // The reserve is what they will actually take today. It can never exceed the
@@ -156,7 +191,8 @@ function makeListing(prop: Property, world: WorldState, day: number, rng: Rng): 
   // priced their house, they have made a wish. The two draws are independent,
   // so without this clamp roughly one listing in six was unbuyable at any
   // price the player could rationally offer.
-  const reserveRatio = 0.93 + rng.float(0, 0.06) - motivation * 0.05;
+  const reserveRatio =
+    (0.93 + rng.float(0, 0.06) - motivation * 0.05) * (seller?.reserveBias ?? 1);
   const reserve = Math.min(askPrice, Math.round(value * reserveRatio));
 
   return {
@@ -184,16 +220,19 @@ export function currentReserve(prop: Property): Money {
   const listing = prop.listing;
   if (!listing) return 0;
 
+  const seller = SELLER_TYPES_BY_ID[prop.sellerType];
   const staleness = Math.min(1, listing.daysOnMarket / 150);
-  const erosion = staleness * 0.09 + listing.sellerMotivation * 0.05;
+  const erosion = staleness * 0.09 * (seller?.staleness ?? 1) + listing.sellerMotivation * 0.05;
   const base = listing.reserve * (1 - erosion);
 
-  // Sellers concede what inspection has already put in writing. Not the full
-  // repair cost -- they push back -- but most of it.
+  // Sellers concede what inspection has already put in writing -- but how much
+  // depends on who they are. A developer knows exactly what the repair costs
+  // and will not hand over more than a fraction; an estate wants it gone.
+  const concedes = seller?.concedes ?? 0.85;
   let disclosed = 0;
   for (const d of prop.defects) {
     if (!d.revealed || d.repaired) continue;
-    disclosed += defectRepairCost(d.defId, prop) * 0.85;
+    disclosed += defectRepairCost(d.defId, prop) * concedes;
   }
 
   // A full-price offer always closes, even after the ask has been cut.

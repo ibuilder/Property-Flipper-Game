@@ -3,14 +3,20 @@ import {
   DEFECTS_BY_ID,
   ECON,
   NEIGHBORHOODS_BY_ID,
+  SELLER_TYPES_BY_ID,
   defectRepairCost,
   type Property,
 } from '../../engine';
 import { conditionLabel, money, percent } from '../format';
 import House from '../graphics/House';
+import CompPicker from './CompPicker';
+import { useGame } from '../store';
 
 /** Facts, comparable sales, and whatever the player currently knows is wrong. */
 export default function PropertyFacts({ property }: { property: Property }) {
+  const state = useGame();
+  if (!state) return null;
+  const seller = SELLER_TYPES_BY_ID[property.sellerType];
   const hood = NEIGHBORHOODS_BY_ID[property.neighborhoodId];
   const arch = ARCHETYPES_BY_ID[property.archetypeId];
   const cond = conditionLabel(property.condition);
@@ -55,73 +61,30 @@ export default function PropertyFacts({ property }: { property: Property }) {
               <span className="v">{money(hood!.hoaMonthly)}/mo</span>
             </div>
           )}
+          {seller && (
+            <div className="kv">
+              <span className="k">Seller</span>
+              <span className="v">{seller.name}</span>
+            </div>
+          )}
           <p className="faint" style={{ fontSize: 12, marginTop: 10, marginBottom: 0 }}>
             {hood?.blurb}
           </p>
+          {seller && (
+            <p className="dim" style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}>
+              <strong>{seller.name}.</strong> {seller.blurb}
+            </p>
+          )}
         </div>
       </div>
 
       <div className="panel">
         <div className="panel-head">
-          <h2>Valuation</h2>
+          <h2>Valuation &mdash; pick your comps</h2>
           <span className="pill mute">{band.confidence}</span>
         </div>
         <div className="panel-body">
-          <div className="kv">
-            <span className="k">Estimated as-is value</span>
-            <span className="v" style={{ fontSize: 16, fontWeight: 600 }}>
-              {money(band.point)}
-            </span>
-          </div>
-          <div className="kv">
-            <span className="k">Confidence range</span>
-            <span className="v">
-              {money(band.low)} &ndash; {money(band.high)}
-            </span>
-          </div>
-          <div className="kv">
-            <span className="k">Uncertainty</span>
-            <span className={`v ${bandWidth > 0.2 ? 'warn' : ''}`}>
-              &plusmn;{percent(bandWidth / 2, 1)}
-            </span>
-          </div>
-
-          <div className="scope-group-label" style={{ marginTop: 16 }}>
-            Comparable sales
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Address</th>
-                  <th className="right">Sqft</th>
-                  <th className="right">Bd/Ba</th>
-                  <th className="right">Sold</th>
-                  <th className="right">Price</th>
-                  <th className="right">$/sqft</th>
-                </tr>
-              </thead>
-              <tbody>
-                {band.comps.map((c, i) => (
-                  <tr key={i}>
-                    <td>{c.address}</td>
-                    <td className="right num">{c.sqft.toLocaleString()}</td>
-                    <td className="right num dim">
-                      {c.beds}/{c.baths}
-                    </td>
-                    <td className="right num dim">{c.soldDaysAgo}d ago</td>
-                    <td className="right num">{money(c.soldPrice)}</td>
-                    <td className="right num dim">${Math.round(c.soldPrice / c.sqft)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="faint" style={{ fontSize: 12, marginTop: 10, marginBottom: 0 }}>
-            Comps are similar homes, not identical ones. The spread between them is why your
-            estimate has a range &mdash; and why an ARV that is 10% optimistic quietly destroys a
-            15% margin.
-          </p>
+          <CompPicker property={property} state={state} />
         </div>
       </div>
 

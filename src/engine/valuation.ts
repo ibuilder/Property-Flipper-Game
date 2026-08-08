@@ -9,6 +9,7 @@ import type {
   Appraisal,
   AppraisalConfidence,
   Comp,
+  CompFit,
   Money,
   Property,
   WorldState,
@@ -38,6 +39,22 @@ function ageAdjustment(yearBuilt: number): number {
   // Roughly 0.93 for an 1890 build up to 1.05 for new construction.
   const t = Math.max(0, Math.min(1, (yearBuilt - 1890) / (2015 - 1890)));
   return 0.93 + t * 0.12;
+}
+
+/**
+ * Smaller homes sell for more per square foot.
+ *
+ * Kitchens, bathrooms, roofs and lots do not shrink proportionally, so cost
+ * and value per foot both rise as the house gets smaller. Normalised so a
+ * 1,600 sqft house is unaffected: roughly +9% per foot at 800 sqft, -7% at
+ * 2,800.
+ *
+ * This is also what makes comp selection bite. Without it, a comp 30% smaller
+ * than the subject priced identically per foot, so leaning on the wrong-sized
+ * comparable cost nothing and the "different size" warning was empty advice.
+ */
+function scaleAdjustment(sqft: number): number {
+  return Math.pow(1600 / Math.max(300, sqft), 0.12);
 }
 
 /**
@@ -77,6 +94,7 @@ export function baseValue(prop: Property, world: WorldState, day: number): Money
   return (
     hood.pricePerSqft *
     prop.sqft *
+    scaleAdjustment(prop.sqft) *
     arch.valueAdj *
     ageAdjustment(prop.yearBuilt) *
     world.marketIndex *
@@ -209,69 +227,190 @@ export function generateAddress(rng: Rng): string {
 }
 
 /**
- * Build the estimate the player actually sees.
+ * Generate the pool of comparable sales offered for a property.
  *
- * Two deliberate design choices here:
- *
- * 1. The point estimate is *biased*, not merely noisy. If it were centred on
- *    the truth the player could average several looks and recover the real
- *    number for free. A real appraisal is one draw, and you live with it.
- *
- * 2. The noise is derived from the property's stable `noiseSeed`, so the
- *    estimate does not jitter every time the UI re-renders. It only moves when
- *    the player buys better information.
+ * Each comp is a real house priced with the same valuation model as the
+ * subject, so its price genuinely follows from its own square footage,
+ * neighborhood, and finish. That is what makes selection a skill: a comp two
+ * neighborhoods over really did sell for more per foot, and leaning on it
+ * really will push your estimate high — in a direction you could have
+ * predicted by looking at it.
  */
-export function makeAppraisal(
+export function generateCompPool(
   prop: Property,
   world: WorldState,
   day: number,
+  rng: Rng,
+): Comp[] {
+  const hoodIds = Object.keys(world.neighborhoodIndex);
+  const pool: Comp[] = [];
+  const count = 7;
+
+  for (let i = 0; i < count; i++) {
+    // A spread of quality: some near-identical, some tempting but wrong.
+    const tier = i < 2 ? 'close' : i < 5 ? 'loose' : 'poor';
+
+    const sqftDelta =
+      tier === 'close' ? rng.float(-0.07, 0.07) : tier === 'loose' ? rng.float(-0.2, 0.2) : rng.float(-0.45, 0.5);
+    const sameHood = tier === 'close' ? true : tier === 'loose' ? rng.chance(0.7) : rng.chance(0.25);
+    const hoodId = sameHood ? prop.neighborhoodId : rng.pick(hoodIds);
+
+    const quality: Comp['quality'] =
+      tier === 'close'
+        ? rng.pick(['average', 'renovated'] as const)
+        : rng.pick(['renovated', 'average', 'dated'] as const);
+
+    const sqft = Math.max(400, Math.round(prop.sqft * (1 + sqftDelta)));
+    const condition = quality === 'renovated' ? 0.92 : quality === 'average' ? 0.68 : 0.4;
+
+    // Price it as an actual property, using the model everything else uses.
+    //
+    // Finish is expressed purely through `condition`, with no completed work.
+    // Giving renovated comps a scope of work stacked an upgrade multiplier on
+    // top of the condition multiplier, and the quality adjustment below only
+    // inverts the condition part -- so every renovated comp read high and
+    // pushed the player's whole estimate up with it.
+    const ghost: Property = {
+      ...prop,
+      sqft,
+      neighborhoodId: hoodId,
+      condition,
+      completedWork: [],
+      defects: [],
+    };
+
+    const soldDaysAgo =
+      tier === 'close' ? rng.int(10, 70) : tier === 'loose' ? rng.int(20, 140) : rng.int(90, 300);
+
+    // Sold in the past, so priced against the market as it was then.
+    const pastDay = Math.max(1, day - soldDaysAgo);
+    const base = trueValue(ghost, world, pastDay);
+    const price = Math.round(base * (1 + rng.clampedNormal(0, 0.035, 2)));
+
+    pool.push({
+      id: `c${i}_${prop.id}`,
+      address: generateAddress(rng),
+      neighborhoodId: hoodId,
+      sqft,
+      beds: prop.beds + (tier === 'close' ? 0 : rng.chance(0.4) ? rng.pick([-1, 1]) : 0),
+      baths: prop.baths,
+      soldPrice: Math.max(1000, price),
+      soldDaysAgo,
+      distanceMi:
+        (sameHood ? rng.float(0.1, 0.9) : rng.float(1.4, 4.5)) * (tier === 'poor' ? 1.6 : 1),
+      quality,
+    });
+  }
+
+  return pool.sort((a, b) => a.soldDaysAgo - b.soldDaysAgo);
+}
+
+/**
+ * How badly a comp matches the subject. Lower is better.
+ *
+ * Surfaced in the UI so the player can learn the heuristics rather than guess
+ * them: same area, similar size, recent, similar finish.
+ */
+export function compFit(prop: Property, comp: Comp): CompFit {
+  const reasons: string[] = [];
+  let score = 0;
+
+  const sizeGap = Math.abs(comp.sqft - prop.sqft) / prop.sqft;
+  score += sizeGap * 2.2;
+  if (sizeGap > 0.2) reasons.push(`${Math.round(sizeGap * 100)}% different in size`);
+
+  if (comp.neighborhoodId !== prop.neighborhoodId) {
+    score += 0.55;
+    reasons.push('different neighborhood');
+  }
+
+  const stale = Math.max(0, comp.soldDaysAgo - 90) / 200;
+  score += stale;
+  if (comp.soldDaysAgo > 120) reasons.push(`sold ${comp.soldDaysAgo} days ago`);
+
+  score += Math.max(0, comp.distanceMi - 1) * 0.16;
+  if (comp.distanceMi > 2) reasons.push(`${comp.distanceMi.toFixed(1)} miles away`);
+
+  if (comp.beds !== prop.beds) {
+    score += 0.18;
+    reasons.push(`${comp.beds} bed vs ${prop.beds}`);
+  }
+
+  return { compId: comp.id, score, reasons };
+}
+
+/** The three closest matches, used as the default selection. */
+export function defaultCompSelection(prop: Property, pool: Comp[]): string[] {
+  return [...pool]
+    .sort((a, b) => compFit(prop, a).score - compFit(prop, b).score)
+    .slice(0, 3)
+    .map((c) => c.id);
+}
+
+/**
+ * Derive the player's estimate from the comps they chose.
+ *
+ * This is the mechanism the whole buy-side rests on. The estimate is a median
+ * price per square foot across the selection, adjusted for finish, applied to
+ * the subject. There is no hidden appeal to the true value: choose well and it
+ * lands close, choose badly and it is wrong by roughly the amount the bad
+ * comps were unrepresentative.
+ */
+export function appraisalFromComps(
+  prop: Property,
+  pool: Comp[],
+  selectedIds: readonly string[],
   confidence: AppraisalConfidence,
   analysisSkill: number,
 ): Appraisal {
-  const truth = trueValue(prop, world, day);
-  const noise = noiseFor(confidence, analysisSkill);
+  const chosen = pool.filter((c) => selectedIds.includes(c.id));
+  if (chosen.length === 0) {
+    return { point: 0, low: 0, high: 0, confidence, comps: [], fitScore: 1 };
+  }
 
-  // Stable per-property, per-confidence-level bias.
-  const rng = new Rng(prop.noiseSeed ^ (confidence.length * 2654435761));
-  const bias = rng.clampedNormal(0, noise * 0.55, 2);
-  const point = Math.round(truth * (1 + bias));
+  // Adjust each comp toward the subject: its finish down or up to the
+  // subject's condition, then the subject's own completed work back on top.
+  // Deliberately *not* adjusted for neighborhood, size or age -- those are the
+  // differences the player is supposed to notice and price themselves.
+  const COMP_CONDITION: Record<Comp['quality'], number> = {
+    renovated: 0.92,
+    average: 0.68,
+    dated: 0.4,
+  };
+  const subjectUpgrades = upgradeMultiplier(prop.completedWork);
 
-  const comps = makeComps(prop, world, day, truth, noise, rng);
+  const perSqft = chosen.map((c) => {
+    const raw = c.soldPrice / c.sqft;
+    const qualityAdj = conditionMultiplier(prop.condition) / conditionMultiplier(COMP_CONDITION[c.quality]);
+    return raw * qualityAdj * subjectUpgrades;
+  });
+
+  const sorted = [...perSqft].sort((a, b) => a - b);
+  const median =
+    sorted.length % 2 === 1
+      ? sorted[(sorted.length - 1) / 2]
+      : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
+
+  const point = Math.round(median * prop.sqft);
+
+  // Band width follows how well the comps match and how much better the
+  // player's information is, not a fixed constant.
+  const avgFit = chosen.reduce((s, c) => s + compFit(prop, c).score, 0) / chosen.length;
+  const spread =
+    sorted.length > 1 ? (sorted[sorted.length - 1] - sorted[0]) / Math.max(1e-9, median) : 0.1;
+
+  let band = NOISE_BY_CONFIDENCE[confidence] * 0.55 + avgFit * 0.09 + spread * 0.25;
+  band *= Math.max(0.4, 1 - 0.08 * analysisSkill);
+  // Thin selections are less reliable however good each comp is.
+  if (chosen.length < 3) band *= 1.25;
+  band = Math.max(0.02, Math.min(0.35, band));
 
   return {
     point,
-    low: Math.round(point * (1 - noise)),
-    high: Math.round(point * (1 + noise)),
+    low: Math.round(point * (1 - band)),
+    high: Math.round(point * (1 + band)),
     confidence,
-    comps,
+    comps: chosen,
+    fitScore: avgFit,
   };
-}
-
-function makeComps(
-  prop: Property,
-  world: WorldState,
-  day: number,
-  truth: Money,
-  noise: number,
-  rng: Rng,
-): Comp[] {
-  const count = 3;
-  const comps: Comp[] = [];
-  for (let i = 0; i < count; i++) {
-    // Comps are similar but not identical homes, so their prices differ both
-    // because of real differences and because of appraisal noise.
-    const sqftDelta = rng.float(-0.12, 0.12);
-    const sqft = Math.round(prop.sqft * (1 + sqftDelta));
-    const priceNoise = rng.clampedNormal(0, noise * 0.8, 2);
-    const soldPrice = Math.round(truth * (1 + sqftDelta * 0.7) * (1 + priceNoise));
-    comps.push({
-      address: generateAddress(rng),
-      sqft,
-      beds: prop.beds + (rng.chance(0.25) ? rng.pick([-1, 1]) : 0),
-      baths: prop.baths,
-      soldPrice: Math.max(1000, soldPrice),
-      soldDaysAgo: rng.int(8, 120),
-    });
-  }
-  return comps.sort((a, b) => a.soldDaysAgo - b.soldDaysAgo);
 }

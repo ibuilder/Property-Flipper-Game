@@ -10,6 +10,7 @@ import {
   analyzeDeal,
   conditionMultiplier,
   createGame,
+  selectComps,
   deserialize,
   detailedMao,
   inspectionConcession,
@@ -26,6 +27,8 @@ import {
   upgradeMultiplier,
 } from '../src/engine';
 import { currentReserve } from '../src/engine/market';
+import { SELLER_TYPES_BY_ID } from '../src/engine/content';
+import { compFit, defaultCompSelection } from '../src/engine/valuation';
 import { LEVELS_BY_ID } from '../src/engine/content';
 
 const SEED = 12345;
@@ -378,6 +381,162 @@ describe('game lifecycle', () => {
   });
 });
 
+describe('comparable sales', () => {
+  it('offers a pool and pre-selects the closest matches', () => {
+    const state = createGame('the_grind', 616);
+    const prop = state.market[0];
+    expect(prop.compPool.length).toBeGreaterThan(3);
+    expect(prop.selectedComps).toHaveLength(3);
+
+    // The default picks must genuinely be among the better fits.
+    const fits = prop.compPool.map((c) => ({ id: c.id, score: compFit(prop, c).score }));
+    const chosen = fits.filter((f) => prop.selectedComps.includes(f.id));
+    const rejected = fits.filter((f) => !prop.selectedComps.includes(f.id));
+    const worstChosen = Math.max(...chosen.map((c) => c.score));
+    const bestRejected = Math.min(...rejected.map((r) => r.score));
+    expect(worstChosen).toBeLessThanOrEqual(bestRejected + 1e-9);
+  });
+
+  it('moves the estimate when the player swaps comps', () => {
+    const state = createGame('the_grind', 707);
+    const prop = state.market[0];
+    const before = prop.appraisal.point;
+
+    // Lean on the worst-fitting comps instead.
+    const worst = [...prop.compPool]
+      .sort((a, b) => compFit(prop, b).score - compFit(prop, a).score)
+      .slice(0, 3)
+      .map((c) => c.id);
+    expect(selectComps(state, prop.id, worst).ok).toBe(true);
+
+    expect(prop.appraisal.point).not.toBe(before);
+    expect(prop.appraisal.comps.map((c) => c.id).sort()).toEqual([...worst].sort());
+  });
+
+  it('widens the confidence band for poorly matched comps', () => {
+    const state = createGame('the_grind', 808);
+    const prop = state.market[0];
+    const bandOf = () => (prop.appraisal.high - prop.appraisal.low) / prop.appraisal.point;
+
+    const best = defaultCompSelection(prop, prop.compPool);
+    selectComps(state, prop.id, best);
+    const tight = bandOf();
+
+    const worst = [...prop.compPool]
+      .sort((a, b) => compFit(prop, b).score - compFit(prop, a).score)
+      .slice(0, 3)
+      .map((c) => c.id);
+    selectComps(state, prop.id, worst);
+    expect(bandOf()).toBeGreaterThan(tight);
+  });
+
+  it('prices comps by the same model, so a pricier area really did sell higher', () => {
+    const state = createGame('the_grind', 909);
+    const prop = state.market.find((p) => p.compPool.some((c) => c.neighborhoodId !== p.neighborhoodId));
+    if (!prop) return;
+    const local = prop.compPool.filter((c) => c.neighborhoodId === prop.neighborhoodId);
+    const away = prop.compPool.filter((c) => c.neighborhoodId !== prop.neighborhoodId);
+    if (local.length === 0 || away.length === 0) return;
+    // Not a fixed direction -- just that location genuinely shifts price/sqft.
+    const psf = (c: (typeof local)[number]) => c.soldPrice / c.sqft;
+    const localAvg = local.reduce((s, c) => s + psf(c), 0) / local.length;
+    const awayAvg = away.reduce((s, c) => s + psf(c), 0) / away.length;
+    expect(Math.abs(localAvg - awayAvg)).toBeGreaterThan(0);
+  });
+
+  it('makes a size-mismatched comp actually bias the estimate', () => {
+    // Regression: without a scale effect every square foot priced identically,
+    // so a comp 30% smaller moved the estimate not at all and the "different
+    // size" warning was empty advice.
+    const state = createGame('the_grind', 2468);
+    const prop = state.market.find((p) =>
+      p.compPool.some((c) => Math.abs(c.sqft - p.sqft) / p.sqft > 0.25),
+    );
+    if (!prop) return;
+
+    const psf = (c: { soldPrice: number; sqft: number }) => c.soldPrice / c.sqft;
+    const sameHood = prop.compPool.filter((c) => c.neighborhoodId === prop.neighborhoodId);
+    const small = sameHood.filter((c) => c.sqft < prop.sqft * 0.85);
+    const big = sameHood.filter((c) => c.sqft > prop.sqft * 1.15);
+    if (small.length === 0 || big.length === 0) return;
+
+    // Smaller homes must carry a higher price per foot.
+    const smallAvg = small.reduce((s, c) => s + psf(c), 0) / small.length;
+    const bigAvg = big.reduce((s, c) => s + psf(c), 0) / big.length;
+    expect(smallAvg).toBeGreaterThan(bigAvg);
+  });
+
+  it('rejects an empty or oversized selection', () => {
+    const state = createGame('sandbox', 1010);
+    const prop = state.market[0];
+    expect(selectComps(state, prop.id, []).ok).toBe(false);
+    expect(selectComps(state, prop.id, prop.compPool.map((c) => c.id)).ok).toBe(false);
+  });
+});
+
+describe('sellers', () => {
+  it('assigns an archetype to every listing', () => {
+    const state = createGame('the_grind', 1111);
+    for (const p of state.market) {
+      expect(SELLER_TYPES_BY_ID[p.sellerType]).toBeDefined();
+    }
+  });
+
+  it('makes a developer concede less than an estate on the same defects', () => {
+    const state = createGame('sandbox', 1212);
+    const prop = state.market.find((p) => p.defects.length >= 2);
+    if (!prop) return;
+
+    prop.defects.forEach((d) => (d.revealed = true));
+
+    prop.sellerType = 'estate';
+    const estateReserve = currentReserve(prop);
+    prop.sellerType = 'developer';
+    const developerReserve = currentReserve(prop);
+
+    // A developer knows what the repairs cost and holds more of the price.
+    expect(developerReserve).toBeGreaterThan(estateReserve);
+  });
+});
+
+describe('deal post-mortem', () => {
+  it('captures a projection at purchase and attributes the variance at sale', () => {
+    const state = createGame('sandbox', 1313);
+    const prop = cheapestAffordable(state);
+    expect(makeOffer(state, prop.id, prop.listing!.askPrice, false).ok).toBe(true);
+
+    const owned = state.portfolio[0];
+    expect(owned.ownership!.projection).not.toBeNull();
+    expect(owned.ownership!.projection!.arv).toBeGreaterThan(0);
+
+    startRenovation(state, owned.id, ['paint_interior'], 0.15);
+    for (let i = 0; i < 60 && owned.ownership?.renovation; i++) advanceDay(state);
+
+    listForSale(state, owned.id, Math.round(trueValue(owned, state.world, state.day) * 0.9));
+    let sold = false;
+    for (let i = 0; i < 300 && !sold; i++) {
+      advanceDay(state);
+      const sale = state.portfolio[0]?.ownership?.saleListing;
+      if (sale && sale.offers.length > 0) {
+        acceptOffer(state, owned.id, sale.offers[0].id);
+        sold = true;
+      }
+    }
+    expect(sold).toBe(true);
+
+    const pm = state.closedDeals[0].postMortem;
+    expect(pm).not.toBeNull();
+    expect(pm!.lines.length).toBeGreaterThan(0);
+    expect(pm!.headline).toBeTruthy();
+    // Every line must name a category the UI can group by.
+    for (const l of pm!.lines) {
+      expect(['arv', 'scope', 'changeOrders', 'carry', 'concession', 'financing']).toContain(
+        l.category,
+      );
+    }
+  });
+});
+
 describe('history series', () => {
   it('records a point at creation and samples as days pass', () => {
     const state = createGame('sandbox', 4321);
@@ -516,4 +675,5 @@ describe('net worth', () => {
     expect(netWorth(state)).toBeGreaterThan(before * 0.9);
   });
 });
+
 

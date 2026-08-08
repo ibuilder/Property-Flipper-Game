@@ -39,7 +39,10 @@ import {
 import type {
   ActionResult,
   ClosedDeal,
+  DealProjection,
   GameState,
+  PostMortem,
+  VarianceLine,
   LedgerCategory,
   LogTone,
   Money,
@@ -47,9 +50,16 @@ import type {
   PropertyId,
   SkillId,
 } from './types';
-import { makeAppraisal, trueValue } from './valuation';
+import {
+  appraisalFromComps,
+  compFit,
+  defaultCompSelection,
+  estimateArv,
+  trueValue,
+} from './valuation';
+import { analyzeDeal } from './analyzer';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 /** How often the charts' time series is sampled, in days. */
 export const HISTORY_INTERVAL_DAYS = 5;
@@ -162,6 +172,64 @@ function recordHistory(state: GameState): void {
 // Buy side
 // ---------------------------------------------------------------------------
 
+/**
+ * Choose which comparable sales to lean on.
+ *
+ * Re-derives the estimate immediately, so the player can watch their own ARV
+ * move as they swap comps in and out. That feedback is the point -- being
+ * wrong about ARV is the most expensive mistake available, and this is where
+ * it originates.
+ */
+export function selectComps(
+  state: GameState,
+  propertyId: PropertyId,
+  compIds: readonly string[],
+): ActionResult {
+  const prop =
+    state.market.find((p) => p.id === propertyId) ?? findOwned(state, propertyId);
+  if (!prop) return { ok: false, message: 'No such property.' };
+  if (compIds.length === 0) return { ok: false, message: 'Pick at least one comparable.' };
+  if (compIds.length > 4) return { ok: false, message: 'Four comparables is plenty.' };
+
+  prop.selectedComps = compIds.filter((id) => prop.compPool.some((c) => c.id === id));
+  prop.appraisal = appraisalFromComps(
+    prop,
+    prop.compPool,
+    prop.selectedComps,
+    prop.inspection === 'none' ? 'comps' : 'inspected',
+    state.skills.analysis,
+  );
+  return { ok: true, message: `Estimate now $${prop.appraisal.point.toLocaleString()}.` };
+}
+
+/** Capture what the player believed at the moment they committed. */
+function captureProjection(
+  state: GameState,
+  prop: Property,
+  price: Money,
+  useFinancing: boolean,
+): DealProjection {
+  // Project against a plausible cosmetic scope; the player refines it later,
+  // and the post-mortem reports the difference as scope variance.
+  const assumedScope = ['paint_interior', 'flooring_lvp', 'landscaping_curb'];
+  const arv = estimateArv(prop, state.world, state.day, assumedScope);
+  const analysis = analyzeDeal(prop, state.world, state.day, arv, assumedScope, state.skills, {
+    offer: price,
+    useFinancing,
+  });
+
+  return {
+    arv,
+    repairEstimate: analysis.repairEstimate,
+    renovationDays: analysis.holdDays - Math.round(analysis.holdDays * 0.5),
+    marketingDays: Math.round(analysis.holdDays * 0.5),
+    projectedProfit: analysis.breakdown?.profit ?? 0,
+    purchasePrice: price,
+    mao70: analysis.mao70,
+    maoDetailed: analysis.maoDetailed,
+  };
+}
+
 export function makeOffer(
   state: GameState,
   propertyId: PropertyId,
@@ -208,6 +276,7 @@ export function makeOffer(
     saleListing: null,
     holdingCostsPaid: 0,
     renovationSpend: 0,
+    projection: captureProjection(state, prop, amount, useFinancing),
   };
 
   applyCash(state, -amount, 'acquisition', `Purchased ${prop.address}`, prop.id);
@@ -234,7 +303,6 @@ export function makeOffer(
     );
   }
 
-  prop.appraisal = makeAppraisal(prop, state.world, state.day, 'comps', state.skills.analysis);
   state.portfolio.push(prop);
   log(state, 'good', `Bought ${prop.address} for $${amount.toLocaleString()}.`);
   return { ok: true, message: `Closed on ${prop.address}.` };
@@ -285,7 +353,13 @@ export function orderInspection(
     }
   });
 
-  prop.appraisal = makeAppraisal(prop, state.world, state.day, 'inspected', state.skills.analysis);
+  prop.appraisal = appraisalFromComps(
+    prop,
+    prop.compPool,
+    prop.selectedComps,
+    'inspected',
+    state.skills.analysis,
+  );
 
   log(
     state,
@@ -532,6 +606,20 @@ export function acceptOffer(
     own.purchasePrice + own.closingCosts + own.renovationSpend - (loan?.principal ?? 0),
   );
 
+  const postMortem = own.projection
+    ? buildPostMortem(own.projection, {
+        salePrice,
+        renovationSpend: own.renovationSpend,
+        holdingCosts: Math.round(own.holdingCostsPaid),
+        financingCosts,
+        concession,
+        commission,
+        closing,
+        daysHeld: Math.max(1, state.day - own.purchaseDay),
+        actualProfit: Math.round(netProfit),
+      })
+    : null;
+
   const deal: ClosedDeal = {
     propertyId: prop.id,
     address: prop.address,
@@ -549,6 +637,7 @@ export function acceptOffer(
     netProfit: Math.round(netProfit),
     roi: (netProfit / cashInvested) * (365 / daysHeld),
     daysHeld,
+    postMortem,
   };
   state.closedDeals.push(deal);
   state.portfolio = state.portfolio.filter((p) => p.id !== prop.id);
@@ -563,6 +652,106 @@ export function acceptOffer(
 
   checkOutcome(state);
   return { ok: true, message: 'Sale closed.' };
+}
+
+/**
+ * Attribute the gap between what was projected and what happened.
+ *
+ * The game could always tell you that a deal lost money. This says which
+ * assumption was wrong, which is the only part worth learning from. Each line
+ * is signed from the deal's point of view: negative hurt it.
+ */
+function buildPostMortem(
+  projected: DealProjection,
+  actual: {
+    salePrice: Money;
+    renovationSpend: Money;
+    holdingCosts: Money;
+    financingCosts: Money;
+    concession: Money;
+    commission: Money;
+    closing: Money;
+    daysHeld: number;
+    actualProfit: Money;
+  },
+): PostMortem {
+  const lines: VarianceLine[] = [];
+
+  const arvMiss = actual.salePrice - projected.arv;
+  lines.push({
+    category: 'arv',
+    label: 'After-repair value',
+    amount: arvMiss,
+    note:
+      arvMiss < 0
+        ? `Sold ${pct(arvMiss, projected.arv)} under the ARV you underwrote. The comps you leaned on were optimistic.`
+        : `Sold ${pct(arvMiss, projected.arv)} above your ARV. Conservative comps, or a market that moved your way.`,
+  });
+
+  const scopeMiss = projected.repairEstimate - actual.renovationSpend;
+  lines.push({
+    category: 'scope',
+    label: 'Renovation spend',
+    amount: scopeMiss,
+    note:
+      scopeMiss < 0
+        ? `Spent $${Math.abs(scopeMiss).toLocaleString()} more than budgeted — a wider scope, or change orders.`
+        : `Came in $${scopeMiss.toLocaleString()} under budget.`,
+  });
+
+  const projectedHold = projected.renovationDays + projected.marketingDays;
+  const dayMiss = projectedHold - actual.daysHeld;
+  lines.push({
+    category: 'carry',
+    label: 'Time on the deal',
+    amount: Math.round((dayMiss / Math.max(1, actual.daysHeld)) * actual.holdingCosts),
+    note:
+      dayMiss < 0
+        ? `Held ${Math.abs(dayMiss)} days longer than planned, at $${Math.round(
+            actual.holdingCosts / Math.max(1, actual.daysHeld),
+          ).toLocaleString()}/day of carry.`
+        : `Closed ${dayMiss} days faster than planned.`,
+  });
+
+  if (actual.concession > 0) {
+    lines.push({
+      category: 'concession',
+      label: 'Buyer concession',
+      amount: -actual.concession,
+      note: `The buyer's inspector found defects you left unrepaired and took $${actual.concession.toLocaleString()} off.`,
+    });
+  }
+
+  if (actual.financingCosts > 0) {
+    lines.push({
+      category: 'financing',
+      label: 'Financing',
+      amount: -actual.financingCosts,
+      note: `Points and interest on the hard money.`,
+    });
+  }
+
+  // The biggest single negative is the story.
+  const worst = [...lines].sort((a, b) => a.amount - b.amount)[0];
+  const beat = actual.actualProfit >= projected.projectedProfit;
+  const headline = beat
+    ? `Beat the projection by $${(actual.actualProfit - projected.projectedProfit).toLocaleString()}.`
+    : worst && worst.amount < 0
+      ? `${worst.label} was the problem: ${worst.note}`
+      : `Came in $${(projected.projectedProfit - actual.actualProfit).toLocaleString()} under projection.`;
+
+  return {
+    projected,
+    actualSalePrice: actual.salePrice,
+    actualProfit: actual.actualProfit,
+    lines,
+    headline,
+  };
+}
+
+function pct(delta: Money, base: Money): string {
+  if (base === 0) return '0%';
+  return `${Math.abs((delta / base) * 100).toFixed(1)}%`;
 }
 
 export function rejectOffer(
@@ -862,7 +1051,16 @@ function handleLoanMaturity(state: GameState): void {
 function refreshAppraisals(state: GameState): void {
   for (const prop of [...state.market, ...state.portfolio]) {
     const conf = prop.inspection === 'none' ? 'comps' : 'inspected';
-    prop.appraisal = makeAppraisal(prop, state.world, state.day, conf, state.skills.analysis);
+    if (prop.selectedComps.length === 0) {
+      prop.selectedComps = defaultCompSelection(prop, prop.compPool);
+    }
+    prop.appraisal = appraisalFromComps(
+      prop,
+      prop.compPool,
+      prop.selectedComps,
+      conf,
+      state.skills.analysis,
+    );
   }
 }
 

@@ -3,6 +3,7 @@ import { NEIGHBORHOODS_BY_ID } from '../../engine';
 import { money, moneyShort, percent } from '../format';
 import { useGame } from '../store';
 import { Waterfall } from '../graphics/Charts';
+import PostMortemPanel from '../components/PostMortemPanel';
 
 /**
  * Track record.
@@ -91,6 +92,20 @@ export default function DealsView() {
           )}
         </div>
       </div>
+
+      {shown?.postMortem && (
+        <div className="panel">
+          <div className="panel-head">
+            <h2>Post-mortem — {shown.address}</h2>
+            <span className="faint" style={{ fontSize: 12 }}>
+              what you believed on day {shown.boughtDay}
+            </span>
+          </div>
+          <div className="panel-body">
+            <PostMortemPanel pm={shown.postMortem} />
+          </div>
+        </div>
+      )}
 
       <div className="panel">
         <div className="panel-head">

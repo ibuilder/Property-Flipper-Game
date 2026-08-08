@@ -56,6 +56,23 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     }
     return s;
   },
+  // v3 predates comp selection, seller archetypes, and deal projections.
+  // Properties are rebuilt lazily: an empty compPool is repopulated by the
+  // next appraisal refresh, which happens on the first day advance.
+  3: (s: any) => {
+    for (const prop of [...(s.market ?? []), ...(s.portfolio ?? [])]) {
+      prop.compPool = prop.compPool ?? [];
+      prop.selectedComps = prop.selectedComps ?? [];
+      prop.sellerType = prop.sellerType ?? 'retail';
+      prop.appraisal = prop.appraisal ?? { point: 0, low: 0, high: 0, confidence: 'comps', comps: [] };
+      prop.appraisal.fitScore = prop.appraisal.fitScore ?? 0.5;
+      if (prop.ownership) prop.ownership.projection = prop.ownership.projection ?? null;
+    }
+    for (const deal of s.closedDeals ?? []) {
+      deal.postMortem = deal.postMortem ?? null;
+    }
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {

@@ -149,17 +149,108 @@ export interface Appraisal {
   low: Money;
   high: Money;
   confidence: AppraisalConfidence;
-  /** Player-visible comparable sales, already noised. */
+  /** The comps this estimate was actually built from. */
   comps: Comp[];
+  /** How well the chosen comps match the subject; drives the band width. */
+  fitScore: number;
 }
 
+/**
+ * What the player believed at the moment they committed.
+ *
+ * Captured at purchase so the post-mortem can compare it against what actually
+ * happened and attribute the difference. Without this the game can tell you
+ * that you lost money but not *why*, which is the only part worth learning.
+ */
+export interface DealProjection {
+  arv: Money;
+  repairEstimate: Money;
+  renovationDays: number;
+  marketingDays: number;
+  projectedProfit: Money;
+  purchasePrice: Money;
+  /** MAO figures at the time, for hindsight on discipline. */
+  mao70: Money;
+  maoDetailed: Money;
+}
+
+export type VarianceCategory =
+  | 'arv'
+  | 'scope'
+  | 'changeOrders'
+  | 'carry'
+  | 'concession'
+  | 'financing';
+
+export interface VarianceLine {
+  category: VarianceCategory;
+  label: string;
+  /** Negative hurt the deal, positive helped it. */
+  amount: Money;
+  note: string;
+}
+
+/** Projected-versus-actual, with the gap attributed. */
+export interface PostMortem {
+  projected: DealProjection;
+  actualSalePrice: Money;
+  actualProfit: Money;
+  lines: VarianceLine[];
+  /** The single biggest driver of the miss. */
+  headline: string;
+}
+
+/**
+ * A comparable sale.
+ *
+ * Comps are generated as real properties and priced with the same valuation
+ * model as everything else, so a comp in a pricier area genuinely did sell for
+ * more per square foot. That is what makes choosing them a skill rather than a
+ * formality: lean on the wrong ones and your estimate is wrong in a specific,
+ * explicable direction.
+ */
 export interface Comp {
+  id: string;
   address: string;
+  neighborhoodId: string;
   sqft: number;
   beds: number;
   baths: number;
   soldPrice: Money;
   soldDaysAgo: number;
+  distanceMi: number;
+  /** Standard the comp was in when it sold. */
+  quality: 'renovated' | 'average' | 'dated';
+}
+
+/** How far a comp is from the subject, 0 (identical) to 1 (useless). */
+export interface CompFit {
+  compId: string;
+  /** Lower is better. */
+  score: number;
+  reasons: string[];
+}
+
+export type SellerTypeId =
+  | 'estate'
+  | 'tired_landlord'
+  | 'developer'
+  | 'retail'
+  | 'relocating';
+
+export interface SellerType {
+  id: SellerTypeId;
+  name: string;
+  blurb: string;
+  /** Multiplier on the asking premium. */
+  askBias: number;
+  /** Multiplier on the reserve ratio; below 1 means they will take less. */
+  reserveBias: number;
+  /** How fast the reserve erodes with days on market. */
+  staleness: number;
+  /** Fraction of a disclosed defect they will concede. */
+  concedes: number;
+  weight: number;
 }
 
 export interface ScopeLineItem {
@@ -215,6 +306,12 @@ export interface Property {
   completedWork: string[];
   /** Player-facing valuation, recomputed when new information arrives. */
   appraisal: Appraisal;
+  /** Every comparable sale on offer for this property. */
+  compPool: Comp[];
+  /** Which comps the player is leaning on. Defaults to the closest matches. */
+  selectedComps: string[];
+  /** Who is selling, and therefore how they behave. */
+  sellerType: SellerTypeId;
   /** Set while the property sits on the open market. */
   listing: Listing | null;
   /** Set once the player owns it. */
@@ -245,6 +342,8 @@ export interface Ownership {
   holdingCostsPaid: Money;
   /** Running total of renovation spend, including change orders. */
   renovationSpend: Money;
+  /** What was believed at the moment of purchase. */
+  projection: DealProjection | null;
 }
 
 export interface SaleListing {
@@ -395,6 +494,8 @@ export interface ClosedDeal {
   /** Annualised return on the cash actually invested. */
   roi: number;
   daysHeld: number;
+  /** Projected-versus-actual, when a projection was captured at purchase. */
+  postMortem: PostMortem | null;
 }
 
 /** Result shape returned by every player action. */
