@@ -60,16 +60,18 @@ module.exports = {
     artifactName: '${productName}-${version}-Portable.${ext}',
   },
 
+  // macOS and Linux take the PNG: electron-builder converts it to .icns and to
+  // an icon set, and that conversion fails outright on the .ico.
   mac: {
     target: ['dmg'],
     category: 'public.app-category.simulation-games',
-    icon: 'build/icon.ico',
+    icon: 'build/icon.png',
   },
 
   linux: {
     target: ['AppImage'],
     category: 'Game',
-    icon: 'build/icon.ico',
+    icon: 'build/icon.png',
   },
 
   publish: null,

@@ -1,5 +1,6 @@
-import type { PostMortem, VarianceCategory } from '../../engine';
+import { cardsForDeal, type ClosedDeal, type PostMortem, type VarianceCategory } from '../../engine';
 import { money, percent } from '../format';
+import LessonCards from './LessonCards';
 
 /**
  * Projected versus actual, with the gap attributed.
@@ -18,11 +19,28 @@ const ADVICE: Record<VarianceCategory, string> = {
   financing: 'Points are charged up front and interest runs whether or not the house has sold.',
 };
 
-export default function PostMortemPanel({ pm }: { pm: PostMortem }) {
+export default function PostMortemPanel({
+  pm,
+  deal,
+}: {
+  pm: PostMortem;
+  deal: ClosedDeal;
+}) {
   const missedBy = pm.actualProfit - pm.projected.projectedProfit;
   const beat = missedBy >= 0;
   const worst = [...pm.lines].sort((a, b) => a.amount - b.amount)[0];
   const paidOverMao = pm.projected.purchasePrice - pm.projected.mao70;
+
+  const cards = cardsForDeal({
+    address: deal.address,
+    projectedArv: pm.projected.arv,
+    actualSalePrice: pm.actualSalePrice,
+    concession: deal.concession,
+    daysOnMarket: deal.daysHeld,
+    holdingCosts: deal.holdingCosts,
+    purchasePrice: pm.projected.purchasePrice,
+    mao70: pm.projected.mao70,
+  });
 
   return (
     <>
@@ -106,7 +124,16 @@ export default function PostMortemPanel({ pm }: { pm: PostMortem }) {
         </div>
       ))}
 
-      {!beat && worst && (
+      {cards.length > 0 && (
+        <>
+          <div className="scope-group-label" style={{ marginTop: 18 }}>
+            Lessons from this deal
+          </div>
+          <LessonCards cards={cards} />
+        </>
+      )}
+
+      {!beat && worst && cards.length === 0 && (
         <div className="verdict fair" style={{ marginTop: 14 }}>
           <strong>Next time</strong>
           {ADVICE[worst.category]}

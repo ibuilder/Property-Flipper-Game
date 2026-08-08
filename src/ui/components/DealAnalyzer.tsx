@@ -1,5 +1,12 @@
-import { ECON, type DealAnalysis } from '../../engine';
+import {
+  ECON,
+  explainCostStack,
+  explainRule70,
+  explainRuleGap,
+  type DealAnalysis,
+} from '../../engine';
 import { VERDICT_COPY, money, percent } from '../format';
+import ExplainTable from './ExplainTable';
 
 /**
  * The Deal Analyzer panel.
@@ -138,6 +145,19 @@ export default function DealAnalyzer({
           <strong>{VERDICT_COPY[verdict].title}</strong>
           {VERDICT_COPY[verdict].body}
         </div>
+      )}
+
+      {/* The working, on demand. Every line is computed from the same functions
+          the engine decides with, so it cannot drift from what actually happens. */}
+      <ExplainTable title="Show the 70% rule with my numbers" lines={explainRule70(analysis)} />
+      {Math.abs(ruleGap) > analysis.arv * 0.015 && (
+        <ExplainTable title="Why the two max offers disagree" lines={explainRuleGap(analysis)} />
+      )}
+      {breakdown && (
+        <ExplainTable
+          title="Show every cost, itemised"
+          lines={explainCostStack(analysis, offer)}
+        />
       )}
     </>
   );

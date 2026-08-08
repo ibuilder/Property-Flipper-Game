@@ -228,3 +228,16 @@ for (const { size, data } of images) {
 mkdirSync('build', { recursive: true });
 writeFileSync('build/icon.ico', Buffer.concat([header, ...entries, ...images.map((p) => p.data)]));
 console.log(`build/icon.ico written (${SIZES.join(', ')}px)`);
+
+/*
+ * A 1024px PNG for macOS and Linux.
+ *
+ * Windows consumes the .ico directly, but electron-builder converts to .icns
+ * and to a Linux icon set, and that conversion failed on the hand-written ICO
+ * above -- the v2.0.0 release built cleanly on Windows and died on both other
+ * platforms at exactly that step. A large square PNG is the format those
+ * converters actually want.
+ */
+const PNG_SIZE = 1024;
+writeFileSync('build/icon.png', toPng(PNG_SIZE, render(PNG_SIZE)));
+console.log(`build/icon.png written (${PNG_SIZE}px, for macOS and Linux)`);

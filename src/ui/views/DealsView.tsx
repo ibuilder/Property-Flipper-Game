@@ -102,7 +102,7 @@ export default function DealsView() {
             </span>
           </div>
           <div className="panel-body">
-            <PostMortemPanel pm={shown.postMortem} />
+            <PostMortemPanel pm={shown.postMortem} deal={shown} />
           </div>
         </div>
       )}
