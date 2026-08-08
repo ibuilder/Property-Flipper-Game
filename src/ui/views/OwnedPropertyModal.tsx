@@ -72,7 +72,7 @@ export default function OwnedPropertyModal({
   const suggestedList = property.appraisal.point;
   const effectiveList = listPrice ?? suggestedList;
   const concession = inspectionConcession(property);
-  const { commission, closing } = sellingCosts(effectiveList);
+  const { commission, closing } = sellingCosts(effectiveList, state.reputation.agents);
   const netAtList = effectiveList - commission - closing - concession - (loan ? loanPayoff(loan) : 0);
 
   return (
@@ -424,7 +424,7 @@ function SalePanel({ property, onClose }: { property: Property; onClose: () => v
             .map((o) => {
             const settles = settlementPrice(o);
             const gap = hasAppraisalGap(o);
-            const { commission, closing } = sellingCosts(settles);
+            const { commission, closing } = sellingCosts(settles, state.reputation.agents);
             const payoff = loan ? loanPayoff(loan) : 0;
             const net = settles - commission - closing - o.inspectionConcession - payoff;
             const profit = settles - commission - closing - o.inspectionConcession - invested;

@@ -1,6 +1,6 @@
 import { ECON, NEIGHBORHOODS_BY_ID } from './content';
 import { inspectionConcession } from './market';
-import { pointsDiscount, rateDiscount } from './reputation';
+import { commissionDiscount, pointsDiscount, rateDiscount } from './reputation';
 import { trueValue } from './valuation';
 import type { GameState, Loan, Money, Property, WorldState } from './types';
 
@@ -18,10 +18,24 @@ export function buyClosingCosts(purchasePrice: Money): Money {
   return Math.round(purchasePrice * ECON.BUY_CLOSING_RATE);
 }
 
-export function sellingCosts(salePrice: Money): { commission: Money; closing: Money } {
+/**
+ * Commission and seller-side closing on a sale.
+ *
+ * Agent standing is a parameter rather than something the caller applies
+ * afterwards, because it was applied in only one of the two places: the engine
+ * charged the discounted rate while the offer cards previewed the flat one, so
+ * the panel whose entire job is comparing offers was wrong by exactly the
+ * benefit the player had earned.
+ */
+export function sellingCosts(
+  salePrice: Money,
+  agentReputation = 50,
+): { commission: Money; closing: Money; rate: number } {
+  const rate = ECON.COMMISSION_RATE - commissionDiscount(agentReputation);
   return {
-    commission: Math.round(salePrice * ECON.COMMISSION_RATE),
+    commission: Math.round(salePrice * rate),
     closing: Math.round(salePrice * ECON.SELL_CLOSING_RATE),
+    rate,
   };
 }
 

@@ -251,8 +251,18 @@ export interface OfferOutcome {
   shortfall: number;
   counterPrice: Money | null;
   message: string;
-  /** Set when a rival buyer took it rather than the seller simply saying no. */
-  outbidAt?: Money;
+}
+
+/**
+ * How much more persuasive negotiation skill makes the same number.
+ *
+ * Shared by acceptance and by rival competition so the two cannot drift. They
+ * did drift: competition measured headroom on the raw offer while acceptance
+ * used the persuaded one, so a skilled negotiator's accepted offers always
+ * looked wafer-thin and drew rival bids priced below the seller's own reserve.
+ */
+export function persuasionFactor(negotiationSkill: number): number {
+  return 1 + 0.018 * negotiationSkill;
 }
 
 /**
@@ -265,20 +275,26 @@ export interface OfferOutcome {
 export function competingBid(
   prop: Property,
   offer: Money,
+  negotiationSkill: number,
   rng: Rng,
 ): Money | null {
   const listing = prop.listing;
   if (!listing) return null;
 
   const reserve = currentReserve(prop);
-  const headroom = (offer - reserve) / Math.max(1, reserve);
-  // A comfortable offer is safe; a wafer-thin one is exposed.
+  // Judge exposure on the same terms the seller judged acceptance, so
+  // negotiation skill protects against being sniped rather than inviting it.
+  const effective = offer * persuasionFactor(negotiationSkill);
+  const headroom = (effective - reserve) / Math.max(1, reserve);
   if (headroom > 0.06) return null;
 
   const heat = listing.competition * (1 - Math.min(1, listing.daysOnMarket / 120));
   if (!rng.chance(heat * 0.55)) return null;
 
-  return Math.round(offer * rng.float(1.012, 1.055));
+  // A rival's bid has to be one the seller would actually take, and it has to
+  // beat what the player put on the table.
+  const floor = Math.max(offer, reserve);
+  return Math.round(floor * rng.float(1.012, 1.055));
 }
 
 /**
@@ -292,7 +308,7 @@ export function evaluateOffer(
   negotiationSkill: number,
 ): OfferOutcome {
   const reserve = currentReserve(prop);
-  const persuasion = 1 + 0.018 * negotiationSkill;
+  const persuasion = persuasionFactor(negotiationSkill);
   const effective = offer * persuasion;
 
   if (effective >= reserve) {
@@ -389,14 +405,18 @@ export function rollBuyerOffer(
 
   // Buyers anchor on the list price but will not blow past true value by much.
   const willingness = value * rng.clampedNormal(1.0, 0.035, 2);
-  let amount = Math.round(Math.min(listPrice, willingness * rng.float(0.96, 1.03)));
+  const anchor = willingness * rng.float(0.96, 1.03);
 
   // Most buyers borrow. A financed buyer can stretch further because they are
   // spending the bank's money -- but the bank sends an appraiser, and if it
   // comes in low the loan will not cover the gap.
+  //
+  // The stretch is applied to willingness *before* the list-price clamp. Doing
+  // it after let a financed buyer offer up to 5% over the price on the board,
+  // escaping both the asking price and the willingness cap.
   const financed = rng.chance(0.72);
-  if (financed) amount = Math.round(amount * rng.float(1.0, 1.05));
-  else amount = Math.round(amount * rng.float(0.94, 0.99));
+  const stretch = financed ? rng.float(1.0, 1.05) : rng.float(0.94, 0.99);
+  const amount = Math.round(Math.min(listPrice, anchor * stretch));
 
   // The appraisal is a noisy read of true value, fixed now so the outcome is
   // determined at offer time rather than re-rolled later.

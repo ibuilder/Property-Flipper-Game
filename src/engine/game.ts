@@ -328,7 +328,9 @@ export function makeOffer(
 
   // The seller would take it -- but so would somebody else. A thin offer on a
   // contested listing can still lose.
-  const rival = withRng(state, (rng) => competingBid(prop, amount, rng));
+  const rival = withRng(state, (rng) =>
+    competingBid(prop, amount, state.skills.negotiation, rng),
+  );
   if (rival !== null) {
     prop.listing.askPrice = Math.max(prop.listing.askPrice, rival);
     prop.listing.reserve = Math.max(prop.listing.reserve, rival);
@@ -653,7 +655,6 @@ export function acceptOffer(
   // price falls to it. Nothing to decide here -- the decision was choosing
   // this offer over a cash one.
   const salePrice = settlementPrice(offer);
-  const commissionRate = ECON.COMMISSION_RATE - commissionDiscount(state.reputation.agents);
   if (hasAppraisalGap(offer)) {
     log(
       state,
@@ -661,8 +662,7 @@ export function acceptOffer(
       `Appraisal came in at $${offer.appraisedValue.toLocaleString()} on ${prop.address}, under the $${offer.amount.toLocaleString()} contract. The price fell to the appraisal.`,
     );
   }
-  const { closing } = sellingCosts(salePrice);
-  const commission = Math.round(salePrice * commissionRate);
+  const { commission, closing } = sellingCosts(salePrice, state.reputation.agents);
   const concession = offer.inspectionConcession;
 
   const loan = state.loans.find((l) => l.id === own.loanId);

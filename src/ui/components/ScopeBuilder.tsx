@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import {
   DEFECTS_BY_ID,
   SCOPE_ITEMS,
+  mergeTemplate,
   quoteScopeItem,
   scopeIdForDefect,
   type GameState,
@@ -69,9 +70,9 @@ export default function ScopeBuilder({
       <ScopeTemplates
         scope={scope}
         onApply={(ids) => {
-          // Replace rather than merge: a template is a considered starting
-          // point, and merging would silently keep whatever was ticked before.
-          const target = new Set(ids.filter((id) => !property.completedWork.includes(id)));
+          // mergeTemplate decides what a template replaces and what it must
+          // leave alone; this only turns the result into toggle calls.
+          const target = new Set(mergeTemplate(scope, ids, property.completedWork));
           const current = new Set(scope);
           for (const id of current) if (!target.has(id)) onToggle(id);
           for (const id of target) if (!current.has(id)) onToggle(id);

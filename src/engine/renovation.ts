@@ -166,6 +166,31 @@ export function jobDaysRemaining(job: RenovationJob): number {
   return Math.max(0, job.totalDays - job.daysElapsed);
 }
 
+/**
+ * Apply a saved template to the current scope selection.
+ *
+ * A template swaps out the *discretionary* line items and leaves everything
+ * else alone. Two things are deliberately preserved:
+ *
+ *   - Defect repairs. They are not discretionary -- skipping one does not save
+ *     the money, it defers it into a buyer concession at 1.15x. An earlier
+ *     version replaced the whole selection, so clicking a template silently
+ *     unticked a foundation repair the player had just budgeted for, which is
+ *     the exact mistake the game exists to warn against.
+ *   - Work already completed, which cannot be scoped again.
+ */
+export function mergeTemplate(
+  currentScope: readonly string[],
+  templateIds: readonly string[],
+  completedWork: readonly string[],
+): string[] {
+  const keep = currentScope.filter((id) => isDefectScopeId(id));
+  const fresh = templateIds.filter(
+    (id) => !completedWork.includes(id) && !isDefectScopeId(id),
+  );
+  return [...new Set([...keep, ...fresh])];
+}
+
 /** Scope items that are still worth offering for this property. */
 export function availableScopeItems(prop: Property): string[] {
   return Object.keys(SCOPE_BY_ID).filter((id) => !prop.completedWork.includes(id));

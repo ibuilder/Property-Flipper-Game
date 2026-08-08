@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import {
   Rng,
   acceptOffer,
@@ -11,7 +11,11 @@ import {
   initialReputation,
   listForSale,
   makeOffer,
+  ECON,
+  mergeTemplate,
   originateLoan,
+  rejectOffer,
+  sellingCosts,
   pointsDiscount,
   quoteScope,
   rateDiscount,
@@ -44,8 +48,47 @@ describe('rival buyers', () => {
     const rng = new Rng(1);
     // Well clear of the reserve: no amount of interest should snipe it.
     for (let i = 0; i < 50; i++) {
-      expect(competingBid(prop, generous, rng)).toBeNull();
+      expect(competingBid(prop, generous, 0, rng)).toBeNull();
     }
+  });
+
+  it('never bids below the price the seller just refused', () => {
+    // Regression: competition measured headroom on the raw offer while
+    // acceptance used the persuaded one, so a skilled negotiator could be
+    // "outbid" at a number under the seller's own reserve.
+    const state = createGame('the_grind', 4242);
+    const prop = state.market[0];
+    prop.listing!.competition = 1;
+    prop.listing!.daysOnMarket = 0;
+    const reserve = currentReserve(prop);
+
+    for (const neg of [0, 3, 5]) {
+      const rng = new Rng(7);
+      for (let i = 0; i < 300; i++) {
+        const bid = competingBid(prop, Math.round(reserve * 0.9), neg, rng);
+        if (bid !== null) expect(bid).toBeGreaterThanOrEqual(reserve);
+      }
+    }
+  });
+
+  it('lets negotiation skill protect against being sniped', () => {
+    const state = createGame('the_grind', 4242);
+    const prop = state.market[0];
+    prop.listing!.competition = 1;
+    prop.listing!.daysOnMarket = 0;
+    const reserve = currentReserve(prop);
+
+    // The same number, judged at two skill levels. A persuasive buyer's offer
+    // reads as stronger, so it should draw fewer rivals -- not the same or more.
+    const offer = Math.round(reserve * 1.02);
+    const rate = (neg: number) => {
+      const rng = new Rng(11);
+      let hits = 0;
+      for (let i = 0; i < 500; i++) if (competingBid(prop, offer, neg, rng) !== null) hits++;
+      return hits / 500;
+    };
+
+    expect(rate(5)).toBeLessThan(rate(0));
   });
 
   it('can outbid a wafer-thin offer on a contested listing', () => {
@@ -57,7 +100,7 @@ describe('rival buyers', () => {
 
     const rng = new Rng(9);
     let outbids = 0;
-    for (let i = 0; i < 200; i++) if (competingBid(prop, thin, rng) !== null) outbids++;
+    for (let i = 0; i < 200; i++) if (competingBid(prop, thin, 0, rng) !== null) outbids++;
     expect(outbids).toBeGreaterThan(0);
   });
 
@@ -132,6 +175,63 @@ describe('appraisal gap', () => {
   });
 });
 
+describe('buyer offers respect the asking price', () => {
+  it('never offers more than the player listed at', () => {
+    // Regression: the financed stretch was applied after the list-price clamp,
+    // so a financed buyer could bid up to 5% over the price on the board.
+    const state = createGame('the_grind', 909);
+    const prop = state.market
+      .filter((p) => p.listing)
+      .sort((a, b) => currentReserve(a) - currentReserve(b))[0];
+    expect(makeOffer(state, prop.id, prop.listing!.askPrice, false).ok).toBe(true);
+
+    const owned = state.portfolio[0];
+    // List well under value so buyers are keen and the clamp is what binds.
+    const listPrice = Math.round(trueValue(owned, state.world, state.day) * 0.8);
+    listForSale(state, owned.id, listPrice);
+
+    let seen = 0;
+    for (let i = 0; i < 400 && seen < 12; i++) {
+      advanceDay(state);
+      const sale = state.portfolio[0]?.ownership?.saleListing;
+      for (const o of sale?.offers ?? []) {
+        expect(o.amount).toBeLessThanOrEqual(listPrice);
+        seen++;
+      }
+      if (sale && sale.offers.length > 0) rejectOffer(state, owned.id, sale.offers[0].id);
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
+});
+
+describe('scope templates', () => {
+  it('keeps defect repairs when a template is applied', () => {
+    // Regression: applying a template replaced the whole selection, silently
+    // unticking a defect repair the player had deliberately budgeted for.
+    const current = ['defect:foundation_settling', 'paint_interior'];
+    const template = ['paint_interior', 'flooring_lvp', 'kitchen_refresh'];
+    const merged = mergeTemplate(current, template, []);
+
+    expect(merged).toContain('defect:foundation_settling');
+    expect(merged).toEqual(expect.arrayContaining(template));
+  });
+
+  it('drops discretionary items the template does not include', () => {
+    const merged = mergeTemplate(['kitchen_full', 'bath_full'], ['paint_interior'], []);
+    expect(merged).toEqual(['paint_interior']);
+  });
+
+  it('never re-scopes work already completed', () => {
+    const merged = mergeTemplate([], ['paint_interior', 'flooring_lvp'], ['paint_interior']);
+    expect(merged).toEqual(['flooring_lvp']);
+  });
+
+  it('does not duplicate an item already selected', () => {
+    const merged = mergeTemplate(['paint_interior'], ['paint_interior'], []);
+    expect(merged).toEqual(['paint_interior']);
+  });
+});
+
 describe('reputation', () => {
   it('starts neutral and clamps at both ends', () => {
     const rep = initialReputation();
@@ -149,6 +249,22 @@ describe('reputation', () => {
     expect(cheap.loan.pointsPaid).toBeLessThan(dear.loan.pointsPaid);
     expect(cheap.loan.annualRate).toBeLessThan(dear.loan.annualRate);
     expect(cheap.netProceeds).toBeGreaterThan(dear.netProceeds);
+  });
+
+  it('applies the agent discount inside sellingCosts, for every caller', () => {
+    // Regression: the engine discounted commission while the offer cards did
+    // not, so the panel for comparing offers was wrong by exactly the benefit
+    // the player had earned. Making it a parameter of sellingCosts means a
+    // caller cannot forget it silently.
+    const flat = sellingCosts(400000);
+    const earned = sellingCosts(400000, 100);
+    const burned = sellingCosts(400000, 0);
+
+    expect(flat.commission).toBe(Math.round(400000 * ECON.COMMISSION_RATE));
+    expect(earned.commission).toBeLessThan(flat.commission);
+    expect(burned.commission).toBeGreaterThan(flat.commission);
+    // Closing costs are not an agent's to discount.
+    expect(earned.closing).toBe(flat.closing);
   });
 
   it('lowers commission and change orders as standing improves', () => {
@@ -188,3 +304,4 @@ describe('reputation', () => {
     expect(state.reputation.lenders).toBeLessThan(before - 20);
   });
 });
+
