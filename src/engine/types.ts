@@ -288,6 +288,14 @@ export interface Listing {
   reserve: Money;
   /** 0-1; motivated sellers drop their reserve faster. */
   sellerMotivation: number;
+  /**
+   * How much rival buyer attention this listing draws, 0-1.
+   *
+   * Drives both the chance a competitor buys it out from under you and the
+   * chance a marginal offer gets outbid. Underpriced listings draw the most,
+   * which is exactly why good deals do not sit around waiting.
+   */
+  competition: number;
 }
 
 export interface Property {
@@ -364,6 +372,17 @@ export interface BuyerOffer {
   /** Day the offer expires. */
   expiresDay: number;
   buyerName: string;
+  /**
+   * Financed buyers bid higher but bring a lender's appraisal. If it comes in
+   * below the contract price the loan will not cover the difference, and the
+   * price falls to the appraisal. Cash buyers offer less and simply close.
+   */
+  financed: boolean;
+  /**
+   * What the lender will value it at, fixed when the offer is made so the
+   * outcome is determined rather than re-rolled on inspection.
+   */
+  appraisedValue: Money;
 }
 
 export interface Loan {
@@ -380,6 +399,24 @@ export interface Loan {
 }
 
 export type SkillId = 'negotiation' | 'analysis' | 'management' | 'marketing';
+
+/**
+ * Standing with the three parties whose goodwill actually compounds.
+ *
+ * Distinct from skills, which are bought with cash. Reputation is earned by
+ * outcomes and is the thing that makes a fifth flip easier than a first --
+ * which is how the business really works, and what the genre research points
+ * to for retention past the opening hours.
+ */
+export type ReputationId = 'lenders' | 'agents' | 'contractors';
+
+/** 0-100, starting at 50. */
+export type Reputation = Record<ReputationId, number>;
+
+export interface BuyerOfferTerms {
+  /** Financed buyers pay more but bring an appraisal with them. */
+  financed: boolean;
+}
 
 export type LedgerCategory =
   | 'acquisition'
@@ -452,6 +489,8 @@ export interface GameState {
   outcomeMessage: string;
   cash: Money;
   skills: Record<SkillId, number>;
+  /** Standing with lenders, agents and contractors. */
+  reputation: Reputation;
   world: WorldState;
   /** Properties currently for sale on the open market. */
   market: Property[];

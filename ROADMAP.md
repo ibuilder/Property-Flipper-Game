@@ -119,28 +119,32 @@ Make the underwriting itself richer, since that is the differentiator.
 - ~~**Seller archetypes.**~~ **Done.** Estate, tired landlord, relocating, retail, developer, each
   with its own ask bias, reserve, patience, and — the one that matters — how much of a disclosed
   defect it will concede.
-- **Appraisal gap.** The buyer's lender appraises below contract; renegotiate, eat the difference,
-  or lose the deal.
+- ~~**Appraisal gap.**~~ **Done.** Buyer offers are cash or financed. Financed buyers bid higher but
+  bring a lender's appraisal, and the price falls to it when it comes in low — so the highest offer
+  is not automatically the best one. The decision sits at offer selection, not at closing.
+- ~~**Scope templates.**~~ **Done.** Two presets ship and any assembled scope can be saved.
 - **Financing menu** beyond one hard money product: private lender, cash-out refi, seller
   financing, partner splits.
 - **Permits and inspections as schedule risk**, tied to the existing permit-backlog event.
-- **Scope templates** — save a "cosmetic refresh" or "full gut" and apply it in one click.
 
-### Phase 3 — Progression that survives run three (~4–6 days)
+### Phase 3 — Progression that survives run three — **partly done**
 
-- **Reputation**, separate from cash: with lenders (better points and rates), agents (earlier access
-  to listings), and subs (fewer change orders, faster schedules). This is the meta-progression the
-  genre research says drives month-three retention, and it fits the domain honestly — reputation is
-  how the business actually compounds.
-- **Crew and staff** — the author's original idea. A retained GC reduces change-order probability;
-  an in-house agent cuts commission; a dedicated estimator narrows repair-cost error.
+- ~~**Reputation**~~ **Done.** Three tracks — lenders, agents, contractors — earned by outcomes
+  rather than bought with cash. Lenders price points and rates; agents cut commission and bring
+  pocket listings before they hit the market; contractors quote cheaper and spring fewer change
+  orders. Neutral standing is exactly neutral, so it layers onto existing balance without shifting
+  it. A foreclosure costs 28 points and is the one thing lenders genuinely remember.
+- **Crew and staff** — a retained GC, an in-house agent, a dedicated estimator. Reputation covers
+  some of this ground; named staff would make it a spending decision as well as an earned one.
 - **XP and levelling** alongside the existing cash-bought skills.
 - **Explicit difficulty settings** layered over campaigns.
 
-### Phase 4 — A world with other people in it (~6–10 days)
+### Phase 4 — A world with other people in it — **partly done**
 
-- **AI competitors** bidding on the same listings. Turns a static reserve into a live market and is
-  the biggest single realism upgrade available.
+- ~~**AI competitors**~~ **Done.** Every listing carries a rival-interest level driven by how good
+  the deal looks from outside. Contested listings get bought out from under you while you
+  deliberate, and an offer that only just clears the seller's reserve can be sniped — so a good
+  deal no longer waits indefinitely, which was the main pressure the game lacked.
 - **Auctions** — trustee sales, sight-unseen, cash-only, with the risk profile that implies.
 - **BRRRR** — refinance and hold for rent instead of selling. Tenants, vacancy, maintenance.
   Converts the game from a series of transactions into a portfolio business.
@@ -174,9 +178,22 @@ Where the professional-education market gets served.
 
 Phase 1 → Phase 2 → Phase 5 → Phase 3 → Phase 4 → Phase 6.
 
-**Status:** Phase 1 complete. Phase 2's two highest-value items (comp selection, seller archetypes)
-and Phase 5's core (post-mortems, scenario editor, curriculum) are done. Next up is the rest of
-Phase 2 — appraisal gap, financing menu, scope templates — then Phase 3.
+**Status.** Phase 1 complete. Phase 5's core complete. Phase 2 complete apart from the financing
+menu and permits-as-schedule-risk. Phase 3's reputation and Phase 4's rival buyers are in.
+
+**What is left, in the order I would do it:**
+
+1. **BRRRR and tenants** (Phase 4) — the largest single remaining piece, and the one that changes
+   what the game is: refinance and hold rather than sell, which turns a series of transactions into
+   a portfolio business.
+2. **Auctions** (Phase 4) — trustee sales, sight-unseen and cash-only. A new buying flow rather
+   than a variation on the existing one.
+3. **Financing menu** (Phase 2) — private lenders, cash-out refi, seller financing, partner splits.
+   Natural to build alongside BRRRR, since refinancing needs it.
+4. **Crew, XP, difficulty settings** (Phase 3) — reputation already covers some of this ground.
+5. **Gentrification arcs and event chains** (Phase 4).
+6. **Phase 6 distribution** — code signing, verifying the macOS and Linux builds on real hardware,
+   itch.io, and playtesting with people rather than the bot.
 
 Phase 5 is pulled ahead of 3 and 4 deliberately: post-mortems and the scenario editor are cheap,
 they compound the existing differentiator, and they serve the professional audience without needing

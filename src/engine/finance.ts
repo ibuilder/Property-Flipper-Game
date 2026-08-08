@@ -1,5 +1,6 @@
 import { ECON, NEIGHBORHOODS_BY_ID } from './content';
 import { inspectionConcession } from './market';
+import { pointsDiscount, rateDiscount } from './reputation';
 import { trueValue } from './valuation';
 import type { GameState, Loan, Money, Property, WorldState } from './types';
 
@@ -39,14 +40,17 @@ export function originateLoan(
   principal: Money,
   world: WorldState,
   day: number,
+  /** Lender standing, 0-100. A track record is what buys cheaper money. */
+  lenderReputation = 50,
 ): { loan: Loan; netProceeds: Money } {
-  const pointsPaid = Math.round(principal * ECON.LOAN_POINTS);
+  const points = ECON.LOAN_POINTS * (1 - pointsDiscount(lenderReputation));
+  const pointsPaid = Math.round(principal * points);
   const loan: Loan = {
     id,
     propertyId,
     principal,
     pointsPaid,
-    annualRate: loanRate(world),
+    annualRate: Math.max(0.02, loanRate(world) - rateDiscount(lenderReputation)),
     maturityDay: day + ECON.LOAN_TERM_DAYS,
     interestAccrued: 0,
     originatedDay: day,

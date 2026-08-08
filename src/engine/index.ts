@@ -5,6 +5,7 @@ export * from './valuation';
 export * from './finance';
 export * from './events';
 export * from './renovation';
+export * from './reputation';
 export * from './analyzer';
 export * from './market';
 export * from './game';

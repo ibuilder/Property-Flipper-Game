@@ -9,6 +9,7 @@ import {
   type ScopeCategory,
 } from '../../engine';
 import { money } from '../format';
+import ScopeTemplates from './ScopeTemplates';
 
 const CATEGORY_LABEL: Record<ScopeCategory, string> = {
   cosmetic: 'Cosmetic',
@@ -65,6 +66,18 @@ export default function ScopeBuilder({
 
   return (
     <div>
+      <ScopeTemplates
+        scope={scope}
+        onApply={(ids) => {
+          // Replace rather than merge: a template is a considered starting
+          // point, and merging would silently keep whatever was ticked before.
+          const target = new Set(ids.filter((id) => !property.completedWork.includes(id)));
+          const current = new Set(scope);
+          for (const id of current) if (!target.has(id)) onToggle(id);
+          for (const id of target) if (!current.has(id)) onToggle(id);
+        }}
+      />
+
       {knownDefects.length > 0 && (
         <>
           <div className="scope-group-label bad">
@@ -73,7 +86,7 @@ export default function ScopeBuilder({
           {knownDefects.map((d) => {
             const def = DEFECTS_BY_ID[d.defId];
             const id = scopeIdForDefect(d.defId);
-            const quote = quoteScopeItem(id, property, state.world, state.skills);
+            const quote = quoteScopeItem(id, property, state.world, state.skills, state.reputation.contractors);
             if (!def || !quote) return null;
             return (
               <label key={id} className={`scope-item ${scope.includes(id) ? 'on' : ''}`}>
@@ -117,7 +130,7 @@ export default function ScopeBuilder({
         <div key={cat}>
           <div className="scope-group-label">{CATEGORY_LABEL[cat]}</div>
           {grouped.get(cat)!.map((item) => {
-            const quote = quoteScopeItem(item.id, property, state.world, state.skills);
+            const quote = quoteScopeItem(item.id, property, state.world, state.skills, state.reputation.contractors);
             if (!quote) return null;
             const on = scope.includes(item.id);
             return (

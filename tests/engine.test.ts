@@ -47,6 +47,17 @@ function cheapestAffordable(state: ReturnType<typeof createGame>) {
   return affordable[0];
 }
 
+/**
+ * An offer clearly above the reserve.
+ *
+ * Rival buyers can snipe an offer that only just clears the seller's number,
+ * which is the point of the mechanic — but tests that are about escrow or
+ * foreclosure should not be flipping that coin, so they bid decisively.
+ */
+function decisiveOffer(prop: { listing: { askPrice: number } | null }) {
+  return prop.listing!.askPrice;
+}
+
 describe('Rng', () => {
   it('is deterministic for a given seed', () => {
     const a = new Rng(SEED);
@@ -283,7 +294,7 @@ describe('game lifecycle', () => {
   it('escrows contingency and returns the unused portion', () => {
     const state = createGame('sandbox', 4242);
     const prop = cheapestAffordable(state);
-    expect(makeOffer(state, prop.id, currentReserve(prop) + 1000, false).ok).toBe(true);
+    expect(makeOffer(state, prop.id, decisiveOffer(prop), false).ok).toBe(true);
     const owned = state.portfolio[0];
     // A clean house so no change orders can consume the contingency.
     owned.defects = [];
@@ -316,7 +327,7 @@ describe('game lifecycle', () => {
   it('forecloses when a balloon payment cannot be met', () => {
     const state = createGame('sandbox', 31337);
     const prop = state.market[0];
-    makeOffer(state, prop.id, currentReserve(prop) + 1000, true);
+    makeOffer(state, prop.id, decisiveOffer(prop), true);
     expect(state.loans).toHaveLength(1);
 
     const loan = state.loans[0];
@@ -333,7 +344,7 @@ describe('game lifecycle', () => {
   it('accrues loan interest over time', () => {
     const state = createGame('sandbox', 555);
     const prop = state.market[0];
-    makeOffer(state, prop.id, currentReserve(prop) + 1000, true);
+    makeOffer(state, prop.id, decisiveOffer(prop), true);
     const loan = state.loans[0];
     const before = loanPayoff(loan);
     for (let i = 0; i < 30; i++) advanceDay(state);
@@ -360,7 +371,7 @@ describe('game lifecycle', () => {
     const prop = cheapestAffordable(state);
     const gross = trueValue(prop, state.world, state.day);
     const cashBefore = state.cash;
-    expect(makeOffer(state, prop.id, currentReserve(prop) + 1000, false).ok).toBe(true);
+    expect(makeOffer(state, prop.id, decisiveOffer(prop), false).ok).toBe(true);
 
     const owned = state.portfolio[0];
     const impliedMark = netWorth(state) - state.cash;
@@ -373,7 +384,7 @@ describe('game lifecycle', () => {
     const state = createGame('sandbox', 8080);
     const prop = state.market[0];
     const startingCash = state.cash;
-    makeOffer(state, prop.id, currentReserve(prop) + 1000, false);
+    makeOffer(state, prop.id, decisiveOffer(prop), false);
     for (let i = 0; i < 25; i++) advanceDay(state);
 
     const ledgerSum = state.ledger.reduce((s, e) => s + e.amount, 0);
@@ -648,7 +659,7 @@ describe('net worth', () => {
     const build = (financed: boolean) => {
       const state = createGame('sandbox', 1111);
       const prop = cheapestAffordable(state);
-      const offer = currentReserve(prop) + 1000;
+      const offer = decisiveOffer(prop);
       expect(makeOffer(state, prop.id, offer, financed).ok).toBe(true);
       return state;
     };
@@ -669,7 +680,7 @@ describe('net worth', () => {
     const state = createGame('sandbox', 2222);
     const before = netWorth(state);
     const prop = cheapestAffordable(state);
-    makeOffer(state, prop.id, currentReserve(prop) + 1000, false);
+    makeOffer(state, prop.id, decisiveOffer(prop), false);
     // Cash fell by the purchase price but the asset replaced it, so net worth
     // must not have collapsed by anything like the purchase price.
     expect(netWorth(state)).toBeGreaterThan(before * 0.9);

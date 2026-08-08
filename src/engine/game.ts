@@ -22,10 +22,19 @@ import {
 } from './finance';
 import {
   ageListing,
+  competingBid,
   evaluateOffer,
   generateProperty,
+  hasAppraisalGap,
   rollBuyerOffer,
+  settlementPrice,
 } from './market';
+import {
+  adjustReputation,
+  commissionDiscount,
+  initialReputation,
+  pocketListingChance,
+} from './reputation';
 import { Rng } from './rng';
 import {
   changeOrderChance,
@@ -62,7 +71,7 @@ import {
 import { analyzeDeal } from './analyzer';
 import { buildScenarioProperty, type ScenarioDef } from './scenarios';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 /** How often the charts' time series is sampled, in days. */
 export const HISTORY_INTERVAL_DAYS = 5;
@@ -128,6 +137,7 @@ export function createGame(levelId: string, seed: number): GameState {
     outcomeMessage: '',
     cash: level.startingCash,
     skills: { negotiation: 0, analysis: 0, management: 0, marketing: 0 },
+    reputation: initialReputation(),
     world: {
       marketIndex: level.startingMarketIndex,
       baseRate: level.startingRate,
@@ -316,6 +326,23 @@ export function makeOffer(
     return { ok: false, message: outcome.message };
   }
 
+  // The seller would take it -- but so would somebody else. A thin offer on a
+  // contested listing can still lose.
+  const rival = withRng(state, (rng) => competingBid(prop, amount, rng));
+  if (rival !== null) {
+    prop.listing.askPrice = Math.max(prop.listing.askPrice, rival);
+    prop.listing.reserve = Math.max(prop.listing.reserve, rival);
+    log(
+      state,
+      'bad',
+      `Outbid on ${prop.address}. Another buyer went to $${rival.toLocaleString()}.`,
+    );
+    return {
+      ok: false,
+      message: `Outbid at $${rival.toLocaleString()}. A thin offer on a wanted house is a coin flip.`,
+    };
+  }
+
   // Deal accepted -- close it.
   state.market.splice(idx, 1);
   prop.listing = null;
@@ -341,6 +368,7 @@ export function makeOffer(
       loanPrincipal,
       state.world,
       state.day,
+      state.reputation.lenders,
     );
     state.loans.push(loan);
     prop.ownership.loanId = loan.id;
@@ -442,7 +470,7 @@ export function startRenovation(
   if (prop.ownership.saleListing) return { ok: false, message: 'Delist it before starting work.' };
   if (scopeIds.length === 0) return { ok: false, message: 'Add at least one line item.' };
 
-  const quote = quoteScope(scopeIds, prop, state.world, state.skills);
+  const quote = quoteScope(scopeIds, prop, state.world, state.skills, state.reputation.contractors);
   const contingency = Math.round(quote.totalCost * contingencyRate);
   const upfront = quote.totalCost + contingency;
 
@@ -478,7 +506,7 @@ function advanceRenovation(state: GameState, prop: Property, rng: Rng): void {
   job.daysElapsed += 1;
 
   // Hidden defects surface once a crew is inside the walls.
-  const chance = changeOrderChance(state.skills.management);
+  const chance = changeOrderChance(state.skills.management, state.reputation.contractors);
   for (const d of prop.defects) {
     if (d.revealed || d.repaired) continue;
     const def = DEFECTS_BY_ID[d.defId];
@@ -486,7 +514,7 @@ function advanceRenovation(state: GameState, prop: Property, rng: Rng): void {
     if (!rng.chance(chance)) continue;
 
     d.revealed = true;
-    const q = quoteScopeItem(`defect:${d.defId}`, prop, state.world, state.skills);
+    const q = quoteScopeItem(`defect:${d.defId}`, prop, state.world, state.skills, state.reputation.contractors);
     if (!q) continue;
 
     job.lines.push({
@@ -505,6 +533,8 @@ function advanceRenovation(state: GameState, prop: Property, rng: Rng): void {
     const overage = q.cost - fromContingency;
     if (overage > 0) {
       applyCash(state, -overage, 'changeOrder', `Change order: ${def.name}`, prop.id);
+      // Blowing through the contingency means the crew waits on your money.
+      adjustReputation(state.reputation, 'contractors', -3);
     } else {
       state.ledger.push({
         day: state.day,
@@ -545,6 +575,9 @@ function advanceRenovation(state: GameState, prop: Property, rng: Rng): void {
     applyCash(state, returned, 'renovation', `Unused contingency released on ${prop.address}`, prop.id);
   }
   own.renovation = null;
+  // A job that ran to completion on the money you set aside is what earns a
+  // crew's goodwill.
+  adjustReputation(state.reputation, 'contractors', returned > 0 ? 4 : 2);
 
   log(
     state,
@@ -616,8 +649,20 @@ export function acceptOffer(
   const offer = sale.offers.find((o) => o.id === offerId);
   if (!offer) return { ok: false, message: 'That offer is no longer available.' };
 
-  const salePrice = offer.amount;
-  const { commission, closing } = sellingCosts(salePrice);
+  // A financed buyer cannot borrow against more than the appraisal, so the
+  // price falls to it. Nothing to decide here -- the decision was choosing
+  // this offer over a cash one.
+  const salePrice = settlementPrice(offer);
+  const commissionRate = ECON.COMMISSION_RATE - commissionDiscount(state.reputation.agents);
+  if (hasAppraisalGap(offer)) {
+    log(
+      state,
+      'warn',
+      `Appraisal came in at $${offer.appraisedValue.toLocaleString()} on ${prop.address}, under the $${offer.amount.toLocaleString()} contract. The price fell to the appraisal.`,
+    );
+  }
+  const { closing } = sellingCosts(salePrice);
+  const commission = Math.round(salePrice * commissionRate);
   const concession = offer.inspectionConcession;
 
   const loan = state.loans.find((l) => l.id === own.loanId);
@@ -693,6 +738,13 @@ export function acceptOffer(
   };
   state.closedDeals.push(deal);
   state.portfolio = state.portfolio.filter((p) => p.id !== prop.id);
+
+  // Outcomes move standing. Closing cleanly builds it with agents; a
+  // profitable exit reassures lenders. Both are modest -- reputation should
+  // take several deals to shift, not one.
+  adjustReputation(state.reputation, 'agents', sale.reductions > 2 ? 1 : 3);
+  if (loan) adjustReputation(state.reputation, 'lenders', netProfit > 0 ? 4 : 1);
+  else if (netProfit > 0) adjustReputation(state.reputation, 'lenders', 1);
 
   log(
     state,
@@ -1006,10 +1058,51 @@ function refreshMarket(
     if (prop.listing) ageListing(prop.listing, rng);
   }
 
+  // Rival buyers work the same market. A well-priced house does not sit around
+  // waiting for you to finish deliberating, which is the main pressure the
+  // game was missing -- previously a good deal would keep indefinitely.
+  const taken: Property[] = [];
+  state.market = state.market.filter((p) => {
+    if (!p.listing) return true;
+    const heat = p.listing.competition * (1 - Math.min(1, p.listing.daysOnMarket / 150));
+    if (rng.chance(heat * 0.035)) {
+      taken.push(p);
+      return false;
+    }
+    return true;
+  });
+  for (const p of taken) {
+    log(
+      state,
+      'warn',
+      `${p.address} went under contract to another buyer at $${p.listing!.askPrice.toLocaleString()}.`,
+    );
+  }
+
   // Very stale listings get withdrawn.
   state.market = state.market.filter(
     (p) => !p.listing || p.listing.daysOnMarket < 240 || !rng.chance(0.05),
   );
+
+  // Standing with agents buys access: a listing shown to you before it is
+  // shown to anyone else, priced as though it had not been marketed.
+  if (rng.chance(pocketListingChance(state.reputation.agents))) {
+    const pocket = generateProperty(
+      rng,
+      state.world,
+      state.day,
+      neighborhoods,
+      state.skills.analysis,
+    );
+    if (pocket.listing) {
+      pocket.listing.askPrice = Math.round(pocket.listing.askPrice * 0.93);
+      pocket.listing.reserve = Math.min(pocket.listing.reserve, pocket.listing.askPrice);
+      pocket.listing.competition = 0;
+      pocket.listing.daysOnMarket = 0;
+    }
+    state.market.push(pocket);
+    log(state, 'good', `An agent brought you ${pocket.address} before it hits the market.`);
+  }
 
   while (state.market.length < target) {
     state.market.push(
@@ -1091,10 +1184,12 @@ function handleLoanMaturity(state: GameState): void {
     state.loans = state.loans.filter((l) => l.id !== loan.id);
     if (prop) {
       state.portfolio = state.portfolio.filter((p) => p.id !== prop.id);
+      // A foreclosure is the one thing lenders genuinely remember.
+      adjustReputation(state.reputation, 'lenders', -28);
       log(
         state,
         'bad',
-        `Foreclosure. The note on ${prop.address} matured and you could not cover the $${payoff.toLocaleString()} balloon. The lender took the property.`,
+        `Foreclosure. The note on ${prop.address} matured and you could not cover the $${payoff.toLocaleString()} balloon. The lender took the property, and your standing with lenders took a serious hit.`,
       );
     }
   }

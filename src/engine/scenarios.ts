@@ -248,6 +248,9 @@ export function buildScenarioProperty(
         spec.askPrice * (SELLER_TYPES_BY_ID[spec.sellerType]?.reserveBias ?? 1) * 0.94,
       ),
       sellerMotivation: rng.float(0.35, 0.75),
+      // Authored deals get modest rival interest: enough that dawdling costs
+      // you, not so much that the lesson turns into a race.
+      competition: 0.35,
     },
     ownership: null,
     inspection: 'none',

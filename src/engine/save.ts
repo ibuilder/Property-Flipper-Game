@@ -79,6 +79,22 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.scenario = s.scenario ?? null;
     return s;
   },
+  // v5 predates reputation, rival buyers, and financed buyer offers. An old
+  // save resumes at neutral standing with no competition on its listings.
+  5: (s: any) => {
+    s.reputation = s.reputation ?? { lenders: 50, agents: 50, contractors: 50 };
+    for (const prop of [...(s.market ?? []), ...(s.portfolio ?? [])]) {
+      if (prop.listing) prop.listing.competition = prop.listing.competition ?? 0.3;
+      const offers = prop.ownership?.saleListing?.offers;
+      for (const o of offers ?? []) {
+        // Existing offers become cash offers, which cannot fall through on an
+        // appraisal -- the safe reading of an ambiguous old save.
+        o.financed = o.financed ?? false;
+        o.appraisedValue = o.appraisedValue ?? Number.MAX_SAFE_INTEGER;
+      }
+    }
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {

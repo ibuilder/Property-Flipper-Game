@@ -52,7 +52,7 @@ export default function PropertyModal({
   if (!state || !analysis) return null;
 
   const listing = property.listing;
-  const quote = quoteScope(scope, property, state.world, state.skills);
+  const quote = quoteScope(scope, property, state.world, state.skills, state.reputation.contractors);
   const loan = financed ? maxLoanAmount(offer) : 0;
   const cashAtClose = offer - loan + Math.round(offer * ECON.BUY_CLOSING_RATE);
   const cashAfterRehab = state.cash - cashAtClose - quote.totalCost;

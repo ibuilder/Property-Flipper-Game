@@ -1,6 +1,7 @@
 import { DEFECTS_BY_ID, SCOPE_BY_ID } from './content';
 import { eventModifiers } from './events';
 import { defectRepairCost, defectRepairDays } from './valuation';
+import { changeOrderReduction, renovationDiscount } from './reputation';
 import type {
   Money,
   Property,
@@ -57,9 +58,14 @@ export function quoteScopeItem(
   prop: Property,
   world: WorldState,
   skills: Record<SkillId, number>,
+  /** Contractor standing, 0-100. Crews price a reliable client better. */
+  contractorReputation = 50,
 ): Quote | null {
   const mods = eventModifiers(world, prop.neighborhoodId);
-  const costFactor = mods.costMultiplier * managementCostFactor(skills.management);
+  const costFactor =
+    mods.costMultiplier *
+    managementCostFactor(skills.management) *
+    (1 - renovationDiscount(contractorReputation));
   const timeFactor = mods.timeMultiplier * managementTimeFactor(skills.management);
 
   if (isDefectScopeId(itemId)) {
@@ -92,13 +98,14 @@ export function quoteScope(
   prop: Property,
   world: WorldState,
   skills: Record<SkillId, number>,
+  contractorReputation = 50,
 ): { lines: ScopeLineItem[]; totalCost: Money; totalDays: number } {
   const lines: ScopeLineItem[] = [];
   let totalCost = 0;
   const dayList: number[] = [];
 
   for (const id of itemIds) {
-    const q = quoteScopeItem(id, prop, world, skills);
+    const q = quoteScopeItem(id, prop, world, skills, contractorReputation);
     if (!q) continue;
     lines.push({
       itemId: id,
@@ -143,8 +150,11 @@ export function createJob(
 }
 
 /** Probability that a given hidden defect surfaces on any one work day. */
-export function changeOrderChance(managementSkill: number): number {
-  return Math.max(0.02, 0.065 - 0.007 * managementSkill);
+export function changeOrderChance(managementSkill: number, contractorReputation = 50): number {
+  const base = Math.max(0.02, 0.065 - 0.007 * managementSkill);
+  // A crew that trusts you flags things early and prices them sanely, so
+  // fewer surprises land as formal change orders mid-job.
+  return Math.max(0.01, base * (1 - changeOrderReduction(contractorReputation)));
 }
 
 export function jobProgress(job: RenovationJob): number {

@@ -1,4 +1,12 @@
-import { ECON, skillCost, trainSkill, type SkillId } from '../../engine';
+import {
+  ECON,
+  REPUTATION_META,
+  reputationLabel,
+  skillCost,
+  trainSkill,
+  type ReputationId,
+  type SkillId,
+} from '../../engine';
 import { money } from '../format';
 import { useAction, useGame } from '../store';
 
@@ -39,6 +47,47 @@ export default function SkillsView() {
 
   return (
     <>
+      <div className="panel">
+        <div className="panel-head">
+          <h2>Reputation</h2>
+          <span className="faint" style={{ fontSize: 12 }}>
+            earned, not bought
+          </span>
+        </div>
+        <div className="panel-body">
+          <p className="dim" style={{ marginTop: 0, fontSize: 13 }}>
+            Skills are things you pay for. Reputation is what a track record buys you, and it is
+            what makes a fifth flip easier than a first. It moves on outcomes: finishing jobs you
+            funded properly, closing sales without cutting the price three times, and above all not
+            handing a lender back the keys.
+          </p>
+          <div className="grid-3" style={{ marginTop: 14 }}>
+            {(Object.keys(REPUTATION_META) as ReputationId[]).map((id) => {
+              const v = state.reputation[id];
+              const meta = REPUTATION_META[id];
+              const label = reputationLabel(v);
+              return (
+                <div key={id}>
+                  <div className="chart-title">
+                    <h3>{meta.name}</h3>
+                    <span className={`pill ${label.tone}`}>{label.text}</span>
+                  </div>
+                  <div className={`bar ${label.tone === 'bad' ? 'bad' : label.tone === 'warn' ? 'warn' : 'good'}`}>
+                    <span style={{ width: `${v}%` }} />
+                  </div>
+                  <div className="faint" style={{ fontSize: 11.5, marginTop: 6, lineHeight: 1.45 }}>
+                    {meta.blurb}
+                  </div>
+                  <div className="num" style={{ fontSize: 11.5, marginTop: 4 }}>
+                    {meta.effect(v)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       <div className="grid-2">
         {SKILLS.map((skill) => {
           const level = state.skills[skill.id];

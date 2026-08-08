@@ -107,6 +107,7 @@ export default function MarketView() {
                   <th className="right">Est. as-is</th>
                   <th className="right">Spread</th>
                   <th className="right">DOM</th>
+                  <th>Interest</th>
                   <th>Due diligence</th>
                 </tr>
               </thead>
@@ -175,6 +176,15 @@ function MarketRow({
         {moneyShort(spread)}
       </td>
       <td className="right num dim">{prop.listing?.daysOnMarket ?? 0}</td>
+      <td>
+        {/* Rival attention. A contested listing will not wait for you. */}
+        {(() => {
+          const c = prop.listing?.competition ?? 0;
+          if (c > 0.55) return <span className="pill bad">hot</span>;
+          if (c > 0.3) return <span className="pill warn">watched</span>;
+          return <span className="faint" style={{ fontSize: 12 }}>quiet</span>;
+        })()}
+      </td>
       <td>
         {prop.inspection === 'none' ? (
           <span className="faint" style={{ fontSize: 12 }}>

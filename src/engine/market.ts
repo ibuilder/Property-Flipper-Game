@@ -195,11 +195,17 @@ function makeListing(prop: Property, world: WorldState, day: number, rng: Rng): 
     (0.93 + rng.float(0, 0.06) - motivation * 0.05) * (seller?.reserveBias ?? 1);
   const reserve = Math.min(askPrice, Math.round(value * reserveRatio));
 
+  // Rival attention tracks how good the deal looks from the outside: an ask
+  // well under value draws a crowd, an overpriced one is ignored.
+  const askRatio = askPrice / Math.max(1, value);
+  const competition = Math.max(0, Math.min(1, 1.35 - askRatio * 1.15 + rng.float(-0.12, 0.12)));
+
   return {
     askPrice,
     daysOnMarket: rng.int(0, 45),
     reserve,
     sellerMotivation: motivation,
+    competition,
   };
 }
 
@@ -245,6 +251,34 @@ export interface OfferOutcome {
   shortfall: number;
   counterPrice: Money | null;
   message: string;
+  /** Set when a rival buyer took it rather than the seller simply saying no. */
+  outbidAt?: Money;
+}
+
+/**
+ * Would a rival buyer beat this offer?
+ *
+ * Only bites when the offer is barely over the reserve on a listing that other
+ * people also want. Offering a clearly strong number still wins outright --
+ * competition punishes shaving the margin to nothing, not being decisive.
+ */
+export function competingBid(
+  prop: Property,
+  offer: Money,
+  rng: Rng,
+): Money | null {
+  const listing = prop.listing;
+  if (!listing) return null;
+
+  const reserve = currentReserve(prop);
+  const headroom = (offer - reserve) / Math.max(1, reserve);
+  // A comfortable offer is safe; a wafer-thin one is exposed.
+  if (headroom > 0.06) return null;
+
+  const heat = listing.competition * (1 - Math.min(1, listing.daysOnMarket / 120));
+  if (!rng.chance(heat * 0.55)) return null;
+
+  return Math.round(offer * rng.float(1.012, 1.055));
 }
 
 /**
@@ -355,7 +389,20 @@ export function rollBuyerOffer(
 
   // Buyers anchor on the list price but will not blow past true value by much.
   const willingness = value * rng.clampedNormal(1.0, 0.035, 2);
-  const amount = Math.round(Math.min(listPrice, willingness * rng.float(0.96, 1.03)));
+  let amount = Math.round(Math.min(listPrice, willingness * rng.float(0.96, 1.03)));
+
+  // Most buyers borrow. A financed buyer can stretch further because they are
+  // spending the bank's money -- but the bank sends an appraiser, and if it
+  // comes in low the loan will not cover the gap.
+  const financed = rng.chance(0.72);
+  if (financed) amount = Math.round(amount * rng.float(1.0, 1.05));
+  else amount = Math.round(amount * rng.float(0.94, 0.99));
+
+  // The appraisal is a noisy read of true value, fixed now so the outcome is
+  // determined at offer time rather than re-rolled later.
+  const appraisedValue = financed
+    ? Math.round(value * rng.clampedNormal(1.0, 0.04, 2))
+    : Number.MAX_SAFE_INTEGER;
 
   offerCounter += 1;
   return {
@@ -364,7 +411,25 @@ export function rollBuyerOffer(
     inspectionConcession: inspectionConcession(prop),
     expiresDay: day + rng.int(3, 7),
     buyerName: rng.pick(BUYER_NAMES),
+    financed,
+    appraisedValue,
   };
+}
+
+/**
+ * What a financed offer will actually close at.
+ *
+ * The lender will not lend against more than the appraisal, and the buyer
+ * rarely has the cash to bridge it, so the contract price falls to the
+ * appraised value. This is why the highest offer is not automatically the best
+ * one -- a lower cash offer with no appraisal attached often nets more.
+ */
+export function settlementPrice(offer: BuyerOffer): Money {
+  return Math.min(offer.amount, offer.appraisedValue);
+}
+
+export function hasAppraisalGap(offer: BuyerOffer): boolean {
+  return offer.financed && offer.appraisedValue < offer.amount;
 }
 
 const BUYER_NAMES = [

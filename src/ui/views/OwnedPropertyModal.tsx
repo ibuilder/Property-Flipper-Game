@@ -12,9 +12,11 @@ import {
   jobDaysRemaining,
   jobProgress,
   listForSale,
+  hasAppraisalGap,
   loanPayoff,
   orderInspection,
   quoteScope,
+  settlementPrice,
   reducePrice,
   rejectOffer,
   sellingCosts,
@@ -46,7 +48,7 @@ export default function OwnedPropertyModal({
   const [listPrice, setListPrice] = useState<number | null>(null);
 
   const quote = useMemo(
-    () => (state ? quoteScope(scope, property, state.world, state.skills) : null),
+    () => (state ? quoteScope(scope, property, state.world, state.skills, state.reputation.contractors) : null),
     [version, scope, property],
   );
 
@@ -417,11 +419,15 @@ function SalePanel({ property, onClose }: { property: Property; onClose: () => v
             No offers on the table.
           </div>
         ) : (
-          sale.offers.map((o) => {
-            const { commission, closing } = sellingCosts(o.amount);
+          [...sale.offers]
+            .sort((a, b) => settlementPrice(b) - settlementPrice(a))
+            .map((o) => {
+            const settles = settlementPrice(o);
+            const gap = hasAppraisalGap(o);
+            const { commission, closing } = sellingCosts(settles);
             const payoff = loan ? loanPayoff(loan) : 0;
-            const net = o.amount - commission - closing - o.inspectionConcession - payoff;
-            const profit = o.amount - commission - closing - o.inspectionConcession - invested;
+            const net = settles - commission - closing - o.inspectionConcession - payoff;
+            const profit = settles - commission - closing - o.inspectionConcession - invested;
             return (
               <div
                 key={o.id}
@@ -430,11 +436,28 @@ function SalePanel({ property, onClose }: { property: Property; onClose: () => v
               >
                 <div className="panel-body">
                   <div className="kv">
-                    <span className="k">{o.buyerName} offers</span>
+                    <span className="k">
+                      {o.buyerName} offers{' '}
+                      <span className={`pill ${o.financed ? 'mute' : 'good'}`}>
+                        {o.financed ? 'financed' : 'cash'}
+                      </span>
+                    </span>
                     <span className="v" style={{ fontSize: 15, fontWeight: 600 }}>
                       {money(o.amount)}
                     </span>
                   </div>
+                  {gap && (
+                    <div className="kv">
+                      <span className="k warn">
+                        Lender&rsquo;s appraisal
+                        <br />
+                        <span className="faint" style={{ fontSize: 11 }}>
+                          the loan cannot exceed it, so the price falls to it
+                        </span>
+                      </span>
+                      <span className="v bad">{money(o.appraisedValue)}</span>
+                    </div>
+                  )}
                   <div className="kv">
                     <span className="k">Commission + closing</span>
                     <span className="v bad">{money(-(commission + closing))}</span>
