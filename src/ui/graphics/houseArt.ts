@@ -1,5 +1,5 @@
 import { Rng } from '../../engine';
-import type { Property } from '../../engine';
+import type { HouseSubject } from '../../engine';
 
 /**
  * Turns a property's data into a drawable facade.
@@ -77,6 +77,8 @@ export interface HouseArt {
   skip: boolean;
   /** Sale sign planted in the yard. */
   sign: 'none' | 'sale' | 'sold';
+  /** Drives ground colour and a dusting of snow in winter. */
+  season: 'spring' | 'summer' | 'autumn' | 'winter';
 }
 
 const W = 200;
@@ -84,16 +86,28 @@ const H = 140;
 const GROUND_Y = 118;
 
 /** Warm daylight for a cared-for house, cold and grey for a wreck. */
-function palette(condition: number, renovating: boolean): HousePalette {
+function palette(condition: number, renovating: boolean, day: number): HousePalette {
   const c = Math.max(0, Math.min(1, condition));
   // Wall colour desaturates and darkens as condition falls.
   const wallLight = 62 + c * 24;
   const wallSat = 6 + c * 16;
   const hue = 32;
 
+  const season = seasonOf(day);
+  const ground =
+    season === 'winter'
+      ? '#3a4048'
+      : season === 'autumn'
+        ? c > 0.55
+          ? '#4a4526'
+          : '#3a3520'
+        : c > 0.55
+          ? '#24402c'
+          : '#2a2b22';
+
   return {
     sky: renovating ? '#1a2230' : c > 0.6 ? '#16202e' : '#141a24',
-    ground: c > 0.55 ? '#24402c' : '#2a2b22',
+    ground,
     wall: `hsl(${hue} ${wallSat}% ${wallLight}%)`,
     wallShade: `hsl(${hue} ${wallSat}% ${wallLight - 12}%)`,
     roof: c > 0.5 ? '#3d4654' : '#332f2c',
@@ -103,11 +117,11 @@ function palette(condition: number, renovating: boolean): HousePalette {
   };
 }
 
-export function buildHouseArt(prop: Property): HouseArt {
+export function buildHouseArt(prop: HouseSubject, day = 150): HouseArt {
   const rng = new Rng(prop.noiseSeed);
   const c = Math.max(0, Math.min(1, prop.condition));
   const done = new Set(prop.completedWork);
-  const renovating = !!prop.ownership?.renovation;
+  const renovating = !!prop.renovating;
 
   // Any defect that is known and unrepaired makes the house look worse than
   // condition alone suggests -- that is the point of an inspection.
@@ -254,9 +268,8 @@ export function buildHouseArt(prop: Property): HouseArt {
     o: rng.float(0.05, 0.16),
   }));
 
-  const sale = prop.ownership?.saleListing;
   return {
-    palette: palette(c, renovating),
+    palette: palette(c, renovating, day),
     body: { x: bodyX, y: bodyY, w: bodyW, h: bodyH },
     roof: { kind, points, gaps },
     windows,
@@ -268,8 +281,25 @@ export function buildHouseArt(prop: Property): HouseArt {
     weeds,
     stains,
     skip: renovating,
-    sign: sale ? 'sale' : 'none',
+    sign: prop.forSale ? 'sale' : 'none',
+    season: seasonOf(day),
   };
+}
+
+/**
+ * Which season the scene is in.
+ *
+ * Seasonality is mechanically real -- the spring selling market is worth about
+ * 3% on value -- and until now was completely invisible. Day 1 is 1 March, so
+ * the offset puts winter where December falls.
+ */
+export function seasonOf(day: number): HouseArt['season'] {
+  const doy = (day + 59) % 365;
+  if (doy < 60) return 'spring';
+  if (doy < 152) return 'summer';
+  if (doy < 244) return 'summer';
+  if (doy < 305) return 'autumn';
+  return 'winter';
 }
 
 export const HOUSE_VIEWBOX = `0 0 ${W} ${H}`;

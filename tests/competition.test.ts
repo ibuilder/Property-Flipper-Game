@@ -21,6 +21,7 @@ import {
   rateDiscount,
   renovationDiscount,
   settlementPrice,
+  startRenovation,
   trueValue,
 } from '../src/engine';
 import { competingBid, currentReserve } from '../src/engine/market';
@@ -201,6 +202,44 @@ describe('buyer offers respect the asking price', () => {
       if (sale && sale.offers.length > 0) rejectOffer(state, owned.id, sale.offers[0].id);
     }
     expect(seen).toBeGreaterThan(0);
+  });
+});
+
+describe('before and after', () => {
+  it('captures the house as bought and as sold, and they differ', () => {
+    const state = createGame('sandbox', 6161);
+    const prop = state.market
+      .filter((p) => p.listing && p.condition < 0.5)
+      .sort((a, b) => currentReserve(a) - currentReserve(b))[0];
+    if (!prop) return;
+
+    const conditionAtPurchase = prop.condition;
+    expect(makeOffer(state, prop.id, prop.listing!.askPrice, false).ok).toBe(true);
+
+    const owned = state.portfolio[0];
+    expect(owned.ownership!.boughtAs).not.toBeNull();
+    expect(owned.ownership!.boughtAs!.condition).toBe(conditionAtPurchase);
+
+    startRenovation(state, owned.id, ['paint_interior', 'flooring_lvp'], 0.15);
+    for (let i = 0; i < 90 && owned.ownership?.renovation; i++) advanceDay(state);
+
+    listForSale(state, owned.id, Math.round(trueValue(owned, state.world, state.day) * 0.85));
+    for (let i = 0; i < 300 && state.closedDeals.length === 0; i++) {
+      advanceDay(state);
+      const sale = state.portfolio[0]?.ownership?.saleListing;
+      if (sale && sale.offers.length > 0) acceptOffer(state, owned.id, sale.offers[0].id);
+    }
+    expect(state.closedDeals).toHaveLength(1);
+
+    const deal = state.closedDeals[0];
+    expect(deal.before).not.toBeNull();
+    expect(deal.after).not.toBeNull();
+    // The snapshot must be frozen at purchase, not a live reference that
+    // followed the property through its renovation.
+    expect(deal.before!.condition).toBe(conditionAtPurchase);
+    expect(deal.after!.condition).toBeGreaterThan(deal.before!.condition);
+    expect(deal.before!.completedWork).toHaveLength(0);
+    expect(deal.after!.completedWork).toContain('paint_interior');
   });
 });
 

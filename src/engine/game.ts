@@ -50,6 +50,7 @@ import type {
   ClosedDeal,
   DealProjection,
   GameState,
+  HouseSubject,
   PostMortem,
   VarianceLine,
   LedgerCategory,
@@ -71,7 +72,7 @@ import {
 import { analyzeDeal } from './analyzer';
 import { buildScenarioProperty, type ScenarioDef } from './scenarios';
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 /** How often the charts' time series is sampled, in days. */
 export const HISTORY_INTERVAL_DAYS = 5;
@@ -264,6 +265,25 @@ export function selectComps(
   return { ok: true, message: `Estimate now $${prop.appraisal.point.toLocaleString()}.` };
 }
 
+/** A cheap copy of just what the facade renderer reads. */
+function snapshot(prop: Property, opts: { renovating?: boolean; forSale?: boolean } = {}): HouseSubject {
+  return {
+    id: prop.id,
+    address: prop.address,
+    archetypeId: prop.archetypeId,
+    neighborhoodId: prop.neighborhoodId,
+    sqft: prop.sqft,
+    beds: prop.beds,
+    baths: prop.baths,
+    yearBuilt: prop.yearBuilt,
+    condition: prop.condition,
+    defects: prop.defects.map((d) => ({ ...d })),
+    completedWork: [...prop.completedWork],
+    noiseSeed: prop.noiseSeed,
+    ...opts,
+  };
+}
+
 /** Capture what the player believed at the moment they committed. */
 function captureProjection(
   state: GameState,
@@ -358,6 +378,7 @@ export function makeOffer(
     holdingCostsPaid: 0,
     renovationSpend: 0,
     projection: captureProjection(state, prop, amount, useFinancing),
+    boughtAs: snapshot(prop),
   };
 
   applyCash(state, -amount, 'acquisition', `Purchased ${prop.address}`, prop.id);
@@ -735,6 +756,8 @@ export function acceptOffer(
     roi: (netProfit / cashInvested) * (365 / daysHeld),
     daysHeld,
     postMortem,
+    before: own.boughtAs,
+    after: snapshot(prop),
   };
   state.closedDeals.push(deal);
   state.portfolio = state.portfolio.filter((p) => p.id !== prop.id);

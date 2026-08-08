@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Property } from '../../engine';
+import type { HouseSubject, Property } from '../../engine';
 import { HOUSE_GROUND_Y, HOUSE_VIEWBOX, HOUSE_W, buildHouseArt } from './houseArt';
 
 /**
@@ -14,22 +14,38 @@ export default function House({
   property,
   className,
   title,
+  day = 150,
 }: {
-  property: Property;
+  /** A live Property, or a snapshot from a closed deal. */
+  property: Property | HouseSubject;
   className?: string;
   /** Accessible description; falls back to a generated one. */
   title?: string;
+  /** Drives the season in the scene. */
+  day?: number;
 }) {
+  const subject: HouseSubject = useMemo(() => {
+    const live = property as Property;
+    return {
+      ...(property as HouseSubject),
+      renovating:
+        'renovating' in property ? property.renovating : !!live.ownership?.renovation,
+      forSale: 'forSale' in property ? property.forSale : !!live.ownership?.saleListing,
+    };
+  }, [property]);
+
   const art = useMemo(
-    () => buildHouseArt(property),
+    () => buildHouseArt(subject, day),
     // The picture only changes when the things it encodes change.
     [
-      property.id,
-      property.condition,
-      property.completedWork.join(','),
-      property.defects.map((d) => `${d.defId}:${d.revealed}:${d.repaired}`).join(','),
-      property.ownership?.renovation ? 'reno' : '',
-      property.ownership?.saleListing ? 'sale' : '',
+      subject.id,
+      subject.condition,
+      subject.completedWork.join(','),
+      subject.defects.map((d) => `${d.defId}:${d.revealed}:${d.repaired}`).join(','),
+      subject.renovating,
+      subject.forSale,
+      // Season, not the day itself -- no need to redraw every tick.
+      Math.floor(((day + 59) % 365) / 60),
     ],
   );
 
@@ -62,6 +78,17 @@ export default function House({
       <rect x="0" y="0" width={HOUSE_W} height={HOUSE_GROUND_Y} fill={p.sky} />
       <rect x="0" y={HOUSE_GROUND_Y} width={HOUSE_W} height={140 - HOUSE_GROUND_Y} fill={p.ground} />
 
+      {/* One soft contact shadow, per the style bible. Cheap, and it stops the
+          house floating on the ground plane. */}
+      <ellipse
+        cx={HOUSE_W / 2}
+        cy={HOUSE_GROUND_Y + 2}
+        rx={art.body.w * 0.72}
+        ry="5"
+        fill="#000"
+        opacity="0.28"
+      />
+
       {/* Porch roof sits behind the body so the posts read in front. */}
       {art.porch && (
         <g transform={`rotate(${art.porch.lean} ${art.porch.x} ${art.porch.y + art.porch.h})`}>
@@ -84,8 +111,19 @@ export default function House({
         </g>
       )}
 
-      {/* Body */}
-      <rect x={art.body.x} y={art.body.y} width={art.body.w} height={art.body.h} fill={p.wall} />
+      {/* Body. A hairline outline slightly darker than the fill gives the
+          storybook edge the style bible calls for and keeps shapes legible at
+          thumbnail size. */}
+      <rect
+        x={art.body.x}
+        y={art.body.y}
+        width={art.body.w}
+        height={art.body.h}
+        fill={p.wall}
+        stroke="#000"
+        strokeOpacity="0.35"
+        strokeWidth="1"
+      />
       <rect
         x={art.body.x}
         y={art.body.y}
@@ -112,7 +150,12 @@ export default function House({
       )}
 
       {/* Roof */}
-      <polygon points={art.roof.points} fill={p.roof} />
+      <polygon points={art.roof.points} fill={p.roof} stroke="#000" strokeOpacity="0.4" strokeWidth="1" />
+      {/* Snow settles on the roof in winter. Seasonality is worth ~3% on value
+          and was previously invisible. */}
+      {art.season === 'winter' && (
+        <polygon points={art.roof.points} fill="#dfe7f0" opacity="0.55" />
+      )}
       {art.roof.gaps.map((g, i) => (
         <rect key={i} x={g.x} y={g.y} width={g.w} height={g.h} fill="#12100e" opacity="0.75" />
       ))}

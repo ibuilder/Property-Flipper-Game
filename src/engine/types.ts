@@ -190,6 +190,32 @@ export interface VarianceLine {
   note: string;
 }
 
+/**
+ * Everything the facade renderer needs, and nothing else.
+ *
+ * Kept separate from Property so a closed deal can carry a cheap snapshot of
+ * how the house looked when bought and when sold. Storing the whole Property
+ * twice would drag the comp pool into every save for no benefit.
+ */
+export interface HouseSubject {
+  id: string;
+  address: string;
+  archetypeId: string;
+  neighborhoodId: string;
+  sqft: number;
+  beds: number;
+  baths: number;
+  yearBuilt: number;
+  condition: number;
+  defects: Defect[];
+  completedWork: string[];
+  noiseSeed: number;
+  /** Crew on site: draws a skip in the drive. */
+  renovating?: boolean;
+  /** Board in the yard. */
+  forSale?: boolean;
+}
+
 /** Projected-versus-actual, with the gap attributed. */
 export interface PostMortem {
   projected: DealProjection;
@@ -352,6 +378,8 @@ export interface Ownership {
   renovationSpend: Money;
   /** What was believed at the moment of purchase. */
   projection: DealProjection | null;
+  /** How it looked the day it was bought, for the before/after. */
+  boughtAs: HouseSubject | null;
 }
 
 export interface SaleListing {
@@ -542,6 +570,9 @@ export interface ClosedDeal {
   daysHeld: number;
   /** Projected-versus-actual, when a projection was captured at purchase. */
   postMortem: PostMortem | null;
+  /** How the house looked the day it was bought, and the day it sold. */
+  before: HouseSubject | null;
+  after: HouseSubject | null;
 }
 
 /** Result shape returned by every player action. */

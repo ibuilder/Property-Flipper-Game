@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { NEIGHBORHOODS_BY_ID } from '../../engine';
-import { money, moneyShort, percent } from '../format';
+import { conditionLabel, money, moneyShort, percent } from '../format';
 import { useGame } from '../store';
 import { Waterfall } from '../graphics/Charts';
 import PostMortemPanel from '../components/PostMortemPanel';
+import House from '../graphics/House';
 
 /**
  * Track record.
@@ -92,6 +93,52 @@ export default function DealsView() {
           )}
         </div>
       </div>
+
+      {shown?.before && shown?.after && (
+        <div className="panel">
+          <div className="panel-head">
+            <h2>Before and after — {shown.address}</h2>
+            <span className="faint" style={{ fontSize: 12 }}>
+              {shown.daysHeld} days apart
+            </span>
+          </div>
+          <div className="panel-body">
+            <div className="grid-2">
+              <div>
+                <div className="chart-title">
+                  <h3>Bought day {shown.boughtDay}</h3>
+                  <span className={`pill ${conditionLabel(shown.before.condition).tone}`}>
+                    {conditionLabel(shown.before.condition).text}
+                  </span>
+                </div>
+                <House property={shown.before} className="house-hero" day={shown.boughtDay} />
+                <div className="kv">
+                  <span className="k">Paid</span>
+                  <span className="v">{money(shown.purchasePrice)}</span>
+                </div>
+              </div>
+              <div>
+                <div className="chart-title">
+                  <h3>Sold day {shown.soldDay}</h3>
+                  <span className={`pill ${conditionLabel(shown.after.condition).tone}`}>
+                    {conditionLabel(shown.after.condition).text}
+                  </span>
+                </div>
+                <House property={shown.after} className="house-hero" day={shown.soldDay} />
+                <div className="kv">
+                  <span className="k">Sold for</span>
+                  <span className="v">{money(shown.salePrice)}</span>
+                </div>
+              </div>
+            </div>
+            <p className="faint" style={{ fontSize: 12, marginTop: 10, marginBottom: 0 }}>
+              {shown.after.completedWork.length > 0
+                ? `${shown.after.completedWork.length} line items of work, ${money(shown.renovationSpend)} spent.`
+                : 'Sold as-is, with no work done.'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {shown?.postMortem && (
         <div className="panel">

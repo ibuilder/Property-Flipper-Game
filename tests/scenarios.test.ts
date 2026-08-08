@@ -76,6 +76,8 @@ describe('scenarios', () => {
       roi: 0,
       daysHeld: 1,
       postMortem: null,
+      before: null,
+      after: null,
     });
     advanceDay(state);
     expect(state.phase).toBe('playing');

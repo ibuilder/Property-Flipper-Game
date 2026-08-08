@@ -95,6 +95,18 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     }
     return s;
   },
+  // v6 predates the before/after snapshots. Older deals simply have none, and
+  // the UI omits the panel rather than inventing a picture that was never taken.
+  6: (s: any) => {
+    for (const prop of s.portfolio ?? []) {
+      if (prop.ownership) prop.ownership.boughtAs = prop.ownership.boughtAs ?? null;
+    }
+    for (const deal of s.closedDeals ?? []) {
+      deal.before = deal.before ?? null;
+      deal.after = deal.after ?? null;
+    }
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {
