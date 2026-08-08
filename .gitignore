@@ -1,0 +1,17 @@
+﻿node_modules/
+dist/
+dist-electron/
+release/
+dist-web/
+
+# Local reference clone of the original Python project
+upstream/
+.venv/
+
+# Balance harness output
+balance-output.txt
+
+*.log
+.DS_Store
+Thumbs.db
+

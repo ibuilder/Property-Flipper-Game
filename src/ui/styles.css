@@ -1,0 +1,972 @@
+/*
+ * Property Flipper -- visual system.
+ *
+ * The game is a spreadsheet with stakes, so the design leans on the vocabulary
+ * of financial tooling: dense tables, tabular figures that line up in columns,
+ * restrained colour reserved for signal (verdicts, deltas, warnings) rather
+ * than decoration.
+ */
+
+:root {
+  --bg: #0f1319;
+  --bg-raised: #161b23;
+  --bg-inset: #0b0e13;
+  --panel: #1a212b;
+  --border: #26303d;
+  --border-strong: #33404f;
+
+  --text: #e4e9f0;
+  --text-dim: #97a3b4;
+  --text-faint: #64717f;
+
+  --accent: #4d9fff;
+  --accent-dim: #1e3a5f;
+
+  --good: #3ecf8e;
+  --good-dim: #14331f;
+  --warn: #e8b339;
+  --warn-dim: #3a2e10;
+  --bad: #f2555a;
+  --bad-dim: #3a1518;
+
+  --radius: 6px;
+  --mono: 'SF Mono', 'Cascadia Mono', 'Consolas', 'Roboto Mono', monospace;
+  --sans: 'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif;
+}
+
+/*
+ * Deliberately single-theme.
+ *
+ * This is a dark instrument panel, the way trading and underwriting tools
+ * actually look; a light variant would undercut the thing the interface is
+ * imitating. So the dark ground is pinned even when a host or the OS asks for
+ * light, rather than half-inverting into something neither.
+ */
+:root,
+:root[data-theme='light'],
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+/* Numbers must line up in columns. */
+.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.dim {
+  color: var(--text-dim);
+}
+.faint {
+  color: var(--text-faint);
+}
+.good {
+  color: var(--good);
+}
+.warn {
+  color: var(--warn);
+}
+.bad {
+  color: var(--bad);
+}
+
+/* ------------------------------------------------------------------ shell */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 0 20px;
+  height: 60px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.brand {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.brand .sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-faint);
+  letter-spacing: 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: nowrap;
+}
+
+.stat .label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.stat .value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.topbar .spacer {
+  flex: 1;
+}
+
+/* ------------------------------------------------------------------- tabs */
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 20px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.tab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tab .badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 11px;
+  font-family: var(--mono);
+}
+
+.tab .badge.alert {
+  background: var(--good-dim);
+  color: var(--good);
+}
+
+/* ------------------------------------------------------------------- body */
+
+.main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  min-width: 0;
+}
+
+.sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  background: var(--bg-raised);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ----------------------------------------------------------------- panels */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.panel-body {
+  padding: 14px;
+}
+
+.panel-body.flush {
+  padding: 0;
+}
+
+/* ----------------------------------------------------------------- tables */
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th {
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  font-weight: 600;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  background: var(--panel);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr.clickable {
+  cursor: pointer;
+}
+
+tbody tr.clickable:hover {
+  background: #1f2732;
+}
+
+/* Rows are real controls, so they must show focus and respond to the keyboard. */
+tbody tr.clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: #1f2732;
+}
+
+tbody tr.selected {
+  background: var(--accent-dim);
+}
+
+th.right,
+td.right {
+  text-align: right;
+}
+
+/* ---------------------------------------------------------------- buttons */
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-raised);
+  color: var(--text);
+  padding: 7px 13px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.btn:hover:not(:disabled) {
+  background: #222b36;
+  border-color: #46566a;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06121f;
+  font-weight: 600;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: #6bb0ff;
+  border-color: #6bb0ff;
+}
+
+.btn.danger {
+  border-color: #5c2429;
+  color: var(--bad);
+}
+
+.btn.danger:hover:not(:disabled) {
+  background: var(--bad-dim);
+}
+
+.btn.small {
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ----------------------------------------------------------------- inputs */
+
+input[type='number'],
+input[type='text'] {
+  background: var(--bg-inset);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 7px 10px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  width: 100%;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+label.field {
+  display: block;
+  margin-bottom: 12px;
+}
+
+label.field .label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  margin-bottom: 5px;
+}
+
+/* -------------------------------------------------------------- key/value */
+
+.kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 13px;
+}
+
+.kv + .kv {
+  border-top: 1px solid #202834;
+}
+
+.kv .k {
+  color: var(--text-dim);
+}
+
+.kv .v {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.kv.total {
+  border-top: 1px solid var(--border-strong);
+  margin-top: 4px;
+  padding-top: 8px;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------- misc */
+
+.pill {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.pill.good {
+  background: var(--good-dim);
+  color: var(--good);
+  border-color: #1d5638;
+}
+.pill.warn {
+  background: var(--warn-dim);
+  color: var(--warn);
+  border-color: #5c4a17;
+}
+.pill.bad {
+  background: var(--bad-dim);
+  color: var(--bad);
+  border-color: #5c2429;
+}
+.pill.info {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: #2b5580;
+}
+.pill.mute {
+  background: #1f2732;
+  color: var(--text-dim);
+  border-color: var(--border-strong);
+}
+
+.bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-inset);
+  overflow: hidden;
+}
+
+.bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+
+.bar.good > span {
+  background: var(--good);
+}
+.bar.warn > span {
+  background: var(--warn);
+}
+.bar.bad > span {
+  background: var(--bad);
+}
+
+.empty {
+  padding: 36px 20px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+/* ----------------------------------------------------------- house art */
+
+.house-thumb {
+  display: block;
+  width: 76px;
+  height: 53px;
+  border-radius: 4px;
+  background: var(--bg-inset);
+}
+
+.house-hero {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 240px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-inset);
+}
+
+/* The facade is generated from simulation state, so a condition change
+   should read as a change rather than a swap. */
+@media (prefers-reduced-motion: no-preference) {
+  .house-hero,
+  .house-thumb {
+    transition: opacity 0.2s;
+  }
+}
+
+.chart-block + .chart-block {
+  margin-top: 18px;
+}
+
+.chart-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.chart-title h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.chart-title .now {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+
+.spark-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.spark-cell .name {
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 1px;
+}
+
+.spark-cell .val {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1240px) {
+  .grid-2,
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/*
+ * Narrow viewports.
+ *
+ * The shell was built for a 1440px desktop window. Played in a browser panel
+ * or on a phone the top bar -- seven stat blocks plus six controls in a single
+ * non-wrapping flex row -- would push the body sideways, so it wraps and the
+ * activity rail moves below the content instead of beside it.
+ */
+@media (max-width: 1000px) {
+  .topbar {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    padding: 10px 14px;
+  }
+
+  .topbar .spacer {
+    display: none;
+  }
+
+  .topbar .btn-row {
+    width: 100%;
+  }
+
+  .brand {
+    width: 100%;
+  }
+
+  .main {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    max-height: 34vh;
+  }
+
+  .content {
+    padding: 14px;
+  }
+
+  .tabs {
+    padding: 0 8px;
+    overflow-x: auto;
+  }
+
+  .modal-backdrop {
+    padding: 0;
+  }
+
+  .modal {
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .modal-body {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 620px) {
+  .topbar {
+    gap: 8px 14px;
+  }
+
+  .topbar .stat .value {
+    font-size: 13px;
+  }
+
+  /* The in-game date and season are flavour; the numbers are the game. */
+  .topbar .stat.secondary,
+  .brand .sub {
+    display: none;
+  }
+
+  .btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .btn-row {
+    gap: 6px;
+  }
+}
+
+/* -------------------------------------------------------------------- log */
+
+.log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.log-entry {
+  padding: 5px 0;
+  border-bottom: 1px solid #1d242e;
+  display: flex;
+  gap: 8px;
+}
+
+.log-entry .day {
+  font-family: var(--mono);
+  color: var(--text-faint);
+  flex-shrink: 0;
+  font-size: 11px;
+  padding-top: 1px;
+}
+
+/* ------------------------------------------------------------------ toast */
+
+.toast {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 100;
+  border: 1px solid;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  max-width: 620px;
+}
+
+.toast.ok {
+  background: #13291e;
+  border-color: #1d5638;
+  color: var(--good);
+}
+
+.toast.error {
+  background: #2a1418;
+  border-color: #5c2429;
+  color: var(--bad);
+}
+
+/* ------------------------------------------------------------------- menu */
+
+.menu {
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.menu-inner {
+  width: 100%;
+  max-width: 760px;
+}
+
+.menu h1 {
+  font-size: 30px;
+  margin: 0 0 4px;
+  letter-spacing: -0.02em;
+}
+
+.menu .tagline {
+  color: var(--text-dim);
+  margin: 0 0 28px;
+  font-size: 14px;
+}
+
+.level-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  color: var(--text);
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.level-card:hover {
+  border-color: var(--accent);
+  background: #1e2530;
+}
+
+.level-card h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.level-card p {
+  margin: 0 0 10px;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.level-meta {
+  display: flex;
+  gap: 18px;
+  font-size: 12px;
+  color: var(--text-faint);
+  font-family: var(--mono);
+}
+
+/* --------------------------------------------------------------- verdicts */
+
+.verdict {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid;
+  font-size: 13px;
+}
+
+.verdict.strong {
+  background: var(--good-dim);
+  border-color: #1d5638;
+}
+.verdict.fair {
+  background: #16283a;
+  border-color: #2b5580;
+}
+.verdict.thin {
+  background: var(--warn-dim);
+  border-color: #5c4a17;
+}
+.verdict.loss {
+  background: var(--bad-dim);
+  border-color: #5c2429;
+}
+
+.verdict strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* ------------------------------------------------------------ scope picker */
+
+.scope-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.scope-item:hover {
+  background: #1f2732;
+}
+
+.scope-item.on {
+  background: var(--accent-dim);
+  border-color: #2b5580;
+}
+
+.scope-item input {
+  width: auto;
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+
+.scope-item .name {
+  font-weight: 500;
+}
+
+.scope-item .meta {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+.scope-item .blurb {
+  font-size: 12px;
+  color: var(--text-faint);
+  line-height: 1.4;
+}
+
+.scope-group-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin: 12px 0 4px;
+  font-weight: 600;
+}
+
+.scope-group-label:first-child {
+  margin-top: 0;
+}
+
+/* ------------------------------------------------------------------ modal */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 9, 13, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 24px;
+}
+
+.modal {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  width: 100%;
+  max-width: 1080px;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+}
+
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-raised);
+  z-index: 2;
+}
+
+.modal-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.modal-head .sub {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.close-x {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 22px;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+.close-x:hover {
+  color: var(--text);
+}

@@ -1,0 +1,141 @@
+import { NEIGHBORHOODS_BY_ID, type GameState } from '../../engine';
+import { money, moneyShort, percent } from '../format';
+import { LineChart, SERIES, Sparkline } from '../graphics/Charts';
+
+/**
+ * The time-series panels.
+ *
+ * Market index and interest rate are separate charts on purpose. They are
+ * different measures on different scales, and putting them on one plot with
+ * two y-axes is the single most misleading thing a chart can do.
+ */
+export default function MarketCharts({ state }: { state: GameState }) {
+  const h = state.history;
+
+  if (h.length < 2) {
+    return (
+      <div className="panel">
+        <div className="panel-head">
+          <h2>Trends</h2>
+        </div>
+        <div className="empty">
+          Nothing plotted yet. History is sampled every few days — advance the clock.
+        </div>
+      </div>
+    );
+  }
+
+  const last = h[h.length - 1];
+  const first = h[0];
+  const hoods = Object.keys(last.neighborhoods);
+
+  return (
+    <>
+      <div className="panel">
+        <div className="panel-head">
+          <h2>Your position</h2>
+        </div>
+        <div className="panel-body">
+          <div className="chart-block">
+            <div className="chart-title">
+              <h3>Net worth</h3>
+              <span
+                className={`now ${last.netWorth >= first.netWorth ? 'good' : 'bad'}`}
+              >
+                {money(last.netWorth)}{' '}
+                <span className="faint">
+                  ({last.netWorth >= first.netWorth ? '+' : ''}
+                  {moneyShort(last.netWorth - first.netWorth)} since day {first.day})
+                </span>
+              </span>
+            </div>
+            <LineChart
+              data={h.map((p) => ({ x: p.day, y: p.netWorth }))}
+              format={(v) => moneyShort(v)}
+              baseline={first.netWorth}
+            />
+          </div>
+
+          <div className="chart-block">
+            <div className="chart-title">
+              <h3>Cash</h3>
+              <span className={`now ${last.cash < 0 ? 'bad' : ''}`}>{money(last.cash)}</span>
+            </div>
+            <LineChart
+              data={h.map((p) => ({ x: p.day, y: p.cash }))}
+              format={(v) => moneyShort(v)}
+              baseline={0}
+              height={120}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-head">
+          <h2>The market</h2>
+        </div>
+        <div className="panel-body">
+          <div className="chart-block">
+            <div className="chart-title">
+              <h3>Market index</h3>
+              <span className={`now ${last.marketIndex >= 1 ? 'good' : 'bad'}`}>
+                {last.marketIndex.toFixed(3)}
+              </span>
+            </div>
+            <LineChart
+              data={h.map((p) => ({ x: p.day, y: p.marketIndex }))}
+              format={(v) => v.toFixed(2)}
+              baseline={1}
+            />
+          </div>
+
+          <div className="chart-block">
+            <div className="chart-title">
+              <h3>Interest rate</h3>
+              <span className="now">{percent(last.interestRate, 2)}</span>
+            </div>
+            <LineChart
+              data={h.map((p) => ({ x: p.day, y: p.interestRate }))}
+              format={(v) => `${(v * 100).toFixed(1)}%`}
+              color={SERIES.primary}
+              height={120}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-head">
+          <h2>Neighborhoods</h2>
+          <span className="faint" style={{ fontSize: 12 }}>
+            index since day {first.day}
+          </span>
+        </div>
+        <div className="panel-body">
+          {/* Small multiples rather than six series on one plot: one hue each,
+              no legend needed, and no colour-vision problem to solve. */}
+          <div className="spark-grid">
+            {hoods.map((id) => {
+              const hood = NEIGHBORHOODS_BY_ID[id];
+              const series = h.map((p) => ({ x: p.day, y: p.neighborhoods[id] ?? 1 }));
+              const now = series[series.length - 1].y;
+              const start = series[0].y;
+              const delta = now - start;
+              return (
+                <div className="spark-cell" key={id}>
+                  <div className="name">{hood?.name ?? id}</div>
+                  <div className={`val ${delta >= 0 ? 'good' : 'bad'}`}>
+                    {now.toFixed(3)} <span className="faint">({delta >= 0 ? '+' : ''}
+                    {(delta * 100).toFixed(1)}%)</span>
+                  </div>
+                  <Sparkline data={series} color={SERIES.primary} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

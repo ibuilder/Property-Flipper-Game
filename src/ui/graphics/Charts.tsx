@@ -1,0 +1,423 @@
+import { useId, useMemo, useState } from 'react';
+
+/**
+ * Charts.
+ *
+ * Colour was chosen last and validated, not eyeballed. The series steps below
+ * were run through the data-viz validator against this app's actual chart
+ * surface (#0b0e13), not a generic dark grey:
+ *
+ *   series  #3987e5 / #199e70 / #e66767  -- lightness band, chroma, contrast
+ *                                           all pass; the green/red pair sits
+ *                                           in the 6-8 CVD band, which is legal
+ *                                           only with secondary encoding, so
+ *                                           the waterfall labels every bar and
+ *                                           encodes sign as direction too.
+ *   sequential ramp (map)  #184f95 -> #9ec5f4, monotone with >=0.06 L gaps.
+ *
+ * Deliberately one y-axis per chart. Market index and interest rate are
+ * different scales, so they are two charts rather than one dual-axis chart.
+ */
+
+export const SERIES = {
+  primary: '#3987e5',
+  positive: '#199e70',
+  negative: '#e66767',
+} as const;
+
+export const SEQUENTIAL = ['#184f95', '#256abf', '#3987e5', '#6da7ec', '#9ec5f4'] as const;
+
+const GRID = '#1e2732';
+const AXIS = '#33404f';
+const MUTED = '#8a95a3';
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+function niceTicks(min: number, max: number, count = 4): number[] {
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) return [min];
+  const span = max - min;
+  const raw = span / count;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw) ?? mag * 10;
+  const start = Math.ceil(min / step) * step;
+  const out: number[] = [];
+  for (let v = start; v <= max + step * 0.001; v += step) out.push(v);
+  return out;
+}
+
+/**
+ * A single-series line chart with a crosshair and tooltip.
+ *
+ * One series means no legend box is needed -- the title names it.
+ */
+export function LineChart({
+  data,
+  height = 150,
+  format,
+  formatX = (x) => `Day ${Math.round(x)}`,
+  color = SERIES.primary,
+  area = true,
+  baseline,
+}: {
+  data: Point[];
+  height?: number;
+  format: (y: number) => string;
+  formatX?: (x: number) => string;
+  color?: string;
+  area?: boolean;
+  /** Draw a reference line, e.g. the starting value. */
+  baseline?: number;
+}) {
+  const gid = useId().replace(/:/g, '');
+  const [hover, setHover] = useState<number | null>(null);
+
+  const W = 600;
+  const H = height;
+  const M = { top: 10, right: 12, bottom: 22, left: 54 };
+
+  const geom = useMemo(() => {
+    if (data.length === 0) return null;
+    const xs = data.map((d) => d.x);
+    const ys = data.map((d) => d.y);
+    let minY = Math.min(...ys);
+    let maxY = Math.max(...ys);
+    if (baseline !== undefined) {
+      minY = Math.min(minY, baseline);
+      maxY = Math.max(maxY, baseline);
+    }
+    // Never a zero-height band.
+    if (minY === maxY) {
+      minY -= Math.abs(minY) * 0.05 || 1;
+      maxY += Math.abs(maxY) * 0.05 || 1;
+    }
+    const pad = (maxY - minY) * 0.12;
+    minY -= pad;
+    maxY += pad;
+
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const sx = (x: number) =>
+      M.left + ((x - minX) / Math.max(1e-9, maxX - minX)) * (W - M.left - M.right);
+    const sy = (y: number) =>
+      M.top + (1 - (y - minY) / Math.max(1e-9, maxY - minY)) * (H - M.top - M.bottom);
+
+    return { sx, sy, minY, maxY, minX, maxX };
+  }, [data, height, baseline]);
+
+  if (!geom || data.length < 2) {
+    return <div className="empty">Not enough history yet — advance a few days.</div>;
+  }
+
+  const { sx, sy, minY, maxY } = geom;
+  const line = data.map((d, i) => `${i === 0 ? 'M' : 'L'}${sx(d.x)} ${sy(d.y)}`).join(' ');
+  const fill = `${line} L${sx(data[data.length - 1].x)} ${H - M.bottom} L${sx(data[0].x)} ${H - M.bottom} Z`;
+  const ticks = niceTicks(minY, maxY);
+  const active = hover === null ? null : data[hover];
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      style={{ width: '100%', height: 'auto', display: 'block' }}
+      onMouseLeave={() => setHover(null)}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const px = ((e.clientX - rect.left) / rect.width) * W;
+        // Nearest point, so the hit target is far bigger than the mark.
+        let best = 0;
+        let bestD = Infinity;
+        data.forEach((d, i) => {
+          const dist = Math.abs(sx(d.x) - px);
+          if (dist < bestD) {
+            bestD = dist;
+            best = i;
+          }
+        });
+        setHover(best);
+      }}
+      role="img"
+      aria-label={`Line chart, ${data.length} points, from ${format(data[0].y)} to ${format(
+        data[data.length - 1].y,
+      )}`}
+    >
+      <defs>
+        <linearGradient id={`g${gid}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+
+      {ticks.map((t) => (
+        <g key={t}>
+          <line x1={M.left} x2={W - M.right} y1={sy(t)} y2={sy(t)} stroke={GRID} strokeWidth="1" />
+          <text
+            x={M.left - 8}
+            y={sy(t) + 3.5}
+            textAnchor="end"
+            fill={MUTED}
+            fontSize="10"
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          >
+            {format(t)}
+          </text>
+        </g>
+      ))}
+
+      {baseline !== undefined && (
+        <line
+          x1={M.left}
+          x2={W - M.right}
+          y1={sy(baseline)}
+          y2={sy(baseline)}
+          stroke={AXIS}
+          strokeWidth="1"
+          strokeDasharray="3 3"
+        />
+      )}
+
+      {area && <path d={fill} fill={`url(#g${gid})`} />}
+      <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+
+      <line
+        x1={M.left}
+        x2={W - M.right}
+        y1={H - M.bottom}
+        y2={H - M.bottom}
+        stroke={AXIS}
+        strokeWidth="1"
+      />
+      <text x={M.left} y={H - 6} fill={MUTED} fontSize="10">
+        {formatX(data[0].x)}
+      </text>
+      <text x={W - M.right} y={H - 6} textAnchor="end" fill={MUTED} fontSize="10">
+        {formatX(data[data.length - 1].x)}
+      </text>
+
+      {/* Emphasised endpoint */}
+      <circle
+        cx={sx(data[data.length - 1].x)}
+        cy={sy(data[data.length - 1].y)}
+        r="3.5"
+        fill={color}
+        stroke="#0b0e13"
+        strokeWidth="2"
+      />
+
+      {active && (
+        <g pointerEvents="none">
+          <line
+            x1={sx(active.x)}
+            x2={sx(active.x)}
+            y1={M.top}
+            y2={H - M.bottom}
+            stroke={AXIS}
+            strokeWidth="1"
+          />
+          <circle cx={sx(active.x)} cy={sy(active.y)} r="4" fill={color} stroke="#0b0e13" strokeWidth="2" />
+          <g
+            transform={`translate(${Math.min(Math.max(sx(active.x) - 58, M.left), W - M.right - 116)} ${M.top})`}
+          >
+            <rect width="116" height="34" rx="4" fill="#161b23" stroke="#33404f" />
+            <text x="8" y="14" fill="#8a95a3" fontSize="10">
+              {formatX(active.x)}
+            </text>
+            <text
+              x="8"
+              y="27"
+              fill="#e4e9f0"
+              fontSize="12"
+              style={{ fontVariantNumeric: 'tabular-nums' }}
+            >
+              {format(active.y)}
+            </text>
+          </g>
+        </g>
+      )}
+    </svg>
+  );
+}
+
+/** A compact single-series line for small multiples. No axes, no tooltip. */
+export function Sparkline({
+  data,
+  color = SERIES.primary,
+  height = 34,
+}: {
+  data: Point[];
+  color?: string;
+  height?: number;
+}) {
+  if (data.length < 2) return <div style={{ height }} />;
+  const W = 120;
+  const H = height;
+  const ys = data.map((d) => d.y);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const span = maxY - minY || 1;
+  const xs = data.map((d) => d.x);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+
+  const sx = (x: number) => ((x - minX) / Math.max(1e-9, maxX - minX)) * W;
+  const sy = (y: number) => 3 + (1 - (y - minY) / span) * (H - 6);
+  const line = data.map((d, i) => `${i === 0 ? 'M' : 'L'}${sx(d.x)} ${sy(d.y)}`).join(' ');
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height, display: 'block' }} aria-hidden="true">
+      <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+      <circle cx={sx(data[data.length - 1].x)} cy={sy(data[data.length - 1].y)} r="2.5" fill={color} />
+    </svg>
+  );
+}
+
+export interface WaterfallStep {
+  label: string;
+  /** Signed: positive is money in, negative is money out. */
+  value: number;
+}
+
+/**
+ * Deal P&L waterfall.
+ *
+ * Sign is encoded three ways -- colour, bar direction, and a signed direct
+ * label -- because the green/red pair is in the CVD warn band and colour alone
+ * would not be enough.
+ */
+export function Waterfall({
+  steps,
+  format,
+  height = 230,
+}: {
+  steps: WaterfallStep[];
+  format: (n: number) => string;
+  height?: number;
+}) {
+  const W = 640;
+  const H = height;
+  const M = { top: 14, right: 12, bottom: 58, left: 62 };
+
+  const geom = useMemo(() => {
+    let running = 0;
+    const bars = steps.map((s) => {
+      const from = running;
+      running += s.value;
+      return { ...s, from, to: running };
+    });
+    const values = bars.flatMap((b) => [b.from, b.to]).concat(0);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const pad = (max - min) * 0.1 || 1;
+    return { bars, min: min - pad, max: max + pad, total: running };
+  }, [steps]);
+
+  const { bars, min, max, total } = geom;
+  const sy = (v: number) => M.top + (1 - (v - min) / Math.max(1e-9, max - min)) * (H - M.top - M.bottom);
+  const bandW = (W - M.left - M.right) / (bars.length + 1);
+  const barW = Math.min(46, bandW * 0.62);
+  const ticks = niceTicks(min, max);
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      style={{ width: '100%', height: 'auto', display: 'block' }}
+      role="img"
+      aria-label={`Profit and loss waterfall ending at ${format(total)}`}
+    >
+      {ticks.map((t) => (
+        <g key={t}>
+          <line x1={M.left} x2={W - M.right} y1={sy(t)} y2={sy(t)} stroke={GRID} strokeWidth="1" />
+          <text
+            x={M.left - 8}
+            y={sy(t) + 3.5}
+            textAnchor="end"
+            fill={MUTED}
+            fontSize="10"
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          >
+            {format(t)}
+          </text>
+        </g>
+      ))}
+      <line x1={M.left} x2={W - M.right} y1={sy(0)} y2={sy(0)} stroke={AXIS} strokeWidth="1" />
+
+      {bars.map((b, i) => {
+        const x = M.left + bandW * i + (bandW - barW) / 2;
+        const top = sy(Math.max(b.from, b.to));
+        // A 2px gap keeps adjacent fills from touching.
+        const h = Math.max(2, Math.abs(sy(b.from) - sy(b.to)) - 2);
+        const positive = b.value >= 0;
+        return (
+          <g key={i}>
+            <rect
+              x={x}
+              y={top}
+              width={barW}
+              height={h}
+              rx="3"
+              fill={positive ? SERIES.positive : SERIES.negative}
+            />
+            <text
+              x={x + barW / 2}
+              y={top - 5}
+              textAnchor="middle"
+              fill={positive ? '#4bd39b' : '#f2848a'}
+              fontSize="10"
+              style={{ fontVariantNumeric: 'tabular-nums' }}
+            >
+              {positive ? '+' : '−'}
+              {format(Math.abs(b.value))}
+            </text>
+            <text
+              x={x + barW / 2}
+              y={H - M.bottom + 14}
+              textAnchor="middle"
+              fill={MUTED}
+              fontSize="9.5"
+            >
+              {b.label.length > 12 ? `${b.label.slice(0, 11)}…` : b.label}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* Final net bar, anchored to the baseline. */}
+      {(() => {
+        const x = M.left + bandW * bars.length + (bandW - barW) / 2;
+        const top = Math.min(sy(0), sy(total));
+        const h = Math.max(2, Math.abs(sy(0) - sy(total)));
+        const positive = total >= 0;
+        return (
+          <g>
+            <rect
+              x={x}
+              y={top}
+              width={barW}
+              height={h}
+              rx="3"
+              fill={positive ? SERIES.positive : SERIES.negative}
+              opacity="0.55"
+              stroke={positive ? SERIES.positive : SERIES.negative}
+              strokeWidth="2"
+            />
+            <text
+              x={x + barW / 2}
+              y={top - 5}
+              textAnchor="middle"
+              fill={positive ? '#4bd39b' : '#f2848a'}
+              fontSize="11"
+              fontWeight="600"
+              style={{ fontVariantNumeric: 'tabular-nums' }}
+            >
+              {format(total)}
+            </text>
+            <text x={x + barW / 2} y={H - M.bottom + 14} textAnchor="middle" fill="#e4e9f0" fontSize="9.5">
+              Net
+            </text>
+          </g>
+        );
+      })()}
+    </svg>
+  );
+}
