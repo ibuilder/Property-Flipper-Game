@@ -10,9 +10,16 @@ name: Publish to itch.io
 #
 # Without the API key the workflow skips rather than fails, so it is harmless
 # to merge before the account is wired up.
+#
+# Triggered by the release being *published*, not by the tag being pushed.
+# Both workflows fire on a tag, so on the first real release this one raced
+# ahead and went looking for artifacts the release job had not finished
+# building — it pushed the browser build and reported "Pushed 0 desktop
+# artifact(s)" without failing, which is exactly the kind of quiet nothing that
+# looks like success.
 on:
-  push:
-    tags: ['v*']
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       channels:
@@ -48,6 +55,20 @@ jobs:
           node-version: 22
           cache: npm
 
+      # One place decides what version this is, whether the run came from a
+      # published release or from a manual dispatch.
+      - name: Resolve the version
+        id: version
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          V="${{ github.event.release.tag_name }}"
+          [ -z "$V" ] && V=$(gh release view --json tagName --jq .tagName 2>/dev/null || true)
+          [ -z "$V" ] && V="v$(node -p "require('./package.json').version")"
+          echo "tag=$V" >> "$GITHUB_OUTPUT"
+          echo "Publishing as $V"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install and build
         if: steps.check.outputs.ready == 'true'
         run: |
@@ -65,13 +86,11 @@ jobs:
           echo "Packaged $(du -h itch-web/index.html | cut -f1) browser build"
 
       - name: Fetch the desktop artifacts from this release
-        if: steps.check.outputs.ready == 'true' && github.event_name == 'push'
-        continue-on-error: true
+        if: steps.check.outputs.ready == 'true' && github.event.inputs.channels != 'web-only'
         run: |
           mkdir -p desktop
-          gh release download "${{ github.ref_name }}" --dir desktop || \
-            echo "No release artifacts yet — the release workflow may still be running."
-          ls -la desktop || true
+          gh release download "${{ steps.version.outputs.tag }}" --dir desktop
+          ls -la desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -90,7 +109,7 @@ jobs:
         run: |
           ./butler push itch-web \
             "${{ vars.ITCH_USER }}/${{ vars.ITCH_GAME }}:html5" \
-            --userversion "${{ github.ref_name }}"
+            --userversion "${{ steps.version.outputs.tag }}"
 
       - name: Push the desktop builds
         if: steps.check.outputs.ready == 'true' && github.event.inputs.channels != 'web-only'
@@ -101,17 +120,24 @@ jobs:
           pushed=0
           for f in desktop/*Setup*.exe desktop/*Portable*.exe; do
             ./butler push "$f" "${{ vars.ITCH_USER }}/${{ vars.ITCH_GAME }}:windows" \
-              --userversion "${{ github.ref_name }}" && pushed=$((pushed+1))
+              --userversion "${{ steps.version.outputs.tag }}" && pushed=$((pushed+1))
           done
           for f in desktop/*.dmg; do
             ./butler push "$f" "${{ vars.ITCH_USER }}/${{ vars.ITCH_GAME }}:mac" \
-              --userversion "${{ github.ref_name }}" && pushed=$((pushed+1))
+              --userversion "${{ steps.version.outputs.tag }}" && pushed=$((pushed+1))
           done
           for f in desktop/*.AppImage; do
             ./butler push "$f" "${{ vars.ITCH_USER }}/${{ vars.ITCH_GAME }}:linux" \
-              --userversion "${{ github.ref_name }}" && pushed=$((pushed+1))
+              --userversion "${{ steps.version.outputs.tag }}" && pushed=$((pushed+1))
           done
           echo "Pushed $pushed desktop artifact(s)."
+          # Zero is a failure, not a result. The whole point of this job is
+          # that the downloads on itch match the release, and silently pushing
+          # nothing leaves them stale with a green tick next to it.
+          if [ "$pushed" -eq 0 ]; then
+            echo "::error::No desktop artifacts were pushed — expected .exe, .dmg and .AppImage from the release."
+            exit 1
+          fi
 
       - name: Summary
         if: steps.check.outputs.ready == 'true'
