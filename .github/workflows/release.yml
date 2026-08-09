@@ -59,22 +59,34 @@ jobs:
       - name: Smoke test the app
         run: npm run smoke
 
+      # Signing credentials are exported only when they exist, and only for the
+      # platform they belong to. Setting them unconditionally in the step's
+      # `env:` gives every platform an *empty* CSC_LINK, and electron-builder
+      # treats that as a path rather than as absent -- it resolved to the
+      # repository root and failed the macOS build with "not a file". An
+      # absent variable and an empty one are very different things here.
+      - name: Configure signing
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ] && [ -n "${{ secrets.WINDOWS_CERT_BASE64 }}" ]; then
+            echo "CSC_LINK=${{ secrets.WINDOWS_CERT_BASE64 }}" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=${{ secrets.WINDOWS_CERT_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "Windows signing configured."
+          elif [ "${{ matrix.os }}" = "macos-latest" ] && [ -n "${{ secrets.APPLE_TEAM_ID }}" ]; then
+            echo "CSC_LINK=${{ secrets.MAC_CERT_BASE64 }}" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=${{ secrets.MAC_CERT_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "APPLE_ID=${{ secrets.APPLE_ID }}" >> "$GITHUB_ENV"
+            echo "APPLE_APP_SPECIFIC_PASSWORD=${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> "$GITHUB_ENV"
+            echo "macOS signing and notarisation configured."
+          else
+            # No identity to find, so stop electron-builder looking for one.
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+            echo "No signing credentials for ${{ matrix.os }} — building unsigned."
+          fi
+
       - name: Package
         run: npm run dist
-        env:
-          # Windows signing. Set CSC_LINK (base64 of a .pfx) and
-          # CSC_KEY_PASSWORD in repository secrets to produce signed builds;
-          # without them electron-builder produces an unsigned one.
-          CSC_LINK: ${{ secrets.WINDOWS_CERT_BASE64 }}
-          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
-
-          # macOS signing and notarisation. All four are needed together, and
-          # CSC_IDENTITY_AUTO_DISCOVERY is turned off when they are absent so
-          # an unsigned build succeeds instead of failing to find an identity.
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.APPLE_TEAM_ID != '' }}
 
       # If signing was configured, prove it actually happened. electron-builder
       # does not fail the build when signtool errors — a timestamp server that

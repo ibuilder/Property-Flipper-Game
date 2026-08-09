@@ -104,11 +104,18 @@ software distributed outside the store.
 
 | Secret | Value |
 | --- | --- |
-| `CSC_LINK` | base64 of the `.p12` |
-| `CSC_KEY_PASSWORD` | the `.p12` password |
+| `MAC_CERT_BASE64` | base64 of the `.p12` |
+| `MAC_CERT_PASSWORD` | the `.p12` password |
 | `APPLE_ID` | the Apple ID email |
 | `APPLE_APP_SPECIFIC_PASSWORD` | the app-specific password |
 | `APPLE_TEAM_ID` | the ten-character Team ID |
+
+The macOS certificate has its own secret names rather than sharing `CSC_LINK`
+with Windows. Sharing them meant every platform received an empty `CSC_LINK`
+when only one certificate was configured, and electron-builder reads an empty
+value as a path rather than as absent — it resolved to the repository root and
+failed the macOS build outright. The workflow now exports credentials only for
+the platform they belong to, and only when they exist.
 
 Setting `APPLE_TEAM_ID` is what switches notarisation on. The hardened runtime
 and `build/entitlements.mac.plist` are already configured, and both are

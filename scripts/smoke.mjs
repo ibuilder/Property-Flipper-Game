@@ -42,8 +42,14 @@ const useXvfb =
   process.platform === 'linux' &&
   spawnSync('which', ['xvfb-run'], { encoding: 'utf8' }).status === 0;
 
+// Chromium's setuid sandbox does not work on CI runners and Electron aborts
+// with exit 133 (SIGTRAP) rather than anything legible. Disabling it is the
+// standard workaround for headless CI and costs nothing here: this process
+// loads one local file and exits.
+const sandboxArgs = process.platform === 'linux' ? ['--no-sandbox', '--disable-gpu'] : [];
+
 const command = useXvfb ? 'xvfb-run' : electron;
-const args = useXvfb ? ['-a', electron, '.'] : ['.'];
+const args = useXvfb ? ['-a', electron, '.', ...sandboxArgs] : ['.', ...sandboxArgs];
 
 console.log(`smoke: launching ${command} ${args.join(' ')} on ${process.platform}`);
 
