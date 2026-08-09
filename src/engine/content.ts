@@ -18,6 +18,7 @@ export const NEIGHBORHOODS: Neighborhood[] = [
     name: 'Riverside Flats',
     blurb: 'Entry-level stock near the old rail yard. Cheap to buy, slow to appreciate.',
     pricePerSqft: 95,
+    rentPerSqft: 0.95,
     appreciation: 0.02,
     volatility: 0.8,
     taxRate: 0.011,
@@ -29,6 +30,7 @@ export const NEIGHBORHOODS: Neighborhood[] = [
     name: 'Maple Heights',
     blurb: 'Postwar suburbia with good schools. The bread-and-butter flip market.',
     pricePerSqft: 165,
+    rentPerSqft: 1.2,
     appreciation: 0.03,
     volatility: 1.0,
     taxRate: 0.013,
@@ -40,6 +42,7 @@ export const NEIGHBORHOODS: Neighborhood[] = [
     name: 'Old Town',
     blurb: 'Historic district. Charming, well located, and full of surprises behind the plaster.',
     pricePerSqft: 190,
+    rentPerSqft: 1.45,
     appreciation: 0.035,
     volatility: 1.3,
     taxRate: 0.014,
@@ -51,6 +54,7 @@ export const NEIGHBORHOODS: Neighborhood[] = [
     name: 'The Grid',
     blurb: 'Downtown core. High price per foot, high carrying cost, impatient buyers.',
     pricePerSqft: 240,
+    rentPerSqft: 1.95,
     appreciation: 0.045,
     volatility: 1.6,
     taxRate: 0.015,
@@ -62,6 +66,7 @@ export const NEIGHBORHOODS: Neighborhood[] = [
     name: 'The Millworks',
     blurb: 'Transitional industrial fringe. Gentrifying fast, but the swings are brutal.',
     pricePerSqft: 78,
+    rentPerSqft: 0.8,
     appreciation: 0.06,
     volatility: 2.2,
     taxRate: 0.009,
@@ -73,6 +78,7 @@ export const NEIGHBORHOODS: Neighborhood[] = [
     name: 'Harbor Point',
     blurb: 'Waterfront luxury. Enormous spreads, enormous holding costs, thin buyer pool.',
     pricePerSqft: 330,
+    rentPerSqft: 2.3,
     appreciation: 0.05,
     volatility: 2.0,
     taxRate: 0.017,
@@ -714,4 +720,42 @@ export const ECON = {
   DISTRESS_LIMIT_DAYS: 30,
   /** The industry heuristic the Deal Analyzer teaches. */
   RULE_OF_THUMB: 0.7,
+
+  /** Holding for rent rather than selling. */
+  RENTAL: {
+    /** Fraction of collected rent paid to a manager. */
+    management: 0.08,
+    /** Maintenance and capital reserve, as a fraction of rent. */
+    maintenance: 0.08,
+    /** Long-run vacancy allowance a lender will underwrite to. */
+    vacancyRate: 0.06,
+    /** Lease length in days. */
+    leaseDays: 365,
+    /** Chance a tenant renews rather than leaving at lease end. */
+    renewalChance: 0.62,
+    /** Cost of turning a unit over between tenants. */
+    turnoverCost: 1400,
+    /**
+     * Condition below which the place cannot lawfully be let at all. Sits at
+     * the bottom of "Dated": rough and distressed houses have to be brought up
+     * first, which is what stops renting a wreck as-is from beating flipping.
+     */
+    minCondition: 0.45,
+  },
+
+  /** Cash-out refinance into long-term debt. */
+  REFI: {
+    /** Lender will not exceed this share of appraised value. */
+    maxLtv: 0.75,
+    /** Nor will it go below this debt service coverage ratio. */
+    minDscr: 1.2,
+    /** Spread over the prevailing rate for a term loan -- far below hard money. */
+    spread: 0.015,
+    /** Amortisation period. */
+    termYears: 30,
+    /** Closing costs as a fraction of the new loan. */
+    closingRate: 0.02,
+    /** Seasoning: how long you must own it before a lender will refinance. */
+    seasoningDays: 90,
+  },
 } as const;

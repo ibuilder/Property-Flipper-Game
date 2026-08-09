@@ -117,6 +117,10 @@ function PortfolioRow({
     ) : (
       <span className="pill info">Listed &middot; {own.saleListing.daysOnMarket}d</span>
     );
+  } else if (own.rental?.tenancy) {
+    status = <span className="pill good">Let &middot; {money(own.rental.tenancy.rent)}/mo</span>;
+  } else if (own.rental) {
+    status = <span className="pill warn">Vacant &middot; {own.rental.vacantDays}d</span>;
   } else {
     status = <span className={`pill ${cond.tone}`}>{cond.text}</span>;
   }

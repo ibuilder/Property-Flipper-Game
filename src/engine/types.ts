@@ -19,6 +19,14 @@ export interface Neighborhood {
   blurb: string;
   /** Baseline value per square foot in a neutral market. */
   pricePerSqft: number;
+  /**
+   * Monthly market rent per square foot, at average condition.
+   *
+   * Deliberately not a fixed multiple of pricePerSqft: cheap areas run higher
+   * gross yields than expensive ones, which is exactly why a rental strategy
+   * points somewhere different from a flipping strategy.
+   */
+  rentPerSqft: number;
   /** Annualised organic appreciation, e.g. 0.03 for 3%/yr. */
   appreciation: number;
   /** Relative price volatility. 1.0 is average. */
@@ -380,6 +388,10 @@ export interface Ownership {
   projection: DealProjection | null;
   /** How it looked the day it was bought, for the before/after. */
   boughtAs: HouseSubject | null;
+  /** Set once the property is held for rent rather than sale. */
+  rental: Rental | null;
+  /** Cash already pulled back out by refinancing. */
+  cashedOut: Money;
 }
 
 export interface SaleListing {
@@ -413,10 +425,38 @@ export interface BuyerOffer {
   appraisedValue: Money;
 }
 
+export interface Tenancy {
+  rent: Money;
+  startedDay: number;
+  /** They may renew at the end, or they may not. */
+  leaseEndsDay: number;
+}
+
+export interface Rental {
+  /** What the unit is advertised at. */
+  askingRent: Money;
+  tenancy: Tenancy | null;
+  /** Days empty in the current spell. Vacancy is the real cost of over-asking. */
+  vacantDays: number;
+  rentCollected: Money;
+  opexPaid: Money;
+  turnovers: number;
+}
+
+/**
+ * Short-term acquisition debt and long-term rental debt behave differently
+ * enough that the type distinguishes them: hard money is interest-only with a
+ * balloon that can take the house, a term loan amortises and simply gets paid.
+ */
+export type LoanKind = 'hardMoney' | 'term';
+
 export interface Loan {
   id: string;
   propertyId: PropertyId;
+  kind: LoanKind;
   principal: Money;
+  /** Amortising payment for a term loan; zero for interest-only hard money. */
+  monthlyPayment: Money;
   /** Origination fee, already deducted at funding. */
   pointsPaid: Money;
   annualRate: number;
@@ -458,7 +498,9 @@ export type LedgerCategory =
   | 'commission'
   | 'concession'
   | 'training'
-  | 'loan';
+  | 'loan'
+  | 'rent'
+  | 'rentalOpex';
 
 export interface LedgerEntry {
   day: number;

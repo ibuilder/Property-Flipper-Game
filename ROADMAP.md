@@ -76,8 +76,8 @@ The Pygame README listed the author's own future ideas. Status after v2:
 | More staff types (specialists, agents) | Phase 3 |
 | Player XP and levelling alongside cash-bought skills | Phase 3 |
 | Auctions and bidding | Phase 4 |
-| AI competitors | Phase 4 |
-| Tenant management | Phase 4 (BRRRR) |
+| AI competitors | **Done** — rival buyers on every listing |
+| Tenant management | **Done** — Phase 4 (BRRRR) |
 
 The roadmap below is largely a sequenced version of that list, with market research deciding the
 order.
@@ -146,8 +146,13 @@ Make the underwriting itself richer, since that is the differentiator.
   deliberate, and an offer that only just clears the seller's reserve can be sniped — so a good
   deal no longer waits indefinitely, which was the main pressure the game lacked.
 - **Auctions** — trustee sales, sight-unseen, cash-only, with the risk profile that implies.
-- **BRRRR** — refinance and hold for rent instead of selling. Tenants, vacancy, maintenance.
-  Converts the game from a series of transactions into a portfolio business.
+- ~~**BRRRR**~~ **Done.** Rent rather than sell: tenants who sign at a rate that depends on how far
+  your asking rent sits above market, leases that end and sometimes renew, vacancy and turnover
+  cost, and an operating expense stack that makes NOI mean what it means to a lender. On top of
+  that a cash-out refinance sized by the *lesser* of a 75% LTV cap and a 1.20× DSCR test, so a
+  house bought at retail will not refinance however much equity it has — which is precisely why
+  BRRRR requires buying below value. Habitability gates letting, so the rehab genuinely comes
+  first, and the resulting loan amortises daily rather than ballooning.
 - **Gentrification and decline** as multi-year neighborhood arcs rather than events.
 - **Event chains** — a rate spike leading into a correction leading into distressed inventory.
 
@@ -183,17 +188,21 @@ menu and permits-as-schedule-risk. Phase 3's reputation and Phase 4's rival buye
 
 **What is left, in the order I would do it:**
 
-1. **BRRRR and tenants** (Phase 4) — the largest single remaining piece, and the one that changes
-   what the game is: refinance and hold rather than sell, which turns a series of transactions into
-   a portfolio business.
+1. **UI and UX** — confirmation on irreversible spends, sortable and filterable listings, feedback
+   on the actions that currently happen silently, first-run onboarding, and a keyboard and table
+   fallback for the charts. Cheap, and it is what stands between the simulation and someone
+   actually enjoying using it.
 2. **Auctions** (Phase 4) — trustee sales, sight-unseen and cash-only. A new buying flow rather
    than a variation on the existing one.
-3. **Financing menu** (Phase 2) — private lenders, cash-out refi, seller financing, partner splits.
-   Natural to build alongside BRRRR, since refinancing needs it.
+3. **Financing menu** (Phase 2) — private lenders, seller financing, partner splits. The cash-out
+   refinance landed with BRRRR; the rest of the menu did not.
 4. **Crew, XP, difficulty settings** (Phase 3) — reputation already covers some of this ground.
 5. **Gentrification arcs and event chains** (Phase 4).
 6. **Phase 6 distribution** — code signing, verifying the macOS and Linux builds on real hardware,
    itch.io, and playtesting with people rather than the bot.
+
+**BRRRR is done** — it was the largest remaining piece and it is what turns the game from a series
+of transactions into a portfolio business.
 
 Phase 5 is pulled ahead of 3 and 4 deliberately: post-mortems and the scenario editor are cheap,
 they compound the existing differentiator, and they serve the professional audience without needing

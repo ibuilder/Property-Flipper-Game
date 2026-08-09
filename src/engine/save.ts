@@ -107,6 +107,20 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     }
     return s;
   },
+  // v7 predates renting and refinancing. Existing loans are all hard money.
+  7: (s: any) => {
+    for (const prop of s.portfolio ?? []) {
+      if (prop.ownership) {
+        prop.ownership.rental = prop.ownership.rental ?? null;
+        prop.ownership.cashedOut = prop.ownership.cashedOut ?? 0;
+      }
+    }
+    for (const loan of s.loans ?? []) {
+      loan.kind = loan.kind ?? 'hardMoney';
+      loan.monthlyPayment = loan.monthlyPayment ?? 0;
+    }
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {

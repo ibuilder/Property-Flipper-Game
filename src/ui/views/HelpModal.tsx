@@ -169,6 +169,37 @@ export default function HelpModal({ onClose }: { onClose: () => void }) {
 
       <div className="panel">
         <div className="panel-head">
+          <h2>The other exit: keep it</h2>
+        </div>
+        <div className="panel-body">
+          <p style={{ marginTop: 0 }}>
+            Selling converts equity to cash once and hands a slice of it to an agent. The
+            alternative is <strong>BRRRR</strong> &mdash; buy, rehab, rent, refinance, repeat. You
+            still buy below value and still do the work; instead of selling you put a tenant in,
+            then borrow against the finished value and use that money to buy the next one. The
+            house keeps paying you and you keep the upside.
+          </p>
+          <p>
+            The catch is the second R. A lender will not simply hand you {percent(ECON.REFI.maxLtv, 0)}{' '}
+            of the value &mdash; it also has to pass a <strong>debt service coverage</strong> test,
+            meaning the rent left after expenses must exceed the new payment by{' '}
+            {ECON.REFI.minDscr.toFixed(2)}&times;. On a house bought at retail the income test
+            binds long before the value test does, and the loan will not even clear your hard
+            money. That is not the game being awkward: it is the reason BRRRR insists you buy
+            below value in the first place. The refinance panel shows you both caps and tells you
+            which one is binding.
+          </p>
+          <p style={{ marginBottom: 0 }}>
+            Two rules follow from renting rather than selling. You cannot let a house that is not
+            habitable, so the rehab really does come first. And you cannot renovate or sell around
+            a sitting tenant &mdash; once someone lives there, your options narrow until the lease
+            ends.
+          </p>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-head">
           <h2>Glossary</h2>
         </div>
         <div className="panel-body">
@@ -203,6 +234,26 @@ export default function HelpModal({ onClose }: { onClose: () => void }) {
           <Term
             term="Hard money"
             def={`Short-term asset-backed lending at ${percent(ECON.MAX_LTV, 0)} of the purchase price. It frees cash for the rehab, but if you have not sold by maturity the lender takes the house.`}
+          />
+          <Term
+            term="NOI"
+            def="Net Operating Income — annual rent less vacancy, management, maintenance, taxes and insurance. Deliberately before loan payments, which is what makes it a fact about the building rather than about how you financed it."
+          />
+          <Term
+            term="Cap rate"
+            def="NOI divided by value. The yield the building throws off with no debt at all, and the standard way to compare one rental against another."
+          />
+          <Term
+            term="Cash-on-cash"
+            def="Annual cash flow after the loan payment, divided by the cash you actually left in the deal. Leverage flatters this number right up until it does not."
+          />
+          <Term
+            term="DSCR"
+            def={`Debt Service Coverage Ratio — NOI divided by the annual loan payment. Below ${ECON.REFI.minDscr.toFixed(2)}× a lender will not write the loan, however much equity you have.`}
+          />
+          <Term
+            term="Seasoning"
+            def={`How long you must have owned a property before a lender will refinance it against its new value rather than what you paid. ${ECON.REFI.seasoningDays} days here.`}
           />
         </div>
       </div>

@@ -16,6 +16,7 @@ import {
   maxLoanAmount,
   netWorth,
   originateLoan,
+  quoteRefinance,
   sellingCosts,
   skillCost,
   totalDebt,
@@ -35,6 +36,14 @@ import {
   initialReputation,
   pocketListingChance,
 } from './reputation';
+import {
+  annualOpex,
+  createRental,
+  isHabitable,
+  marketRent,
+  noi,
+  tenantInterest,
+} from './rental';
 import { Rng } from './rng';
 import {
   changeOrderChance,
@@ -54,6 +63,7 @@ import type {
   PostMortem,
   VarianceLine,
   LedgerCategory,
+  Loan,
   LogTone,
   Money,
   Property,
@@ -72,7 +82,7 @@ import {
 import { analyzeDeal } from './analyzer';
 import { buildScenarioProperty, type ScenarioDef } from './scenarios';
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 /** How often the charts' time series is sampled, in days. */
 export const HISTORY_INTERVAL_DAYS = 5;
@@ -379,6 +389,8 @@ export function makeOffer(
     renovationSpend: 0,
     projection: captureProjection(state, prop, amount, useFinancing),
     boughtAs: snapshot(prop),
+    rental: null,
+    cashedOut: 0,
   };
 
   applyCash(state, -amount, 'acquisition', `Purchased ${prop.address}`, prop.id);
@@ -490,6 +502,9 @@ export function startRenovation(
   const prop = findOwned(state, propertyId);
   if (!prop?.ownership) return { ok: false, message: 'You do not own that property.' };
   if (prop.ownership.renovation) return { ok: false, message: 'Work is already underway here.' };
+  if (prop.ownership.rental?.tenancy) {
+    return { ok: false, message: 'Someone lives there. Wait for the lease to end.' };
+  }
   if (prop.ownership.saleListing) return { ok: false, message: 'Delist it before starting work.' };
   if (scopeIds.length === 0) return { ok: false, message: 'Add at least one line item.' };
 
@@ -623,6 +638,12 @@ export function listForSale(
   if (!prop?.ownership) return { ok: false, message: 'You do not own that property.' };
   if (prop.ownership.renovation) return { ok: false, message: 'Finish the work before listing.' };
   if (prop.ownership.saleListing) return { ok: false, message: 'Already listed.' };
+  if (prop.ownership.rental?.tenancy) {
+    return {
+      ok: false,
+      message: 'A tenant is in place. You cannot sell it out from under them mid-lease.',
+    };
+  }
   if (listPrice <= 0) return { ok: false, message: 'List price must be positive.' };
 
   prop.ownership.saleListing = {
@@ -761,6 +782,7 @@ export function acceptOffer(
   };
   state.closedDeals.push(deal);
   state.portfolio = state.portfolio.filter((p) => p.id !== prop.id);
+  own.rental = null;
 
   // Outcomes move standing. Closing cleanly builds it with agents; a
   // profitable exit reassures lenders. Both are modest -- reputation should
@@ -879,6 +901,211 @@ function buildPostMortem(
 function pct(delta: Money, base: Money): string {
   if (base === 0) return '0%';
   return `${Math.abs((delta / base) * 100).toFixed(1)}%`;
+}
+
+// ---------------------------------------------------------------------------
+// Hold it instead: rent, then refinance
+// ---------------------------------------------------------------------------
+
+/** Advertise the property to let rather than to sell. */
+export function listForRent(
+  state: GameState,
+  propertyId: PropertyId,
+  askingRent: Money,
+): ActionResult {
+  const prop = findOwned(state, propertyId);
+  const own = prop?.ownership;
+  if (!prop || !own) return { ok: false, message: 'You do not own that property.' };
+  if (own.renovation) return { ok: false, message: 'Finish the work before letting it.' };
+  if (own.saleListing) return { ok: false, message: 'It is listed for sale. Withdraw it first.' };
+  if (own.rental) return { ok: false, message: 'It is already a rental.' };
+  if (askingRent <= 0) return { ok: false, message: 'Rent must be positive.' };
+  if (!isHabitable(prop)) {
+    return {
+      ok: false,
+      message:
+        'It is not habitable. A landlord owes a warranty of habitability, so the ' +
+        'condition has to come up and any known major defect has to be repaired ' +
+        'before you can let it.',
+    };
+  }
+
+  own.rental = createRental(Math.round(askingRent));
+  const market = marketRent(prop, state.world, state.day);
+  log(
+    state,
+    'info',
+    `Advertised ${prop.address} to let at $${Math.round(askingRent).toLocaleString()}/mo` +
+      ` (market is about $${market.toLocaleString()}).`,
+  );
+  return { ok: true, message: 'Listed to let.' };
+}
+
+export function setAskingRent(
+  state: GameState,
+  propertyId: PropertyId,
+  rent: Money,
+): ActionResult {
+  const rental = findOwned(state, propertyId)?.ownership?.rental;
+  if (!rental) return { ok: false, message: 'That property is not a rental.' };
+  if (rent <= 0) return { ok: false, message: 'Rent must be positive.' };
+  rental.askingRent = Math.round(rent);
+  return {
+    ok: true,
+    message: rental.tenancy
+      ? 'Applies when the current lease ends.'
+      : `Now advertised at $${Math.round(rent).toLocaleString()}/mo.`,
+  };
+}
+
+/** Stop renting: the tenant leaves at lease end and the property frees up. */
+export function stopRenting(state: GameState, propertyId: PropertyId): ActionResult {
+  const own = findOwned(state, propertyId)?.ownership;
+  if (!own?.rental) return { ok: false, message: 'That property is not a rental.' };
+  if (own.rental.tenancy) {
+    return {
+      ok: false,
+      message: 'There is a tenant in place. You cannot sell it out from under them mid-lease.',
+    };
+  }
+  own.rental = null;
+  return { ok: true, message: 'No longer advertised to let.' };
+}
+
+/**
+ * Pull the capital back out.
+ *
+ * The second R. A term loan against the improved value repays the acquisition
+ * debt and returns the down payment, so the same cash can buy the next house
+ * while this one keeps paying. What stops it being free money is DSCR: the
+ * rent has to carry the new payment.
+ */
+export function refinance(state: GameState, propertyId: PropertyId): ActionResult {
+  const prop = findOwned(state, propertyId);
+  const own = prop?.ownership;
+  if (!prop || !own) return { ok: false, message: 'You do not own that property.' };
+  if (!own.rental?.tenancy) {
+    return { ok: false, message: 'Lenders underwrite the income. Get a tenant in place first.' };
+  }
+
+  const existing = state.loans.find((l) => l.id === own.loanId);
+  const quote = quoteRefinance({
+    value: trueValue(prop, state.world, state.day),
+    annualNoi: noi(prop, state.world, state.day, own.rental.tenancy.rent),
+    existingPayoff: existing ? loanPayoff(existing) : 0,
+    baseRate: state.world.baseRate,
+    lenderReputation: state.reputation.lenders,
+    daysOwned: state.day - own.purchaseDay,
+  });
+
+  if (!quote.eligible) return { ok: false, message: quote.reason };
+
+  // Refinancing a hard money note is worth doing for the terms alone. Doing it
+  // again on a loan that already amortises, for no cash, just buys another set
+  // of closing costs.
+  if (existing?.kind === 'term' && quote.cashOut <= 0) {
+    return {
+      ok: false,
+      message:
+        'A second refinance would return nothing and cost you the closing fees. ' +
+        'You have already pulled out everything the income supports.',
+    };
+  }
+
+  if (existing) {
+    applyCash(state, -quote.payoff, 'loan', `Paid off hard money on ${prop.address}`, prop.id);
+    state.loans = state.loans.filter((l) => l.id !== existing.id);
+  }
+
+  const loan: Loan = {
+    id: `t${state.loans.length + 1}_${prop.id}`,
+    propertyId: prop.id,
+    kind: 'term',
+    principal: quote.maxLoan,
+    monthlyPayment: quote.monthlyPayment,
+    pointsPaid: quote.closingCosts,
+    annualRate: quote.rate,
+    // A term loan amortises rather than ballooning, so maturity is far out.
+    maturityDay: state.day + ECON.REFI.termYears * 365,
+    interestAccrued: 0,
+    originatedDay: state.day,
+  };
+  state.loans.push(loan);
+  own.loanId = loan.id;
+
+  applyCash(state, quote.maxLoan, 'loan', `Refinanced ${prop.address}`, prop.id);
+  applyCash(state, -quote.closingCosts, 'closing', `Refinance closing costs`, prop.id);
+  own.cashedOut += quote.cashOut;
+
+  adjustReputation(state.reputation, 'lenders', 3);
+  log(
+    state,
+    'good',
+    `Refinanced ${prop.address}: $${quote.maxLoan.toLocaleString()} at ${(quote.rate * 100).toFixed(2)}%, ` +
+      `$${quote.cashOut.toLocaleString()} back in your pocket. DSCR ${quote.dscrAtMax.toFixed(2)}x.`,
+  );
+  return { ok: true, message: `$${quote.cashOut.toLocaleString()} cash out.` };
+}
+
+/** One day of a rental: find a tenant, collect rent, handle a lease ending. */
+function advanceRental(state: GameState, prop: Property, rng: Rng): void {
+  const own = prop.ownership;
+  const rental = own?.rental;
+  if (!own || !rental) return;
+
+  const hood = NEIGHBORHOODS_BY_ID[prop.neighborhoodId];
+  const market = marketRent(prop, state.world, state.day);
+
+  if (!rental.tenancy) {
+    rental.vacantDays += 1;
+    const chance = tenantInterest(
+      rental.askingRent,
+      market,
+      hood?.demand ?? 1,
+      state.skills.marketing,
+    );
+    if (rng.chance(chance)) {
+      rental.tenancy = {
+        rent: rental.askingRent,
+        startedDay: state.day,
+        leaseEndsDay: state.day + ECON.RENTAL.leaseDays,
+      };
+      log(
+        state,
+        'good',
+        `Tenant signed at ${prop.address}: $${rental.askingRent.toLocaleString()}/mo after ${rental.vacantDays} days vacant.`,
+      );
+      rental.vacantDays = 0;
+    }
+    return;
+  }
+
+  // Rent arrives daily rather than monthly so the ledger stays smooth.
+  const gross = rental.tenancy.rent * 12;
+  const daily = gross / 365;
+  const opexDaily = annualOpex(gross) / 365;
+  rental.rentCollected += daily;
+  rental.opexPaid += opexDaily;
+  applyCash(state, daily, 'rent', `Rent from ${prop.address}`, prop.id);
+  applyCash(state, -opexDaily, 'rentalOpex', `Management and maintenance`, prop.id);
+
+  if (state.day >= rental.tenancy.leaseEndsDay) {
+    if (rng.chance(ECON.RENTAL.renewalChance)) {
+      rental.tenancy.leaseEndsDay = state.day + ECON.RENTAL.leaseDays;
+      log(state, 'good', `The tenant at ${prop.address} renewed for another year.`);
+    } else {
+      rental.tenancy = null;
+      rental.turnovers += 1;
+      applyCash(
+        state,
+        -ECON.RENTAL.turnoverCost,
+        'rentalOpex',
+        `Turnover at ${prop.address}`,
+        prop.id,
+      );
+      log(state, 'warn', `The tenant at ${prop.address} moved out. Turnover and vacancy now.`);
+    }
+  }
 }
 
 export function rejectOffer(
@@ -1148,17 +1375,32 @@ function updatePortfolio(state: GameState, rng: Rng): void {
     const loan = state.loans.find((l) => l.id === own.loanId);
     if (loan) {
       const interest = dailyInterest(loan);
-      loan.interestAccrued += interest;
-      state.ledger.push({
-        day: state.day,
-        category: 'financing',
-        description: `Interest accrued on ${prop.address}`,
-        amount: 0,
-        propertyId: prop.id,
-      });
+      if (loan.kind === 'term') {
+        // A term loan is actually paid, daily, and the payment splits into
+        // interest and principal -- so the balance genuinely amortises rather
+        // than sitting there accruing forever.
+        const daily = (loan.monthlyPayment * 12) / 365;
+        applyCash(state, -daily, 'financing', `Mortgage payment on ${prop.address}`, prop.id);
+        loan.principal = Math.max(0, loan.principal - Math.max(0, daily - interest));
+        if (loan.principal <= 0.5) {
+          state.loans = state.loans.filter((l) => l.id !== loan.id);
+          own.loanId = null;
+          log(state, 'good', `${prop.address} is paid off free and clear.`);
+        }
+      } else {
+        loan.interestAccrued += interest;
+        state.ledger.push({
+          day: state.day,
+          category: 'financing',
+          description: `Interest accrued on ${prop.address}`,
+          amount: 0,
+          propertyId: prop.id,
+        });
+      }
     }
 
     advanceRenovation(state, prop, rng);
+    advanceRental(state, prop, rng);
 
     // Sell side.
     const sale = own.saleListing;

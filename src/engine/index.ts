@@ -5,6 +5,7 @@ export * from './valuation';
 export * from './finance';
 export * from './events';
 export * from './renovation';
+export * from './rental';
 export * from './explain';
 export * from './mistakes';
 export * from './reputation';

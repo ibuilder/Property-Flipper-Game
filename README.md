@@ -112,6 +112,11 @@ features.
 7. **Sell.** List price drives buyer traffic sharply — overpricing does not cost you a little time,
    it costs you months of carry. Any defect you left unrepaired comes back as a buyer concession at
    1.15× what the repair would have cost.
+8. **Or keep it.** Put a tenant in instead, then refinance and pull your capital back out to buy the
+   next one — buy, rehab, rent, refinance, repeat. The lender sizes that loan by the *lesser* of 75%
+   of value and what the rent covers at 1.20× debt service, so a house bought at retail will not
+   refinance however much equity it has. That constraint is the reason BRRRR insists on buying below
+   value, and the panel tells you which of the two caps is binding.
 
 ### What it models that the original did not
 
@@ -140,12 +145,13 @@ across 30 seeds:
 
 | Campaign | Bot win rate | Avg deals |
 | --- | --- | --- |
-| The First Flip | 90% | 1.3 |
-| Working With Leverage | 70% | 7.1 |
-| Portfolio Builder | 60% | 7.6 |
+| The First Flip | 70% | 1.9 |
+| Working With Leverage | 60% | 5.5 |
+| Portfolio Builder | 80% | 9.1 |
 
-The same bot set to pay 92% of ARV with no inspection and no contingency wins 73% of tutorial runs
-but ends with **$223,488** net worth against the disciplined bot's **$315,046**.
+The same bot set to pay 92% of ARV with no inspection and no contingency wins 47% of tutorial runs
+and ends with **$156,272** net worth against the disciplined bot's **$273,937**. Skipping the
+inspection is the cheaper-looking mistake and still costs about $62,000.
 
 ---
 
@@ -157,8 +163,9 @@ src/engine/     Pure TypeScript simulation. No DOM, no React, fully unit-tested.
   types.ts        Domain model
   content.ts      Neighborhoods, archetypes, scope catalogue, defects, events, levels
   valuation.ts    Value model, ARV, appraisal noise, comps
-  finance.ts      Closing costs, hard money, carry, net worth
+  finance.ts      Closing costs, hard money, carry, amortisation, refinance sizing, net worth
   renovation.ts   Scope quoting, scheduling, change orders
+  rental.ts       Market rent, NOI, cap rate, cash-on-cash, DSCR, tenants
   market.ts       Property generation, seller reserve, buyer offers
   analyzer.ts     The 70% rule and the itemised cost stack
   events.ts       Market cycle modifiers

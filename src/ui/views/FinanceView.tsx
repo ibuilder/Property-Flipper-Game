@@ -24,6 +24,8 @@ const CATEGORY_LABEL: Record<LedgerCategory, string> = {
   concession: 'Buyer concessions',
   training: 'Training',
   loan: 'Loan movements',
+  rent: 'Rent collected',
+  rentalOpex: 'Management & maintenance',
 };
 
 export default function FinanceView() {
@@ -83,9 +85,9 @@ export default function FinanceView() {
 
         <div className="panel">
           <div className="panel-head">
-            <h2>Hard money notes</h2>
+            <h2>Debt</h2>
             <span className="dim" style={{ fontSize: 12 }}>
-              {percent(state.world.interestRate + ECON.LOAN_SPREAD, 2)} today
+              hard money at {percent(state.world.interestRate + ECON.LOAN_SPREAD, 2)} today
             </span>
           </div>
           <div className="panel-body flush">
@@ -97,8 +99,10 @@ export default function FinanceView() {
                   <thead>
                     <tr>
                       <th>Property</th>
+                      <th>Kind</th>
                       <th className="right">Principal</th>
                       <th className="right">Interest</th>
+                      <th className="right">Payment</th>
                       <th className="right">Payoff</th>
                       <th className="right">Rate</th>
                       <th className="right">Matures</th>
@@ -112,12 +116,30 @@ export default function FinanceView() {
                       return (
                         <tr key={l.id}>
                           <td>{prop?.address ?? l.propertyId}</td>
+                          <td>
+                            <span className={`pill ${l.kind === 'term' ? 'info' : 'mute'}`}>
+                              {l.kind === 'term' ? 'amortising' : 'hard money'}
+                            </span>
+                          </td>
                           <td className="right num">{money(l.principal)}</td>
-                          <td className="right num bad">{money(l.interestAccrued)}</td>
+                          <td className="right num bad">
+                            {l.kind === 'term' ? (
+                              <span className="faint">&mdash;</span>
+                            ) : (
+                              money(l.interestAccrued)
+                            )}
+                          </td>
+                          <td className="right num">
+                            {l.monthlyPayment > 0 ? (
+                              `${money(l.monthlyPayment)}/mo`
+                            ) : (
+                              <span className="faint">at payoff</span>
+                            )}
+                          </td>
                           <td className="right num">{money(loanPayoff(l))}</td>
                           <td className="right num dim">{percent(l.annualRate, 2)}</td>
-                          <td className={`right num ${daysLeft < 60 ? 'bad' : 'dim'}`}>
-                            {daysLeft}d
+                          <td className={`right num ${daysLeft < 60 && l.kind !== 'term' ? 'bad' : 'dim'}`}>
+                            {daysLeft > 3650 ? `${Math.round(daysLeft / 365)}y` : `${daysLeft}d`}
                           </td>
                           <td className="right">
                             <button

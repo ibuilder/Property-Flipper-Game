@@ -29,6 +29,7 @@ import DealAnalyzer from '../components/DealAnalyzer';
 import PropertyFacts from '../components/PropertyFacts';
 import ScopeBuilder from '../components/ScopeBuilder';
 import Modal from '../components/Modal';
+import RentalPanel from './RentalPanel';
 
 /** Manage an owned property: renovate, then list and negotiate the exit. */
 export default function OwnedPropertyModal({
@@ -126,6 +127,8 @@ export default function OwnedPropertyModal({
                 <RenovationPanel property={property} />
               ) : own.saleListing ? (
                 <SalePanel property={property} onClose={onClose} />
+              ) : own.rental ? (
+                <RentalPanel property={property} />
               ) : (
                 <>
                   <div className="panel">
@@ -213,10 +216,10 @@ export default function OwnedPropertyModal({
                 </>
               )}
 
-              {!own.renovation && !own.saleListing && (
+              {!own.renovation && !own.saleListing && !own.rental && (
                 <div className="panel">
                   <div className="panel-head">
-                    <h2>Exit</h2>
+                    <h2>Sell</h2>
                   </div>
                   <div className="panel-body">
                     <label className="field">
@@ -268,6 +271,13 @@ export default function OwnedPropertyModal({
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* The alternative to selling, offered alongside the exit panel.
+                  Once it is actually a rental the panel moves up to take the
+                  place of the sale flow entirely. */}
+              {!own.renovation && !own.saleListing && !own.rental && (
+                <RentalPanel property={property} />
               )}
             </div>
           </div>

@@ -62,7 +62,10 @@ export function originateLoan(
   const loan: Loan = {
     id,
     propertyId,
+    kind: 'hardMoney',
     principal,
+    // Interest-only: the whole principal comes due at the balloon.
+    monthlyPayment: 0,
     pointsPaid,
     annualRate: Math.max(0.02, loanRate(world) - rateDiscount(lenderReputation)),
     maturityDay: day + ECON.LOAN_TERM_DAYS,
@@ -77,6 +80,98 @@ export function originateLoan(
 /** Interest-only daily accrual on the outstanding principal. */
 export function dailyInterest(loan: Loan): Money {
   return (loan.principal * loan.annualRate) / 365;
+}
+
+/** Standard amortising payment. */
+export function amortisedPayment(principal: Money, annualRate: number, years: number): Money {
+  const r = annualRate / 12;
+  const n = years * 12;
+  if (r <= 0) return Math.round(principal / n);
+  return Math.round((principal * r) / (1 - Math.pow(1 + r, -n)));
+}
+
+export interface RefinanceQuote {
+  /** What the lender will advance, after both tests. */
+  maxLoan: Money;
+  /** Which test bound the loan -- the thing the player can actually act on. */
+  binding: 'ltv' | 'dscr';
+  maxByLtv: Money;
+  maxByDscr: Money;
+  rate: number;
+  monthlyPayment: Money;
+  /** Existing debt that has to be cleared first. */
+  payoff: Money;
+  closingCosts: Money;
+  /** What actually lands in the player's account. */
+  cashOut: Money;
+  dscrAtMax: number;
+  eligible: boolean;
+  reason: string;
+}
+
+/**
+ * Size a cash-out refinance.
+ *
+ * Two independent tests, and the smaller wins: loan-to-value caps how much of
+ * the asset a lender will lend against, and debt service coverage caps how
+ * much the *income* can carry. A property can be worth plenty and still fail
+ * on DSCR, which is the single most useful thing this screen teaches -- equity
+ * is not the same as borrowing capacity.
+ */
+export function quoteRefinance(args: {
+  value: Money;
+  annualNoi: Money;
+  existingPayoff: Money;
+  baseRate: number;
+  lenderReputation?: number;
+  daysOwned: number;
+}): RefinanceQuote {
+  const rate = Math.max(
+    0.02,
+    args.baseRate + ECON.REFI.spread - rateDiscount(args.lenderReputation ?? 50),
+  );
+  const maxByLtv = Math.round(args.value * ECON.REFI.maxLtv);
+
+  // Largest principal whose payment the NOI still covers at the required ratio.
+  const affordableAnnualService = args.annualNoi / ECON.REFI.minDscr;
+  const monthlyRate = rate / 12;
+  const n = ECON.REFI.termYears * 12;
+  const factor = monthlyRate > 0 ? monthlyRate / (1 - Math.pow(1 + monthlyRate, -n)) : 1 / n;
+  const maxByDscr = Math.max(0, Math.round(affordableAnnualService / 12 / factor));
+
+  const maxLoan = Math.min(maxByLtv, maxByDscr);
+  const binding = maxByDscr < maxByLtv ? 'dscr' : 'ltv';
+  const monthlyPayment = amortisedPayment(maxLoan, rate, ECON.REFI.termYears);
+  const closingCosts = Math.round(maxLoan * ECON.REFI.closingRate);
+  const cashOut = Math.round(maxLoan - args.existingPayoff - closingCosts);
+
+  const seasoned = args.daysOwned >= ECON.REFI.seasoningDays;
+  const coversPayoff = maxLoan >= args.existingPayoff;
+
+  return {
+    maxLoan,
+    binding,
+    maxByLtv,
+    maxByDscr,
+    rate,
+    monthlyPayment,
+    payoff: args.existingPayoff,
+    closingCosts,
+    cashOut,
+    dscrAtMax: monthlyPayment > 0 ? args.annualNoi / (monthlyPayment * 12) : Infinity,
+    eligible: seasoned && coversPayoff && maxLoan > 0,
+    reason: !seasoned
+      ? `Lenders want ${ECON.REFI.seasoningDays} days of ownership before refinancing. ${
+          ECON.REFI.seasoningDays - args.daysOwned
+        } to go.`
+      : !coversPayoff
+        ? 'The new loan would not even clear the existing debt. Raise the income or the value first.'
+        : maxLoan <= 0
+          ? 'The income does not support a loan at all yet.'
+          : binding === 'dscr'
+            ? `Bound by DSCR: the income supports ${maxLoan.toLocaleString()} even though the value would allow ${maxByLtv.toLocaleString()}.`
+            : `Bound by LTV at ${(ECON.REFI.maxLtv * 100).toFixed(0)}% of value.`,
+  };
 }
 
 /** Total payoff required to release the lien today. */
