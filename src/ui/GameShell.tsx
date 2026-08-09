@@ -20,8 +20,9 @@ import DealsView from './views/DealsView';
 import OutcomeModal from './views/OutcomeModal';
 import SaveModal from './views/SaveModal';
 import HelpModal from './views/HelpModal';
+import AuctionView from './views/AuctionView';
 
-type Tab = 'market' | 'portfolio' | 'finance' | 'skills' | 'deals';
+type Tab = 'market' | 'auction' | 'portfolio' | 'finance' | 'skills' | 'deals';
 
 export default function GameShell() {
   const state = useGame();
@@ -66,15 +67,18 @@ export default function GameShell() {
           setTab('market');
           break;
         case '2':
-          setTab('portfolio');
+          setTab('auction');
           break;
         case '3':
-          setTab('finance');
+          setTab('portfolio');
           break;
         case '4':
-          setTab('skills');
+          setTab('finance');
           break;
         case '5':
+          setTab('skills');
+          break;
+        case '6':
           setTab('deals');
           break;
       }
@@ -242,6 +246,15 @@ export default function GameShell() {
       <nav className="tabs">
         <TabButton id="market" tab={tab} setTab={setTab} label="Market" count={state.market.length} />
         <TabButton
+          id="auction"
+          tab={tab}
+          setTab={setTab}
+          label="Auction"
+          count={state.auction.lots.length}
+          alert={state.auction.lots.filter((l) => l.myMaxBid !== null).length}
+          alertNoun="bid"
+        />
+        <TabButton
           id="portfolio"
           tab={tab}
           setTab={setTab}
@@ -257,6 +270,7 @@ export default function GameShell() {
       <div className="main">
         <div className="content">
           {tab === 'market' && <MarketView />}
+          {tab === 'auction' && <AuctionView />}
           {tab === 'portfolio' && <PortfolioView />}
           {tab === 'finance' && <FinanceView />}
           {tab === 'skills' && <SkillsView />}
@@ -281,6 +295,7 @@ function TabButton({
   label,
   count,
   alert,
+  alertNoun = 'offer',
 }: {
   id: Tab;
   tab: Tab;
@@ -288,12 +303,17 @@ function TabButton({
   label: string;
   count?: number;
   alert?: number;
+  /** What the alert badge is counting. Portfolio has offers; the auction has bids. */
+  alertNoun?: string;
 }) {
   return (
     <button className={`tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
       {label}
       {alert ? (
-        <span className="badge alert">{alert} offer{alert === 1 ? '' : 's'}</span>
+        <span className="badge alert">
+          {alert} {alertNoun}
+          {alert === 1 ? '' : 's'}
+        </span>
       ) : count !== undefined ? (
         <span className="badge">{count}</span>
       ) : null}

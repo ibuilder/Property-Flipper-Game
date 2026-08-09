@@ -121,6 +121,17 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     }
     return s;
   },
+  // v8 predates trustee sales. An old save resumes with an empty auction
+  // board, which fills on the next day tick.
+  8: (s: any) => {
+    s.auctionBlock = s.auctionBlock ?? [];
+    s.auction = s.auction ?? { lots: [], nextRefreshDay: 0 };
+    s.auctionRngState = s.auctionRngState ?? (((s.seed ?? 1) ^ 0x9e3779b9) >>> 0);
+    for (const prop of s.portfolio ?? []) {
+      if (prop.ownership) prop.ownership.occupiedUntilDay = prop.ownership.occupiedUntilDay ?? null;
+    }
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {

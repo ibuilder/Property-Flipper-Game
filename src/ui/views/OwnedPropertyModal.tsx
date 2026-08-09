@@ -9,6 +9,7 @@ import {
   delist,
   estimateArv,
   inspectionConcession,
+  isOccupied,
   jobDaysRemaining,
   jobProgress,
   listForSale,
@@ -139,6 +140,34 @@ export default function OwnedPropertyModal({
             </div>
 
             <div>
+              {isOccupied(property, state.day) && (
+                <div className="panel">
+                  <div className="panel-head">
+                    <h2>Still occupied</h2>
+                    <span className="pill bad">{own.occupiedUntilDay! - state.day} days</span>
+                  </div>
+                  <div className="panel-body">
+                    <p className="dim" style={{ marginTop: 0, fontSize: 13 }}>
+                      You own it, but you do not have possession. Nothing can be scoped, started,
+                      listed or let until the previous owner is out on day {own.occupiedUntilDay}.
+                    </p>
+                    <div className="kv">
+                      <span className="k">Carry until then</span>
+                      <span className="v bad">
+                        {money(
+                          dailyHoldingCost(property, state.world, state.day) *
+                            (own.occupiedUntilDay! - state.day),
+                        )}
+                      </span>
+                    </div>
+                    <p className="faint" style={{ fontSize: 12, marginBottom: 0 }}>
+                      This is what the courthouse discount was paying for. It is a real cost, and
+                      the only way to avoid it is to have priced it in before bidding.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {own.renovation ? (
                 <RenovationPanel property={property} />
               ) : own.saleListing ? (

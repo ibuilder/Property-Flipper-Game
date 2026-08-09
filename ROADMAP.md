@@ -75,7 +75,7 @@ The Pygame README listed the author's own future ideas. Status after v2:
 | Difficulty levels | **Partial** — four campaigns, no explicit difficulty setting |
 | More staff types (specialists, agents) | Phase 3 |
 | Player XP and levelling alongside cash-bought skills | Phase 3 |
-| Auctions and bidding | Phase 4 |
+| Auctions and bidding | **Done** — trustee sales with proxy bidding |
 | AI competitors | **Done** — rival buyers on every listing |
 | Tenant management | **Done** — Phase 4 (BRRRR) |
 
@@ -145,7 +145,11 @@ Make the underwriting itself richer, since that is the differentiator.
   the deal looks from outside. Contested listings get bought out from under you while you
   deliberate, and an offer that only just clears the seller's reserve can be sniped — so a good
   deal no longer waits indefinitely, which was the main pressure the game lacked.
-- **Auctions** — trustee sales, sight-unseen, cash-only, with the risk profile that implies.
+- ~~**Auctions**~~ **Done.** Trustee sales on their own board: the opening bid is the lender's
+  credit bid rather than value, you cannot inspect, you cannot finance, and about a third of lots
+  come occupied — which costs cash and 45 days of carry before a crew can start. Bidding is by
+  proxy, so an honest maximum is never punished. Runs on its own random stream, so the courthouse
+  and the flipping game can each change without reshuffling the other.
 - ~~**BRRRR**~~ **Done.** Rent rather than sell: tenants who sign at a rate that depends on how far
   your asking rent sits above market, leases that end and sometimes renew, vacancy and turnover
   cost, and an operating expense stack that makes NOI mean what it means to a lender. On top of

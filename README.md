@@ -112,7 +112,11 @@ features.
 7. **Sell.** List price drives buyer traffic sharply — overpricing does not cost you a little time,
    it costs you months of carry. Any defect you left unrepaired comes back as a buyer concession at
    1.15× what the repair would have cost.
-8. **Or keep it.** Put a tenant in instead, then refinance and pull your capital back out to buy the
+8. **Or buy at the courthouse.** Trustee sales sit on their own board. The opening bid is what the
+   lender is owed rather than what the house is worth, so the discount is real — but you cannot
+   inspect, cannot finance, and about a third of lots still have somebody living in them. Bidding is
+   by proxy: name a maximum and pay one increment over the underbidder.
+9. **Or keep it.** Put a tenant in instead, then refinance and pull your capital back out to buy the
    next one — buy, rehab, rent, refinance, repeat. The lender sizes that loan by the *lesser* of 75%
    of value and what the rent covers at 1.20× debt service, so a house bought at retail will not
    refinance however much equity it has. That constraint is the reason BRRRR insists on buying below
@@ -166,6 +170,7 @@ src/engine/     Pure TypeScript simulation. No DOM, no React, fully unit-tested.
   finance.ts      Closing costs, hard money, carry, amortisation, refinance sizing, net worth
   renovation.ts   Scope quoting, scheduling, change orders
   rental.ts       Market rent, NOI, cap rate, cash-on-cash, DSCR, tenants
+  auction.ts      Trustee sales: credit bids, proxy bidding, occupied lots
   market.ts       Property generation, seller reserve, buyer offers
   analyzer.ts     The 70% rule and the itemised cost stack
   events.ts       Market cycle modifiers

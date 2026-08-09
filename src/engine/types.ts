@@ -371,6 +371,43 @@ export interface Property {
   noiseSeed: number;
 }
 
+/**
+ * One lot at a trustee sale.
+ *
+ * The property itself lives in `GameState.auctionBlock`, kept apart from the
+ * open market because almost nothing you can do to a listing applies here:
+ * there is no seller to negotiate with, no inspection to order, and no
+ * contingency to walk away under.
+ */
+export interface AuctionLot {
+  propertyId: PropertyId;
+  /** The lender's credit bid: what they are owed, not what it is worth. */
+  openingBid: Money;
+  /** The day it goes under the hammer. */
+  saleDay: number;
+  /** How much of a crowd the opening bid has drawn, 0-1. */
+  rivalInterest: number;
+  /** Somebody still lives there, and getting them out costs time and money. */
+  occupied: boolean;
+  /** Your standing maximum. Rivals bid against it while you are elsewhere. */
+  myMaxBid: Money | null;
+  result: AuctionResult | null;
+}
+
+export interface AuctionResult {
+  won: boolean;
+  /** What you actually paid: one increment over the runner-up, never more than your maximum. */
+  price: Money;
+  /** What the room was willing to go to. Visible only after the fact. */
+  underbid: Money;
+  day: number;
+}
+
+export interface Auction {
+  lots: AuctionLot[];
+  nextRefreshDay: number;
+}
+
 export interface Ownership {
   purchaseDay: number;
   purchasePrice: Money;
@@ -392,6 +429,12 @@ export interface Ownership {
   rental: Rental | null;
   /** Cash already pulled back out by refinancing. */
   cashedOut: Money;
+  /**
+   * Set when an auction property came with somebody living in it. Nothing can
+   * be done to the house until they are out -- but the carry runs regardless,
+   * which is the cost the courthouse discount is paying for.
+   */
+  occupiedUntilDay: number | null;
 }
 
 export interface SaleListing {
@@ -553,6 +596,14 @@ export interface GameState {
   version: number;
   seed: number;
   rngState: number;
+  /**
+   * A second, independent random stream for the auction board.
+   *
+   * Separate so that changes to one side of the game cannot reshuffle the
+   * other. Both derive from the same seed, so a given seed still reproduces a
+   * whole campaign exactly.
+   */
+  auctionRngState: number;
   levelId: string;
   day: number;
   phase: GamePhase;
@@ -564,6 +615,9 @@ export interface GameState {
   world: WorldState;
   /** Properties currently for sale on the open market. */
   market: Property[];
+  /** Properties going to a trustee sale, and the lots themselves. */
+  auctionBlock: Property[];
+  auction: Auction;
   /** Properties the player owns. */
   portfolio: Property[];
   loans: Loan[];

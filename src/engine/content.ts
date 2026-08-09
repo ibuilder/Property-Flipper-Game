@@ -758,4 +758,51 @@ export const ECON = {
     /** Seasoning: how long you must own it before a lender will refinance. */
     seasoningDays: 90,
   },
+
+  /**
+   * Trustee sales.
+   *
+   * Calibrated so the auction is a genuinely different trade rather than a
+   * discount button: the average lot goes for less than the average listing,
+   * but you buy it blind, you pay cash, and roughly a third of them come with
+   * somebody still living in the house.
+   */
+  AUCTION: {
+    /** Credit bid as a share of value: what the lender is owed. */
+    minOpeningRatio: 0.34,
+    maxOpeningRatio: 0.88,
+    /** Notice period before the sale. */
+    minNoticeDays: 12,
+    maxNoticeDays: 34,
+    /** Where a completely uncontested room stops, as a share of value. */
+    baseCeiling: 0.52,
+    /** How much further a fully contested room will go. */
+    interestCeilingRange: 0.34,
+    /** Chance nobody else turns up at all, scaled by how quiet the lot is. */
+    noShowChance: 0.22,
+    /** Bid increment at the podium. */
+    increment: 1000,
+    /**
+     * Closing costs at a trustee sale: title search, recording, transfer tax.
+     * Lower than a retail purchase because there is no agent on either side --
+     * which is part of why the discount survives to the buyer.
+     */
+    closingRate: 0.012,
+    /** Chance the property still has somebody living in it. */
+    occupiedChance: 0.34,
+    /** Getting a holdover occupant out: a fixed cost plus a share of value. */
+    evictionBase: 2800,
+    evictionRate: 0.012,
+    /** Days lost to the eviction before work can start. */
+    evictionDays: 45,
+    /** How many lots are on the board at once. */
+    lotCount: 4,
+    /** Days between fresh lots being posted. */
+    refreshDays: 9,
+    /**
+     * Buying blind means buying the defects. Auction stock is drawn from the
+     * distressed end and skips the retail market's disclosure entirely.
+     */
+    distressedChance: 0.72,
+  },
 } as const;

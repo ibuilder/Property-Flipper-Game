@@ -54,8 +54,15 @@ import {
   quoteScopeItem,
   scheduleDays,
 } from './renovation';
+import {
+  createAuction,
+  createAuctionLot,
+  evictionCost,
+  settleAuction,
+} from './auction';
 import type {
   ActionResult,
+  AuctionLot,
   ClosedDeal,
   DealProjection,
   GameState,
@@ -82,7 +89,7 @@ import {
 import { analyzeDeal } from './analyzer';
 import { buildScenarioProperty, type ScenarioDef } from './scenarios';
 
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 
 /** How often the charts' time series is sampled, in days. */
 export const HISTORY_INTERVAL_DAYS = 5;
@@ -96,6 +103,24 @@ function withRng<T>(state: GameState, fn: (rng: Rng) => T): T {
   const rng = Rng.fromState(state.rngState);
   const out = fn(rng);
   state.rngState = rng.getState();
+  return out;
+}
+
+/**
+ * The auction's own random stream.
+ *
+ * Kept separate from the main one deliberately. Drawing auction lots from the
+ * shared stream meant that merely *adding* the auction reshuffled every
+ * existing campaign -- the same seed produced different listings, different
+ * defects and different buyers, and the balance harness moved by tens of
+ * thousands of dollars for reasons that had nothing to do with the change.
+ * With its own stream, the flipping game is reproducible across every future
+ * change to the courthouse, and vice versa.
+ */
+function withAuctionRng<T>(state: GameState, fn: (rng: Rng) => T): T {
+  const rng = Rng.fromState(state.auctionRngState);
+  const out = fn(rng);
+  state.auctionRngState = rng.getState();
   return out;
 }
 
@@ -142,6 +167,8 @@ export function createGame(levelId: string, seed: number): GameState {
     version: SAVE_VERSION,
     seed,
     rngState: seed >>> 0,
+    // Offset so the two streams never run in lockstep off the same seed.
+    auctionRngState: (seed ^ 0x9e3779b9) >>> 0,
     levelId,
     day: 1,
     phase: 'playing',
@@ -157,6 +184,8 @@ export function createGame(levelId: string, seed: number): GameState {
       activeEvents: [],
     },
     market: [],
+    auctionBlock: [],
+    auction: createAuction(),
     portfolio: [],
     loans: [],
     ledger: [],
@@ -391,6 +420,7 @@ export function makeOffer(
     boughtAs: snapshot(prop),
     rental: null,
     cashedOut: 0,
+    occupiedUntilDay: null,
   };
 
   applyCash(state, -amount, 'acquisition', `Purchased ${prop.address}`, prop.id);
@@ -506,6 +536,12 @@ export function startRenovation(
     return { ok: false, message: 'Someone lives there. Wait for the lease to end.' };
   }
   if (prop.ownership.saleListing) return { ok: false, message: 'Delist it before starting work.' };
+  if (isOccupied(prop, state.day)) {
+    return {
+      ok: false,
+      message: `The previous owner is still in the house until day ${prop.ownership.occupiedUntilDay}. No crew can start until they are out.`,
+    };
+  }
   if (scopeIds.length === 0) return { ok: false, message: 'Add at least one line item.' };
 
   const quote = quoteScope(scopeIds, prop, state.world, state.skills, state.reputation.contractors);
@@ -642,6 +678,12 @@ export function listForSale(
     return {
       ok: false,
       message: 'A tenant is in place. You cannot sell it out from under them mid-lease.',
+    };
+  }
+  if (isOccupied(prop, state.day)) {
+    return {
+      ok: false,
+      message: 'Nobody will buy a house with the previous owner still in it. Get possession first.',
     };
   }
   if (listPrice <= 0) return { ok: false, message: 'List price must be positive.' };
@@ -903,6 +945,66 @@ function pct(delta: Money, base: Money): string {
   return `${Math.abs((delta / base) * 100).toFixed(1)}%`;
 }
 
+/** Is a holdover occupant still in the house? */
+export function isOccupied(prop: Property, day: number): boolean {
+  const until = prop.ownership?.occupiedUntilDay;
+  return until !== null && until !== undefined && day < until;
+}
+
+// ---------------------------------------------------------------------------
+// The courthouse steps
+// ---------------------------------------------------------------------------
+
+/**
+ * Leave a standing maximum on a lot.
+ *
+ * A proxy bid, not a price: rivals bid against it and you pay one increment
+ * over whoever stops second. That means naming your true ceiling is never
+ * punished, so the only question the auction asks is the one worth asking --
+ * what is this actually worth to you, sight unseen.
+ */
+export function placeBid(state: GameState, propertyId: PropertyId, maxBid: Money): ActionResult {
+  const lot = state.auction.lots.find((l) => l.propertyId === propertyId);
+  if (!lot) return { ok: false, message: 'That lot is not on the block.' };
+  if (lot.result) return { ok: false, message: 'That lot has already been sold.' };
+  if (maxBid < lot.openingBid) {
+    return {
+      ok: false,
+      message: `The opening bid is $${lot.openingBid.toLocaleString()}. Anything under it is not a bid.`,
+    };
+  }
+  if (maxBid > state.cash) {
+    return {
+      ok: false,
+      message:
+        'A trustee sale wants certified funds on the day. You cannot bid more cash than you have, ' +
+        'and there is no financing here.',
+    };
+  }
+
+  lot.myMaxBid = Math.round(maxBid);
+  const prop = state.auctionBlock.find((p) => p.id === propertyId);
+  log(
+    state,
+    'info',
+    `Maximum of $${lot.myMaxBid.toLocaleString()} left on ${prop?.address ?? 'a lot'}, ` +
+      `sale on day ${lot.saleDay}.`,
+  );
+  return {
+    ok: true,
+    message: `Bidding up to $${lot.myMaxBid.toLocaleString()}. You pay one increment over the underbidder, not your maximum.`,
+  };
+}
+
+/** Withdraw a standing bid before the sale. */
+export function withdrawBid(state: GameState, propertyId: PropertyId): ActionResult {
+  const lot = state.auction.lots.find((l) => l.propertyId === propertyId);
+  if (!lot) return { ok: false, message: 'That lot is not on the block.' };
+  if (lot.result) return { ok: false, message: 'That lot has already been sold.' };
+  lot.myMaxBid = null;
+  return { ok: true, message: 'Bid withdrawn.' };
+}
+
 // ---------------------------------------------------------------------------
 // Hold it instead: rent, then refinance
 // ---------------------------------------------------------------------------
@@ -920,6 +1022,9 @@ export function listForRent(
   if (own.saleListing) return { ok: false, message: 'It is listed for sale. Withdraw it first.' };
   if (own.rental) return { ok: false, message: 'It is already a rental.' };
   if (askingRent <= 0) return { ok: false, message: 'Rent must be positive.' };
+  if (isOccupied(prop, state.day)) {
+    return { ok: false, message: 'Somebody is still living there. Get possession first.' };
+  }
   if (!isHabitable(prop)) {
     return {
       ok: false,
@@ -1176,6 +1281,7 @@ export function advanceDay(state: GameState): ActionResult {
     refreshMarket(state, rng, level.neighborhoods, level.listingCount);
     updatePortfolio(state, rng);
   });
+  withAuctionRng(state, (rng) => refreshAuction(state, rng, level.neighborhoods));
 
   handleLoanMaturity(state);
   refreshAppraisals(state);
@@ -1357,6 +1463,124 @@ function refreshMarket(
   while (state.market.length < target) {
     state.market.push(
       generateProperty(rng, state.world, state.day, neighborhoods, state.skills.analysis),
+    );
+  }
+}
+
+/**
+ * Post new lots, and hold the sale on any that have come due.
+ *
+ * The board is refreshed on a fixed cadence rather than continuously so that
+ * the notice period means something: a lot you see today is genuinely
+ * available for a couple of weeks, and knowing you cannot inspect it is a
+ * decision you get time to sit with.
+ */
+function refreshAuction(state: GameState, rng: Rng, neighborhoods: readonly string[]): void {
+  // Settle anything whose sale day has arrived.
+  const due = state.auction.lots.filter((l) => l.saleDay <= state.day && !l.result);
+  for (const lot of due) {
+    const prop = state.auctionBlock.find((p) => p.id === lot.propertyId);
+    if (!prop) {
+      lot.result = { won: false, price: 0, underbid: 0, day: state.day };
+      continue;
+    }
+    const value = trueValue(prop, state.world, state.day);
+    const outcome = settleAuction(lot, value, state.cash, rng);
+    lot.result = { ...outcome, day: state.day };
+
+    if (!outcome.won) {
+      if (lot.myMaxBid !== null && lot.myMaxBid >= lot.openingBid) {
+        log(
+          state,
+          'warn',
+          `Outbid on ${prop.address} at auction. It went for $${outcome.underbid.toLocaleString()}; ` +
+            `your maximum was $${lot.myMaxBid.toLocaleString()}.`,
+        );
+      }
+      continue;
+    }
+
+    takeAuctionTitle(state, prop, lot, outcome.price);
+  }
+
+  // Retire settled lots and their properties.
+  const settled = new Set(
+    state.auction.lots.filter((l) => l.result).map((l) => l.propertyId),
+  );
+  state.auction.lots = state.auction.lots.filter((l) => !l.result);
+  state.auctionBlock = state.auctionBlock.filter((p) => !settled.has(p.id));
+
+  if (state.day < state.auction.nextRefreshDay) return;
+  state.auction.nextRefreshDay = state.day + ECON.AUCTION.refreshDays;
+
+  while (state.auction.lots.length < ECON.AUCTION.lotCount) {
+    const prop = generateProperty(
+      rng,
+      state.world,
+      state.day,
+      neighborhoods,
+      state.skills.analysis,
+    );
+    // Auction stock is not a listing. There is no seller to negotiate with and
+    // nothing has been disclosed, so it carries neither.
+    prop.listing = null;
+    prop.inspection = 'none';
+    for (const d of prop.defects) d.revealed = false;
+    state.auctionBlock.push(prop);
+    state.auction.lots.push(createAuctionLot(prop, state.world, state.day, rng));
+  }
+}
+
+/** Take title at the courthouse: pay in full, in cash, warts and all. */
+function takeAuctionTitle(
+  state: GameState,
+  prop: Property,
+  lot: AuctionLot,
+  price: Money,
+): void {
+  applyCash(state, -price, 'acquisition', `Won ${prop.address} at trustee sale`, prop.id);
+  // Auction closing costs are lower -- no agent on either side -- but a title
+  // search on a foreclosure is not optional.
+  const closing = Math.round(price * ECON.AUCTION.closingRate);
+  applyCash(state, -closing, 'closing', `Title and recording on ${prop.address}`, prop.id);
+
+  prop.ownership = {
+    purchaseDay: state.day,
+    purchasePrice: price,
+    closingCosts: closing,
+    loanId: null,
+    renovation: null,
+    saleListing: null,
+    holdingCostsPaid: 0,
+    renovationSpend: 0,
+    projection: null,
+    boughtAs: snapshot(prop),
+    rental: null,
+    cashedOut: 0,
+    occupiedUntilDay: null,
+  };
+
+  state.portfolio.push(prop);
+  state.auctionBlock = state.auctionBlock.filter((p) => p.id !== prop.id);
+
+  log(
+    state,
+    'good',
+    `Won ${prop.address} at trustee sale for $${price.toLocaleString()}` +
+      (lot.result ? ` (next bidder stopped at $${lot.result.underbid.toLocaleString()})` : '') +
+      '.',
+  );
+
+  if (lot.occupied) {
+    const cost = evictionCost(prop, state.world, state.day);
+    prop.ownership.occupiedUntilDay = state.day + ECON.AUCTION.evictionDays;
+    applyCash(state, -cost, 'holding', `Cash for keys and legal on ${prop.address}`, prop.id);
+    log(
+      state,
+      'bad',
+      `${prop.address} came occupied. $${cost.toLocaleString()} and ` +
+        `${ECON.AUCTION.evictionDays} days before you can touch it -- and you are ` +
+        'carrying it the whole time.',
     );
   }
 }

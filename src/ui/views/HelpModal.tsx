@@ -173,6 +173,35 @@ export default function HelpModal({ onClose }: { onClose: () => void }) {
 
       <div className="panel">
         <div className="panel-head">
+          <h2>The other way in: the courthouse</h2>
+        </div>
+        <div className="panel-body">
+          <p style={{ marginTop: 0 }}>
+            A trustee sale is not the retail market at a discount &mdash; it is a different trade,
+            and the discount is the price of everything you give up. You cannot inspect, so every
+            defect stays hidden until your own crew finds it. You cannot finance, so the whole
+            price is due in cash on the day. There is no contingency, so once the hammer falls it
+            is yours. And about a third of the lots still have somebody living in them, which costs
+            money and {ECON.AUCTION.evictionDays} days before a crew can start.
+          </p>
+          <p>
+            The opening bid is the lender&rsquo;s credit bid &mdash; what they are owed, not what
+            the house is worth. That is why a lot opening at a third of value draws a crowd and one
+            opening near value draws nobody.
+          </p>
+          <p style={{ marginBottom: 0 }}>
+            Bidding is by proxy: leave a maximum, and if you win you pay one increment over whoever
+            stopped second rather than your own number. Shading your maximum can save you part of
+            one increment and can lose you the lot entirely, so the honest number is the right one.
+            Work it out the same way as anywhere else &mdash;{' '}
+            {percent(ECON.RULE_OF_THUMB, 0)} of value, less the work you cannot see and the cost of
+            getting possession.
+          </p>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-head">
           <h2>The other exit: keep it</h2>
         </div>
         <div className="panel-body">

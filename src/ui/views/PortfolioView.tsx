@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   NEIGHBORHOODS_BY_ID,
   dailyHoldingCost,
+  isOccupied,
   jobDaysRemaining,
   jobProgress,
   loanPayoff,
@@ -116,6 +117,12 @@ function PortfolioRow({
       <span className="pill good">{offers} offer{offers === 1 ? '' : 's'}</span>
     ) : (
       <span className="pill info">Listed &middot; {own.saleListing.daysOnMarket}d</span>
+    );
+  } else if (isOccupied(prop, state.day)) {
+    status = (
+      <span className="pill bad">
+        Occupied &middot; {own.occupiedUntilDay! - state.day}d
+      </span>
     );
   } else if (own.rental?.tenancy) {
     status = <span className="pill good">Let &middot; {money(own.rental.tenancy.rent)}/mo</span>;
