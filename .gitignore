@@ -3,6 +3,8 @@ dist/
 dist-electron/
 release/
 dist-web/
+# Staging directory for the itch.io browser channel; built by CI.
+itch-web/
 
 # Local reference clone of the original Python project
 upstream/

@@ -66,6 +66,31 @@ The timestamp server is already configured. It matters: without a timestamp, a
 signature stops verifying the day the certificate expires rather than remaining
 valid for everything signed while it was live.
 
+**It also has to be checked afterwards.** The pipeline was exercised end to end
+with a throwaway self-signed certificate, and that turned up something worth
+knowing: when the timestamp server could not be reached, signtool printed a
+loud error, electron-builder carried on, and the build exited zero with signed
+but *untimestamped* artifacts. So the release workflow verifies the signature
+after packaging and fails if the status is not `Valid` or if no timestamp is
+present. Without that check, a signing failure ships quietly.
+
+To exercise the whole path yourself before buying a certificate:
+
+```powershell
+$c = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=Signing test" `
+     -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(2)
+Export-PfxCertificate -Cert $c -FilePath test.pfx `
+     -Password (ConvertTo-SecureString "test" -Force -AsPlainText)
+Remove-Item "Cert:\CurrentUser\My\$($c.Thumbprint)"
+
+$env:CSC_LINK = "$PWD\test.pfx"; $env:CSC_KEY_PASSWORD = "test"; npm run dist
+Get-ChildItem release\*.exe | ForEach-Object { Get-AuthenticodeSignature $_.FullName }
+```
+
+A self-signed certificate reports `UnknownError` rather than `Valid` — the
+chain is untrusted, which is correct and expected. What you are checking is
+that a signer certificate is attached at all. Delete `test.pfx` afterwards.
+
 ### macOS
 
 Requires membership of the Apple Developer Program ($99/year) and a **Developer
@@ -97,10 +122,45 @@ AppImages are not code-signed by convention. Nothing to configure.
 
 ---
 
+---
+
+## itch.io
+
+Publishing is automated. Tagging a release pushes four channels — the playable
+browser build plus Windows, macOS and Linux downloads — using butler.
+
+Three settings, once:
+
+| Where | Name | Value |
+| --- | --- | --- |
+| Secret | `ITCH_API_KEY` | from <https://itch.io/user/settings/api-keys> |
+| Variable | `ITCH_USER` | your itch.io username |
+| Variable | `ITCH_GAME` | the project's URL slug |
+
+Variables live under Settings → Secrets and variables → Actions → *Variables*,
+not Secrets — they are not sensitive and appear in the job summary as a link.
+
+Without the API key the workflow skips rather than fails, so it is safe to
+merge before the account is wired up. With the key but without the variables it
+fails loudly, because that combination is always a mistake.
+
+**Create the project on itch.io first**, as *HTML* kind, and set the embed to
+1280 × 800 manually. Below 1240px the layout collapses to a single column,
+which works but hides the side-by-side comparisons the game is built around.
+
+[docs/itch-page.md](docs/itch-page.md) has the page copy, the settings table,
+the tag list, and a screenshot shot-list.
+
+To push only the browser build without tagging, run the workflow manually and
+choose `web-only`.
+
+---
+
 ## What is not automated
 
-- **Playtesting with people rather than the bot.** The balance harness proves
-  a disciplined bot beats a reckless one across thirty seeds. It cannot tell
-  you whether the game is any good.
-- **itch.io.** Publishing there is a manual upload; the release artifacts are
-  what you would upload.
+- **Playtesting with people rather than the bot.** The balance harness proves a
+  disciplined bot beats a reckless one across thirty seeds. It cannot tell you
+  whether the game is any good, whether the vocabulary lands, or where a
+  beginner gets stuck. See [docs/playtesting.md](docs/playtesting.md) for a
+  three-session protocol and what to do with the results.
+- **Buying the signing identities.** Both require a real identity and a card.

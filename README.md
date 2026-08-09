@@ -161,13 +161,17 @@ across 30 seeds:
 
 | Campaign | Bot win rate | Avg deals |
 | --- | --- | --- |
-| The First Flip | 70% | 1.9 |
-| Working With Leverage | 60% | 5.5 |
-| Portfolio Builder | 80% | 9.1 |
+| The First Flip | 77% | 1.9 |
+| Working With Leverage | 50% | 4.8 |
+| Portfolio Builder | 75% | 9.7 |
 
 The same bot set to pay 92% of ARV with no inspection and no contingency wins 47% of tutorial runs
-and ends with **$156,272** net worth against the disciplined bot's **$273,937**. Skipping the
-inspection is the cheaper-looking mistake and still costs about $62,000.
+and ends with **$154,486** net worth against the disciplined bot's **$278,829**. Skipping the
+inspection is the cheaper-looking mistake and still costs about $59,000.
+
+The tutorial is measured over 30 seeds; the longer campaigns over 20. Ten was not enough — a
+two-campaign difference read as a twenty-point swing in win rate, which is enough to make sampling
+error look like a balance regression.
 
 ---
 

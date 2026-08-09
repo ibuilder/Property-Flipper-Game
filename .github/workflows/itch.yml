@@ -1,0 +1,127 @@
+name: Publish to itch.io
+
+# Runs after a release is tagged, or on demand. Publishes four channels: the
+# playable browser build, and the three desktop builds.
+#
+# Requires three repository settings:
+#   secret   ITCH_API_KEY   from https://itch.io/user/settings/api-keys
+#   variable ITCH_USER      your itch.io username
+#   variable ITCH_GAME      the project's URL slug
+#
+# Without the API key the workflow skips rather than fails, so it is harmless
+# to merge before the account is wired up.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      channels:
+        description: 'Which channels to push'
+        type: choice
+        default: all
+        options: [all, web-only, desktop-only]
+
+jobs:
+  publish:
+    name: Push to itch.io
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the account is wired up
+        id: check
+        run: |
+          if [ -z "${{ secrets.ITCH_API_KEY }}" ]; then
+            echo "No ITCH_API_KEY set — skipping. See RELEASING.md."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "${{ vars.ITCH_USER }}" ] || [ -z "${{ vars.ITCH_GAME }}" ]; then
+            echo "::error::ITCH_API_KEY is set but ITCH_USER / ITCH_GAME variables are not."
+            exit 1
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install and build
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          npm ci
+          npm run bundle:web
+
+      # itch.io serves an HTML game from a zip whose entry point is index.html.
+      # The bundle is a single self-contained file, so the zip has exactly one
+      # member and there is nothing to break at a relative path.
+      - name: Package the browser build
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          mkdir -p itch-web
+          cp dist-web/property-flipper.html itch-web/index.html
+          echo "Packaged $(du -h itch-web/index.html | cut -f1) browser build"
+
+      - name: Fetch the desktop artifacts from this release
+        if: steps.check.outputs.ready == 'true' && github.event_name == 'push'
+        continue-on-error: true
+        run: |
+          mkdir -p desktop
+          gh release download "${{ github.ref_name }}" --dir desktop || \
+            echo "No release artifacts yet — the release workflow may still be running."
+          ls -la desktop || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install butler
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          curl -sL -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
+          unzip -q butler.zip
+          chmod +x butler
+          ./butler -V
+
+      - name: Push the browser build
+        if: steps.check.outputs.ready == 'true' && github.event.inputs.channels != 'desktop-only'
+        env:
+          BUTLER_API_KEY: ${{ secrets.ITCH_API_KEY }}
+        run: |
+          ./butler push itch-web \
+            "${{ vars.ITCH_USER }}/${{ vars.ITCH_GAME }}:html5" \
+            --userversion "${{ github.ref_name }}"
+
+      - name: Push the desktop builds
+        if: steps.check.outputs.ready == 'true' && github.event.inputs.channels != 'web-only'
+        env:
+          BUTLER_API_KEY: ${{ secrets.ITCH_API_KEY }}
+        run: |
+          shopt -s nullglob
+          pushed=0
+          for f in desktop/*Setup*.exe desktop/*Portable*.exe; do
+            ./butler push "$f" "${{ vars.ITCH_USER }}/${{ vars.ITCH_GAME }}:windows" \
+              --userversion "${{ github.ref_name }}" && pushed=$((pushed+1))
+          done
+          for f in desktop/*.dmg; do
+            ./butler push "$f" "${{ vars.ITCH_USER }}/${{ vars.ITCH_GAME }}:mac" \
+              --userversion "${{ github.ref_name }}" && pushed=$((pushed+1))
+          done
+          for f in desktop/*.AppImage; do
+            ./butler push "$f" "${{ vars.ITCH_USER }}/${{ vars.ITCH_GAME }}:linux" \
+              --userversion "${{ github.ref_name }}" && pushed=$((pushed+1))
+          done
+          echo "Pushed $pushed desktop artifact(s)."
+
+      - name: Summary
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          {
+            echo "### Published to itch.io"
+            echo ""
+            echo "https://${{ vars.ITCH_USER }}.itch.io/${{ vars.ITCH_GAME }}"
+            echo ""
+            ./butler status "${{ vars.ITCH_USER }}/${{ vars.ITCH_GAME }}" || true
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          BUTLER_API_KEY: ${{ secrets.ITCH_API_KEY }}

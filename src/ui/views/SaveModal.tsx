@@ -10,6 +10,7 @@ import {
   saveGame,
   useGame,
 } from '../store';
+import { sessionReport } from '../sessionReport';
 
 /** Save slot management: save, load, delete, and export/import to a file. */
 export default function SaveModal({ onClose }: { onClose: () => void }) {
@@ -18,6 +19,7 @@ export default function SaveModal({ onClose }: { onClose: () => void }) {
   const [slotName, setSlotName] = useState('');
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+  const [report, setReport] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setSaves(await listSaves());
@@ -85,6 +87,69 @@ export default function SaveModal({ onClose }: { onClose: () => void }) {
             than re-rolling the market.
             {nativeOnly && ' In a browser they are kept in local storage.'}
           </p>
+        </div>
+      </div>
+
+      {/* Playtesting needs a way for a tester to send back what happened that
+          does not require them to attach a save file — especially in the
+          browser build, where there are no files. This is plain text, so it
+          pastes into a message. */}
+      <div className="panel">
+        <div className="panel-head">
+          <h2>Send feedback</h2>
+        </div>
+        <div className="panel-body">
+          <p className="dim" style={{ marginTop: 0, fontSize: 13 }}>
+            Copies a plain-text account of this session &mdash; the seed, what you built, which
+            parts of the game you used, every deal, and the last stretch of the log. Paste it into
+            a message. The seed alone lets anyone reproduce the run exactly.
+          </p>
+          <div className="btn-row">
+            <button
+              className="btn"
+              disabled={!state}
+              onClick={async () => {
+                if (!state) return;
+                const text = sessionReport(state);
+                try {
+                  await navigator.clipboard.writeText(text);
+                  setMessage({ text: 'Session report copied to the clipboard.', ok: true });
+                } catch {
+                  // Clipboard access is refused in some embeds -- itch.io runs
+                  // the game in a sandboxed iframe. Falling back to showing the
+                  // text means the feature still works there.
+                  setReport(text);
+                  setMessage({ text: 'Clipboard unavailable — select and copy below.', ok: false });
+                }
+              }}
+            >
+              Copy session report
+            </button>
+            {report && (
+              <button className="btn" onClick={() => setReport(null)}>
+                Hide
+              </button>
+            )}
+          </div>
+          {report && (
+            <textarea
+              readOnly
+              value={report}
+              onFocus={(e) => e.currentTarget.select()}
+              style={{
+                width: '100%',
+                height: 220,
+                marginTop: 10,
+                fontFamily: 'var(--mono)',
+                fontSize: 11.5,
+                background: 'var(--bg-inset)',
+                color: 'var(--text)',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 'var(--radius)',
+                padding: 10,
+              }}
+            />
+          )}
         </div>
       </div>
 

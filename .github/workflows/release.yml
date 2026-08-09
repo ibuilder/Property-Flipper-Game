@@ -67,16 +67,47 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.APPLE_TEAM_ID != '' }}
 
+      # If signing was configured, prove it actually happened. electron-builder
+      # does not fail the build when signtool errors — a timestamp server that
+      # cannot be reached produces a loud error, a zero exit code, and a
+      # signature that will stop verifying the day the certificate expires.
+      # Checking afterwards is the only way that cannot ship silently.
+      - name: Verify the Windows signature
+        if: matrix.os == 'windows-latest' && secrets.WINDOWS_CERT_BASE64 != ''
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem release\*.exe | ForEach-Object {
+            $sig = Get-AuthenticodeSignature $_.FullName
+            Write-Host "$($_.Name): $($sig.Status)"
+            if ($sig.Status -ne 'Valid') { Write-Host "::error::$($_.Name) is not validly signed"; $failed = $true }
+            if (-not $sig.TimeStamperCertificate) {
+              Write-Host "::error::$($_.Name) has no timestamp — the signature dies with the certificate"
+              $failed = $true
+            }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Verify the macOS signature and notarisation
+        if: matrix.os == 'macos-latest' && secrets.APPLE_TEAM_ID != ''
+        run: |
+          APP=$(find release -name '*.app' -maxdepth 3 | head -1)
+          if [ -z "$APP" ]; then echo "::error::no .app found to verify"; exit 1; fi
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          # The check that matters: Gatekeeper's own verdict, not just that a
+          # signature exists.
+          spctl --assess --type execute --verbose "$APP"
+
       - name: Report what was signed
         shell: bash
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             [ -n "${{ secrets.WINDOWS_CERT_BASE64 }}" ] \
-              && echo "Windows build is SIGNED." \
+              && echo "Windows build is SIGNED and the signature was verified." \
               || echo "Windows build is UNSIGNED — SmartScreen will warn on first launch."
           elif [ "${{ matrix.os }}" = "macos-latest" ]; then
             [ -n "${{ secrets.APPLE_TEAM_ID }}" ] \
-              && echo "macOS build is SIGNED and NOTARISED." \
+              && echo "macOS build is SIGNED, NOTARISED, and passed Gatekeeper assessment." \
               || echo "macOS build is UNSIGNED — Gatekeeper will block it until the user right-click-opens."
           else
             echo "Linux AppImages are not code-signed by convention."
