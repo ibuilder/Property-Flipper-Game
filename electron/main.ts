@@ -17,7 +17,18 @@ import path from 'node:path';
  *      file access goes through the narrow IPC surface below.
  */
 
-const isDev = !app.isPackaged;
+/**
+ * Dev mode loads from the Vite server; production loads the built files.
+ *
+ * The smoke test has to be excluded explicitly. It runs `electron .` against an
+ * unpackaged tree, so `app.isPackaged` is false and the app would go looking
+ * for a dev server — which on a developer's machine is very often running, so
+ * the check passes while testing something other than the build. That is
+ * exactly what happened: it went green locally against Vite and red in CI,
+ * where no dev server exists. CI was right.
+ */
+const isSmokeTest = process.env.PROPERTY_FLIPPER_SMOKE === '1';
+const isDev = !app.isPackaged && !isSmokeTest;
 const SAVE_DIR = () => path.join(app.getPath('userData'), 'saves');
 const SETTINGS_FILE = () => path.join(app.getPath('userData'), 'settings.json');
 
