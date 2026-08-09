@@ -43,8 +43,12 @@ jobs:
           fi
 
   build:
-    name: Build renderer & main
-    runs-on: ubuntu-latest
+    name: Build & launch on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -55,4 +59,14 @@ jobs:
 
       - run: npm ci
       - run: npm run build
-      - run: npm run bundle:web
+
+      # Launching the app on every platform on every push, rather than only at
+      # release, is what makes "it builds" mean "it runs". A broken macOS or
+      # Linux start is otherwise invisible from a Windows workstation until a
+      # release has already gone out.
+      - name: Smoke test the app
+        run: npm run smoke
+
+      - name: Bundle the web build
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run bundle:web

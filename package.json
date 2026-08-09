@@ -17,6 +17,7 @@
     "start": "npm run build && electron .",
     "dist": "npm run build && node scripts/dist.mjs",
     "icon": "node scripts/make-icon.mjs",
+    "smoke": "node scripts/smoke.mjs",
     "bundle:web": "npm run build:renderer && node scripts/bundle-web.mjs",
     "test": "vitest run",
     "test:watch": "vitest",

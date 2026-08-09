@@ -39,6 +39,14 @@ module.exports = {
       { target: 'portable', arch: ['x64'] },
     ],
     icon: 'build/icon.ico',
+    // Signing is opt-in and driven entirely by whether the credentials exist.
+    // electron-builder reads CSC_LINK and CSC_KEY_PASSWORD itself; naming the
+    // timestamp server here is the only part that has to be configured, and
+    // without it a signature stops verifying the day the certificate expires
+    // rather than the day it was issued.
+    signtoolOptions: {
+      rfc3161TimeStampServer: 'http://timestamp.digicert.com',
+    },
   },
 
   // Both Windows targets emit a .exe, so they need distinct artifact names --
@@ -66,12 +74,37 @@ module.exports = {
     target: ['dmg'],
     category: 'public.app-category.simulation-games',
     icon: 'build/icon.png',
+    // Notarisation requires the hardened runtime, and the hardened runtime
+    // breaks Electron unless these two entitlements are granted -- Electron
+    // allocates executable memory for the JIT. Set here rather than left to
+    // whoever first tries to notarise, because the failure mode is an app that
+    // signs cleanly and then refuses to launch.
+    hardenedRuntime: true,
+    gatekeeperAssess: false,
+    entitlements: 'build/entitlements.mac.plist',
+    entitlementsInherit: 'build/entitlements.mac.plist',
+    // Signed only when a Developer ID identity is actually present. The
+    // release workflow sets CSC_IDENTITY_AUTO_DISCOVERY=false when it is not,
+    // which makes an unsigned build succeed rather than fail.
+    notarize: Boolean(process.env.APPLE_TEAM_ID) && {
+      teamId: process.env.APPLE_TEAM_ID,
+    },
   },
 
   linux: {
     target: ['AppImage'],
     category: 'Game',
     icon: 'build/icon.png',
+    // Without these the AppImage lands in a desktop environment with no menu
+    // entry and a generic icon.
+    desktop: {
+      entry: {
+        Name: 'Property Flipper',
+        Comment: 'Buy distressed, underwrite honestly, get out before the carry eats the margin',
+        Categories: 'Game;Simulation;',
+        Keywords: 'real estate;flipping;simulation;finance;',
+      },
+    },
   },
 
   publish: null,

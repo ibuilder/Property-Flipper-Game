@@ -73,10 +73,22 @@ works either way. Copying into a restricted directory is fine; only the rename i
 npm test
 ```
 
-45 tests across three suites: `tests/engine.test.ts` covers correctness, `tests/store.test.ts`
-pins the multi-day skip behaviour, and `tests/balance.test.ts` runs a rules-following bot through
-complete campaigns across 30 seeds to check the economics are both winnable and punishing. Balance
-results are written to `balance-output.txt`.
+166 tests. `tests/engine.test.ts` covers correctness; `rental`, `auction`, `financing`,
+`progression` and `arcs` each cover their own subsystem; `tests/store.test.ts` pins the multi-day
+skip behaviour; and `tests/balance.test.ts` runs a rules-following bot through complete campaigns
+across 30 seeds to check the economics are both winnable and punishing. Balance results are written
+to `balance-output.txt`.
+
+To check the packaged desktop app actually starts:
+
+```bash
+npm run build && npm run smoke
+```
+
+That launches Electron against the production build and asserts the renderer mounts. CI runs it on
+Windows, macOS and Linux on every push, which is what makes "it builds" mean "it runs" on the two
+platforms not being developed on. See [RELEASING.md](RELEASING.md) for the release and code-signing
+pipeline.
 
 ---
 

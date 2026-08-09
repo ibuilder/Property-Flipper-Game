@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+      The hardened runtime is required for notarisation, and it blocks the
+      executable memory that V8's JIT needs. Without these two entitlements the
+      app signs and notarises successfully and then crashes on launch, which is
+      the worst possible time to find out.
+
+      Nothing else is granted. The app has no network calls, no camera, no
+      microphone and no access outside its own user data directory, so there is
+      nothing else to ask for.
+    -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+</dict>
+</plist>

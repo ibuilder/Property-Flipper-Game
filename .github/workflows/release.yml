@@ -39,12 +39,48 @@ jobs:
           npm run typecheck
           npm test
 
+      - name: Build
+        run: npm run build
+
+      # Standing in for "verify the build on real hardware": launch the app on
+      # this runner's actual OS and assert the renderer mounts. Catches the
+      # failures that are invisible until somebody double-clicks the artifact —
+      # an icon that will not convert, a file missing from the package, a path
+      # that only resolved on the build machine.
+      - name: Smoke test the app
+        run: npm run smoke
+
       - name: Package
         run: npm run dist
         env:
-          # Skip electron-builder's attempt to notarise / sign; these are
-          # unsigned community builds.
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+          # Windows signing. Set CSC_LINK (base64 of a .pfx) and
+          # CSC_KEY_PASSWORD in repository secrets to produce signed builds;
+          # without them electron-builder produces an unsigned one.
+          CSC_LINK: ${{ secrets.WINDOWS_CERT_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+
+          # macOS signing and notarisation. All four are needed together, and
+          # CSC_IDENTITY_AUTO_DISCOVERY is turned off when they are absent so
+          # an unsigned build succeeds instead of failing to find an identity.
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.APPLE_TEAM_ID != '' }}
+
+      - name: Report what was signed
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            [ -n "${{ secrets.WINDOWS_CERT_BASE64 }}" ] \
+              && echo "Windows build is SIGNED." \
+              || echo "Windows build is UNSIGNED — SmartScreen will warn on first launch."
+          elif [ "${{ matrix.os }}" = "macos-latest" ]; then
+            [ -n "${{ secrets.APPLE_TEAM_ID }}" ] \
+              && echo "macOS build is SIGNED and NOTARISED." \
+              || echo "macOS build is UNSIGNED — Gatekeeper will block it until the user right-click-opens."
+          else
+            echo "Linux AppImages are not code-signed by convention."
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
@@ -65,7 +101,11 @@ jobs:
           files: artifacts/**/*
           generate_release_notes: true
           body: |
-            Unsigned community builds. Windows SmartScreen and macOS Gatekeeper
-            will warn on first launch because these are not code-signed.
+            Every artifact here was launched on its own operating system in CI
+            and verified to start before it was published.
+
+            If these builds are unsigned, Windows SmartScreen and macOS
+            Gatekeeper will warn on first launch. See RELEASING.md for what
+            signing them requires.
 
             Saves live in your user data directory and survive reinstalling.

@@ -43,6 +43,44 @@ function createWindow(): void {
 
   mainWindow.once('ready-to-show', () => mainWindow?.show());
 
+  /**
+   * Smoke mode: launch, prove the renderer actually loaded, and quit.
+   *
+   * This is what stands in for "verify the macOS and Linux builds on real
+   * hardware". It will not catch anything about how the app feels, but it does
+   * catch the class of failure that has actually bitten this project: an icon
+   * that will not convert, a file missing from the package, a path that only
+   * resolves on the machine that built it. Those are silent until somebody
+   * double-clicks the artifact, and now CI double-clicks it on all three
+   * platforms.
+   */
+  if (process.env.PROPERTY_FLIPPER_SMOKE === '1') {
+    const fail = (why: string) => {
+      console.error(`smoke: ${why}`);
+      app.exit(1);
+    };
+    const timer = setTimeout(() => fail('renderer did not finish loading in 30s'), 30_000);
+
+    mainWindow.webContents.once('did-finish-load', async () => {
+      clearTimeout(timer);
+      try {
+        // Not merely "did a window open" -- assert the app actually mounted.
+        const mounted = await mainWindow!.webContents.executeJavaScript(
+          "!!document.querySelector('#root') && document.querySelector('#root').childElementCount > 0",
+        );
+        if (!mounted) return fail('#root is empty: the renderer loaded but did not mount');
+        console.log('smoke: renderer mounted');
+        app.exit(0);
+      } catch (err) {
+        fail(`could not query the renderer: ${String(err)}`);
+      }
+    });
+
+    mainWindow.webContents.once('did-fail-load', (_e, code, desc) =>
+      fail(`renderer failed to load (${code}): ${desc}`),
+    );
+  }
+
   // Never let the renderer navigate away or spawn windows to arbitrary URLs.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://')) shell.openExternal(url);

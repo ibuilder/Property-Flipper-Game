@@ -193,12 +193,25 @@ Where the professional-education market gets served.
   shown on completion either way, because failing is when you most need it.
 - **Shareable deal cards** — an image of your best or worst flip. Free distribution.
 
-### Phase 6 — Distribution (~3–5 days)
+### Phase 6 — Distribution — **wired, pending credentials**
 
-- Code signing, so Windows SmartScreen and macOS Gatekeeper stop warning.
-- Verify the macOS and Linux builds on real hardware; only Windows has been tested.
-- itch.io first (the browser build is already the right shape), Steam if Phase 4 lands.
-- Playtesting with actual flippers to re-tune balance against humans rather than the bot.
+- ~~**Code signing.**~~ **Wired.** Windows signing with a timestamp server, and macOS signing with
+  the hardened runtime, JIT entitlements and notarisation, all switched on automatically the moment
+  the credentials exist as repository secrets — and producing a working unsigned build when they do
+  not. What cannot be done from a repository is buy the identities: a Windows certificate is
+  $200–400/year from a CA, and macOS needs Apple Developer Program membership at $99/year. See
+  [RELEASING.md](RELEASING.md) for exactly which secrets to set.
+- ~~**Verify the macOS and Linux builds.**~~ **Done, differently.** Verifying on real hardware is
+  not something one person with one Windows machine can do, and not something anyone should have to
+  remember on every release. So CI launches the built app on Windows, macOS and Linux on every push
+  and asserts the renderer actually mounts — which catches the class of failure that motivated the
+  item (an icon that will not convert, a file missing from the package, a path that only resolved on
+  the build machine) and catches it before a release rather than after.
+- **itch.io** first (the browser build is already the right shape), Steam if Phase 4 lands. The
+  release artifacts are what would be uploaded; the upload itself is manual.
+- **Playtesting with actual flippers** to re-tune balance against humans rather than the bot. This
+  is the one genuinely irreplaceable item on the list: the harness can prove discipline beats
+  recklessness across thirty seeds, and it cannot tell you whether the game is any good.
 
 ---
 
@@ -206,31 +219,27 @@ Where the professional-education market gets served.
 
 Phase 1 → Phase 2 → Phase 5 → Phase 3 → Phase 4 → Phase 6.
 
-**Status.** Phase 1 complete. Phase 5's core complete. Phase 2 complete apart from the financing
-menu and permits-as-schedule-risk. Phase 3's reputation and Phase 4's rival buyers are in.
+**Status.** Phases 1 through 5 are complete. Phase 6 is wired and waiting on credentials that have
+to be bought rather than written.
 
-**What is left, in the order I would do it:**
-
-1. **UI and UX** — confirmation on irreversible spends, sortable and filterable listings, feedback
-   on the actions that currently happen silently, first-run onboarding, and a keyboard and table
-   fallback for the charts. Cheap, and it is what stands between the simulation and someone
-   actually enjoying using it.
-2. **Auctions** (Phase 4) — trustee sales, sight-unseen and cash-only. A new buying flow rather
-   than a variation on the existing one.
-3. **Financing menu** (Phase 2) — private lenders, seller financing, partner splits. The cash-out
-   refinance landed with BRRRR; the rest of the menu did not.
-4. **Crew, XP, difficulty settings** (Phase 3) — reputation already covers some of this ground.
-5. **Gentrification arcs and event chains** (Phase 4).
-6. **Phase 6 distribution** — code signing, verifying the macOS and Linux builds on real hardware,
-   itch.io, and playtesting with people rather than the bot.
-
-**BRRRR is done** — it was the largest remaining piece and it is what turns the game from a series
-of transactions into a portfolio business.
-
-Phase 5 is pulled ahead of 3 and 4 deliberately: post-mortems and the scenario editor are cheap,
+Phase 5 was pulled ahead of 3 and 4 deliberately: post-mortems and the scenario editor are cheap,
 they compound the existing differentiator, and they serve the professional audience without needing
 the simulation to get any bigger. Phases 3 and 4 are what turn it into a game people play for
-twenty hours — worth doing, but only after the teaching case is fully made.
+twenty hours — worth doing, but only after the teaching case was fully made.
+
+**What is left is not code:**
+
+1. **Buy the signing identities.** A Windows code signing certificate ($200–400/year) and Apple
+   Developer Program membership ($99/year). The pipeline already uses them the moment they appear as
+   repository secrets, and produces working unsigned builds until then.
+2. **Playtest with people rather than the bot.** The balance harness proves a disciplined bot beats
+   a reckless one across thirty seeds and that inspecting pays for itself. It cannot tell you
+   whether any of it is enjoyable, whether the vocabulary lands, or where a real beginner gets
+   stuck. Every remaining tuning question is one only humans can answer.
+3. **Publish.** itch.io first — the single-file browser build is already the right shape for it.
+
+**Deliberately not built:** a 3D renovation mode, multiplayer, and anything requiring a game engine.
+See §6.
 
 ---
 
