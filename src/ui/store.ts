@@ -7,6 +7,7 @@ import {
   serialize,
   type ActionResult,
   type GameState,
+  type Difficulty,
   type ScenarioDef,
 } from '../engine';
 import { cueForLog, play } from './sound';
@@ -128,9 +129,9 @@ export function dismissToast(): void {
 // Lifecycle
 // ---------------------------------------------------------------------------
 
-export function startGame(levelId: string, seed?: number): void {
+export function startGame(levelId: string, seed?: number, difficulty?: Difficulty): void {
   const actualSeed = seed ?? Math.floor(Math.random() * 2 ** 31);
-  snapshot.state = createGame(levelId, actualSeed);
+  snapshot.state = createGame(levelId, actualSeed, difficulty);
   snapshot.toast = null;
   emit();
 }

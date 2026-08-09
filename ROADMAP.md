@@ -72,9 +72,9 @@ The Pygame README listed the author's own future ideas. Status after v2:
 | More detailed market simulation (gentrification) | **Partial** — per-neighborhood indices and a revitalisation event |
 | More complex event types and chains | **Partial** — events exist, chains do not |
 | Improved UI/UX (visual properties, graphs, tooltips) | **Partial** — tooltips and copy done, visuals are Phase 1 |
-| Difficulty levels | **Partial** — four campaigns, no explicit difficulty setting |
-| More staff types (specialists, agents) | Phase 3 |
-| Player XP and levelling alongside cash-bought skills | Phase 3 |
+| Difficulty levels | **Done** — four campaigns times three settings |
+| More staff types (specialists, agents) | **Done** — a crew on the payroll |
+| Player XP and levelling alongside cash-bought skills | **Done** |
 | Auctions and bidding | **Done** — trustee sales with proxy bidding |
 | AI competitors | **Done** — rival buyers on every listing |
 | Tenant management | **Done** — Phase 4 (BRRRR) |
@@ -123,8 +123,10 @@ Make the underwriting itself richer, since that is the differentiator.
   bring a lender's appraisal, and the price falls to it when it comes in low — so the highest offer
   is not automatically the best one. The decision sits at offer selection, not at closing.
 - ~~**Scope templates.**~~ **Done.** Two presets ship and any assembled scope can be saved.
-- **Financing menu** beyond one hard money product: private lender, cash-out refi, seller
-  financing, partner splits.
+- ~~**Financing menu**~~ **Done.** Five instruments rather than one: cash, hard money, private
+  money that has to be earned before anyone will lend it, seller paper bought by paying more for
+  the house, and an equity partner who takes no interest and a third of the upside. Cash-out refi
+  arrived with BRRRR.
 - **Permits and inspections as schedule risk**, tied to the existing permit-backlog event.
 
 ### Phase 3 — Progression that survives run three — **partly done**
@@ -134,10 +136,21 @@ Make the underwriting itself richer, since that is the differentiator.
   pocket listings before they hit the market; contractors quote cheaper and spring fewer change
   orders. Neutral standing is exactly neutral, so it layers onto existing balance without shifting
   it. A foreclosure costs 28 points and is the one thing lenders genuinely remember.
-- **Crew and staff** — a retained GC, an in-house agent, a dedicated estimator. Reputation covers
-  some of this ground; named staff would make it a spending decision as well as an earned one.
-- **XP and levelling** alongside the existing cash-bought skills.
-- **Explicit difficulty settings** layered over campaigns.
+- ~~**Crew and staff**~~ **Done.** People on the payroll instead of subs per job: cheaper, faster
+  and fewer surprises up to capacity — and owed wages every day, including the ones where everything
+  you own is sitting on the market waiting for a buyer. Past capacity they are slower than
+  subcontracting, because they can only be in one place at a time. That is the decision that
+  actually decides whether the business scales past one house.
+- ~~**XP and levelling**~~ **Done.** A third currency alongside cash-bought skills and earned
+  reputation. Experience comes only from doing the work — closing, selling, winning at auction,
+  letting, refinancing — cannot be bought or hurried, and grants a skill point per level rather than
+  a silent bonus, so a save that ignores it is completely unaffected by it.
+- ~~**Explicit difficulty settings**~~ **Done.** Three settings expressed as one small table of
+  multipliers: capital, volatility, what stays hidden, rival aggression, seller firmness, change
+  orders and the clock. Standard is exactly neutral by construction, so the campaigns the balance
+  harness measures are untouched — and nothing here touches the arithmetic the game teaches. The
+  70% rule, the cost stack, cap rate and DSCR mean the same thing at every setting; what changes is
+  how much room you have to be wrong.
 
 ### Phase 4 — A world with other people in it — **partly done**
 

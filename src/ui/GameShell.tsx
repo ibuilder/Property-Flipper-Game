@@ -1,8 +1,10 @@
 ﻿import { useEffect, useState } from 'react';
 import {
+  DIFFICULTY_META,
   ECON,
   LEVELS_BY_ID,
   advanceDay,
+  campaignDayLimit,
   describeActiveEvents,
   netWorth,
   totalDebt,
@@ -94,7 +96,10 @@ export default function GameShell() {
   // A scenario runs on the sandbox rules but is not the sandbox, so it names
   // itself and shows its own clock and pass mark.
   const title = scenario?.name ?? level.name;
-  const dayLimit = scenario?.dayLimit ?? level.dayLimit;
+  // Difficulty stretches or shortens the campaign clock, so read it from the
+  // engine rather than from the level, or the header disagrees with the loss
+  // condition it is counting down to.
+  const dayLimit = scenario?.dayLimit ?? campaignDayLimit(state);
   const worth = netWorth(state);
   const debt = totalDebt(state);
   const events = describeActiveEvents(state.world);
@@ -110,7 +115,10 @@ export default function GameShell() {
       <header className="topbar">
         <div className="brand">
           Property Flipper
-          <span className="sub">{title}</span>
+          <span className="sub">
+            {title}
+            {state.difficulty !== 'standard' && ` · ${DIFFICULTY_META[state.difficulty].name}`}
+          </span>
         </div>
 
         <div className="stat">
@@ -263,7 +271,14 @@ export default function GameShell() {
           alert={pendingOffers}
         />
         <TabButton id="finance" tab={tab} setTab={setTab} label="Finance" />
-        <TabButton id="skills" tab={tab} setTab={setTab} label="Skills" />
+        <TabButton
+          id="skills"
+          tab={tab}
+          setTab={setTab}
+          label="Skills"
+          alert={state.experience.unspentPoints}
+          alertNoun="point"
+        />
         <TabButton id="deals" tab={tab} setTab={setTab} label="Track record" count={state.closedDeals.length} />
       </nav>
 

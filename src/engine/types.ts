@@ -408,6 +408,51 @@ export interface Auction {
   nextRefreshDay: number;
 }
 
+export type Difficulty = 'forgiving' | 'standard' | 'brutal';
+
+/**
+ * Difficulty expressed entirely as multipliers, so there is exactly one place
+ * to look for what a setting changes.
+ */
+export interface DifficultyMods {
+  startingCash: number;
+  /** How violently the market index and rates move. */
+  volatility: number;
+  /** How much stays hidden behind the walls. */
+  hiddenDefects: number;
+  /** How aggressively rival buyers work the same listings. */
+  competition: number;
+  /** How firmly sellers hold their reserve. */
+  sellerFirmness: number;
+  /** How often a crew finds something unbudgeted. */
+  changeOrders: number;
+  /** How much of the campaign clock you get. */
+  clock: number;
+}
+
+/** Accumulated know-how. Cannot be bought, and is never lost. */
+export interface Experience {
+  xp: number;
+  level: number;
+  /** Levels earned but not yet spent on a skill. */
+  unspentPoints: number;
+}
+
+/**
+ * People on the payroll rather than subs called per job.
+ *
+ * Cheaper and faster per job, and billed every day whether or not there is
+ * work -- which is the decision that actually decides whether the business
+ * scales past one house at a time.
+ */
+export interface Crew {
+  size: number;
+  hiredDay: number;
+  idleDays: number;
+  workingDays: number;
+  wagesPaid: Money;
+}
+
 /** How a purchase is paid for. */
 export type FinancingKind = 'cash' | 'hardMoney' | 'private' | 'seller' | 'partner';
 
@@ -627,6 +672,7 @@ export interface GameState {
    */
   auctionRngState: number;
   levelId: string;
+  difficulty: Difficulty;
   day: number;
   phase: GamePhase;
   outcomeMessage: string;
@@ -634,6 +680,10 @@ export interface GameState {
   skills: Record<SkillId, number>;
   /** Standing with lenders, agents and contractors. */
   reputation: Reputation;
+  /** Accumulated know-how, earned only by doing the work. */
+  experience: Experience;
+  /** People on the payroll, if you have chosen to carry any. */
+  crew: Crew | null;
   world: WorldState;
   /** Properties currently for sale on the open market. */
   market: Property[];

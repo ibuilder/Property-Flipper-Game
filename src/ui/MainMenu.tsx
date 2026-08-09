@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LEVELS } from '../engine';
+import { DIFFICULTY_META, LEVELS, difficultyMods, type Difficulty } from '../engine';
 import { money } from './format';
 import { importSave, listSaves, loadGame, startGame } from './store';
 import ScenarioPicker from './views/ScenarioPicker';
@@ -8,6 +8,7 @@ export default function MainMenu() {
   const [saves, setSaves] = useState<{ slot: string; modified: string }[]>([]);
   const [error, setError] = useState('');
   const [learnOpen, setLearnOpen] = useState(false);
+  const [difficulty, setDifficulty] = useState<Difficulty>('standard');
 
   useEffect(() => {
     listSaves().then(setSaves);
@@ -44,30 +45,66 @@ export default function MainMenu() {
 
         <div className="panel">
           <div className="panel-head">
-            <h2>Choose a campaign</h2>
+            <h2>Difficulty</h2>
           </div>
           <div className="panel-body">
-            {LEVELS.map((level) => (
-              <button
-                key={level.id}
-                className="level-card"
-                onClick={() => startGame(level.id)}
-              >
-                <h3>{level.name}</h3>
-                <p>{level.blurb}</p>
-                <div className="level-meta">
-                  <span>Start {money(level.startingCash)}</span>
-                  <span>
-                    Target{' '}
-                    {level.goalNetWorth === Number.MAX_SAFE_INTEGER
-                      ? 'none'
-                      : money(level.goalNetWorth)}
-                  </span>
-                  <span>{level.dayLimit ? `${level.dayLimit} days` : 'No time limit'}</span>
-                  <span>{level.neighborhoods.length} areas</span>
-                </div>
-              </button>
-            ))}
+            <div className="btn-row" style={{ marginBottom: 10 }}>
+              {(['forgiving', 'standard', 'brutal'] as Difficulty[]).map((d) => (
+                <button
+                  key={d}
+                  className={`btn${difficulty === d ? ' primary' : ''}`}
+                  aria-pressed={difficulty === d}
+                  onClick={() => setDifficulty(d)}
+                >
+                  {DIFFICULTY_META[d].name}
+                </button>
+              ))}
+            </div>
+            <p className="dim" style={{ margin: 0, fontSize: 13 }}>
+              {DIFFICULTY_META[difficulty].blurb}
+            </p>
+            <p className="faint" style={{ fontSize: 12, marginBottom: 0 }}>
+              Difficulty changes how much room you have to be wrong &mdash; capital, volatility,
+              what stays hidden, and how fast rivals move. It never changes what a deal is worth:
+              the 70% rule, the cost stack, cap rate and DSCR mean the same thing at every setting.
+            </p>
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="panel-head">
+            <h2>Choose a campaign</h2>
+            {difficulty !== 'standard' && (
+              <span className="pill info">{DIFFICULTY_META[difficulty].name}</span>
+            )}
+          </div>
+          <div className="panel-body">
+            {LEVELS.map((level) => {
+              const mods = difficultyMods(difficulty);
+              const cash = Math.round(level.startingCash * mods.startingCash);
+              const days = level.dayLimit ? Math.round(level.dayLimit * mods.clock) : null;
+              return (
+                <button
+                  key={level.id}
+                  className="level-card"
+                  onClick={() => startGame(level.id, undefined, difficulty)}
+                >
+                  <h3>{level.name}</h3>
+                  <p>{level.blurb}</p>
+                  <div className="level-meta">
+                    <span>Start {money(cash)}</span>
+                    <span>
+                      Target{' '}
+                      {level.goalNetWorth === Number.MAX_SAFE_INTEGER
+                        ? 'none'
+                        : money(level.goalNetWorth)}
+                    </span>
+                    <span>{days ? `${days} days` : 'No time limit'}</span>
+                    <span>{level.neighborhoods.length} areas</span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 

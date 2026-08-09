@@ -760,6 +760,39 @@ export const ECON = {
   },
 
   /**
+   * Experience: the third currency, earned only by doing the work.
+   *
+   * Superlinear so that levels keep meaning something, and capped so it cannot
+   * eventually hand out every skill for free -- money still has to buy most of
+   * them.
+   */
+  XP: {
+    base: 260,
+    curve: 1.45,
+    maxLevel: 12,
+  },
+
+  /**
+   * A crew on the payroll instead of subs per job.
+   *
+   * Priced so that a crew pays for itself at roughly two-thirds utilisation
+   * and bleeds money below half. That is the whole decision.
+   */
+  CREW: {
+    /** Signing cost per head. */
+    hiringCost: 3200,
+    /** Wages per head per week, payable whether or not there is work. */
+    weeklyPerHead: 2100,
+    /** Your own people cost less per job than calling subs. */
+    costFactor: 0.86,
+    /** And work faster, up to capacity. */
+    timeFactor: 0.78,
+    /** And find trouble earlier, so fewer surprises land as change orders. */
+    changeOrderFactor: 0.78,
+    maxSize: 4,
+  },
+
+  /**
    * The financing menu beyond hard money.
    *
    * Each instrument is priced so that none dominates. Private money is cheaper

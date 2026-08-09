@@ -140,6 +140,15 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     }
     return s;
   },
+  // v10 predates difficulty, experience and crews. An old save resumes on
+  // standard -- which is exactly neutral, so nothing about it changes -- with
+  // no experience banked and nobody on the payroll.
+  10: (s: any) => {
+    s.difficulty = s.difficulty ?? 'standard';
+    s.experience = s.experience ?? { xp: 0, level: 1, unspentPoints: 0 };
+    s.crew = s.crew ?? null;
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {

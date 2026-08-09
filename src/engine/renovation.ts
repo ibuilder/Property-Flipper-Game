@@ -53,6 +53,19 @@ function managementTimeFactor(skill: number): number {
 }
 
 /** Price and schedule a single scope line for a specific property. */
+/**
+ * How your own crew changes a quote, if you have one.
+ *
+ * Passed in rather than read from state so this module stays free of the game
+ * loop, and defaulted to neutral so every existing caller is unaffected.
+ */
+export interface CrewEffect {
+  cost: number;
+  time: number;
+}
+
+const NO_CREW: CrewEffect = { cost: 1, time: 1 };
+
 export function quoteScopeItem(
   itemId: string,
   prop: Property,
@@ -60,13 +73,15 @@ export function quoteScopeItem(
   skills: Record<SkillId, number>,
   /** Contractor standing, 0-100. Crews price a reliable client better. */
   contractorReputation = 50,
+  crew: CrewEffect = NO_CREW,
 ): Quote | null {
   const mods = eventModifiers(world, prop.neighborhoodId);
   const costFactor =
     mods.costMultiplier *
     managementCostFactor(skills.management) *
-    (1 - renovationDiscount(contractorReputation));
-  const timeFactor = mods.timeMultiplier * managementTimeFactor(skills.management);
+    (1 - renovationDiscount(contractorReputation)) *
+    crew.cost;
+  const timeFactor = mods.timeMultiplier * managementTimeFactor(skills.management) * crew.time;
 
   if (isDefectScopeId(itemId)) {
     const defId = defectIdFromScopeId(itemId);
@@ -99,13 +114,14 @@ export function quoteScope(
   world: WorldState,
   skills: Record<SkillId, number>,
   contractorReputation = 50,
+  crew: CrewEffect = NO_CREW,
 ): { lines: ScopeLineItem[]; totalCost: Money; totalDays: number } {
   const lines: ScopeLineItem[] = [];
   let totalCost = 0;
   const dayList: number[] = [];
 
   for (const id of itemIds) {
-    const q = quoteScopeItem(id, prop, world, skills, contractorReputation);
+    const q = quoteScopeItem(id, prop, world, skills, contractorReputation, crew);
     if (!q) continue;
     lines.push({
       itemId: id,

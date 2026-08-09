@@ -1,4 +1,4 @@
-import {
+﻿import {
   DEFECTS_BY_ID,
   ECON,
   LEVELS_BY_ID,
@@ -61,10 +61,24 @@ import {
   settleAuction,
 } from './auction';
 import { loanFromQuote, quoteFinancing, splitProceeds } from './financing';
+import { DIFFICULTY_META, difficultyMods } from './difficulty';
+import {
+  XP_AWARDS,
+  awardXp,
+  createCrew,
+  crewFactors,
+  crewUtilisation,
+  crewWeeklyCost,
+  hireCrewCost,
+  initialExperience,
+  payCrew,
+  spendPoint,
+} from './progression';
 import type {
   ActionResult,
   AuctionLot,
   ClosedDeal,
+  Difficulty,
   FinancingKind,
   DealProjection,
   GameState,
@@ -91,7 +105,7 @@ import {
 import { analyzeDeal } from './analyzer';
 import { buildScenarioProperty, type ScenarioDef } from './scenarios';
 
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 
 /** How often the charts' time series is sampled, in days. */
 export const HISTORY_INTERVAL_DAYS = 5;
@@ -161,9 +175,14 @@ function findOwned(state: GameState, id: PropertyId): Property | undefined {
 // Game creation
 // ---------------------------------------------------------------------------
 
-export function createGame(levelId: string, seed: number): GameState {
+export function createGame(
+  levelId: string,
+  seed: number,
+  difficulty: Difficulty = 'standard',
+): GameState {
   const level = LEVELS_BY_ID[levelId];
   if (!level) throw new Error(`Unknown level: ${levelId}`);
+  const mods = difficultyMods(difficulty);
 
   const state: GameState = {
     version: SAVE_VERSION,
@@ -175,9 +194,12 @@ export function createGame(levelId: string, seed: number): GameState {
     day: 1,
     phase: 'playing',
     outcomeMessage: '',
-    cash: level.startingCash,
+    difficulty,
+    cash: Math.round(level.startingCash * mods.startingCash),
     skills: { negotiation: 0, analysis: 0, management: 0, marketing: 0 },
     reputation: initialReputation(),
+    experience: initialExperience(),
+    crew: null,
     world: {
       marketIndex: level.startingMarketIndex,
       baseRate: level.startingRate,
@@ -208,7 +230,10 @@ export function createGame(levelId: string, seed: number): GameState {
   });
 
   recordHistory(state);
-  log(state, 'info', `${level.name} begins. You have $${level.startingCash.toLocaleString()}.`);
+  log(state, 'info', `${level.name} begins. You have $${state.cash.toLocaleString()}.`);
+  if (difficulty !== 'standard') {
+    log(state, 'info', `Difficulty: ${DIFFICULTY_META[difficulty].name}.`);
+  }
   return state;
 }
 
@@ -504,6 +529,7 @@ export function makeOffer(
   }
 
   state.portfolio.push(prop);
+  gainXp(state, XP_AWARDS.purchase, 'closing a purchase');
   log(state, 'good', `Bought ${prop.address} for $${contractPrice.toLocaleString()}.`);
   return { ok: true, message: `Closed on ${prop.address}.` };
 }
@@ -541,7 +567,14 @@ export function orderInspection(
   prop.inspection = level;
 
   // Analysis skill makes an inspector more thorough, up to a hard cap.
-  const rate = Math.min(0.97, spec.revealRate + 0.03 * state.skills.analysis);
+  // Difficulty decides how much is genuinely findable in the first place --
+  // not how honest the report is, which would be a different and much less
+  // interesting kind of hard.
+  const rate = Math.min(
+    0.97,
+    (spec.revealRate + 0.03 * state.skills.analysis) /
+      difficultyMods(state.difficulty).hiddenDefects,
+  );
   let found = 0;
   withRng(state, (rng) => {
     for (const d of prop.defects) {
@@ -599,7 +632,14 @@ export function startRenovation(
   }
   if (scopeIds.length === 0) return { ok: false, message: 'Add at least one line item.' };
 
-  const quote = quoteScope(scopeIds, prop, state.world, state.skills, state.reputation.contractors);
+  const quote = quoteScope(
+    scopeIds,
+    prop,
+    state.world,
+    state.skills,
+    state.reputation.contractors,
+    crewEffect(state),
+  );
   const contingency = Math.round(quote.totalCost * contingencyRate);
   const upfront = quote.totalCost + contingency;
 
@@ -634,8 +674,14 @@ function advanceRenovation(state: GameState, prop: Property, rng: Rng): void {
 
   job.daysElapsed += 1;
 
-  // Hidden defects surface once a crew is inside the walls.
-  const chance = changeOrderChance(state.skills.management, state.reputation.contractors);
+  // Hidden defects surface once a crew is inside the walls. Your own people
+  // find them earlier and with less drama than a sub who wants a variation
+  // order; a harder difficulty simply means more is behind the plaster.
+  const activeJobs = state.portfolio.filter((p) => p.ownership?.renovation).length;
+  const chance =
+    changeOrderChance(state.skills.management, state.reputation.contractors) *
+    crewFactors(state.crew, activeJobs).changeOrder *
+    difficultyMods(state.difficulty).changeOrders;
   for (const d of prop.defects) {
     if (d.revealed || d.repaired) continue;
     const def = DEFECTS_BY_ID[d.defId];
@@ -863,8 +909,8 @@ export function acceptOffer(
       split.partnerProfit > 0 ? 'info' : 'warn',
       `Partner settled on ${prop.address}: $${split.toPartner.toLocaleString()} out` +
         (split.partnerProfit > 0
-          ? ` — their capital plus ${(own.partner.profitShare * 100).toFixed(0)}% of the profit.`
-          : ' — capital returned, no profit to share.'),
+          ? ` â€” their capital plus ${(own.partner.profitShare * 100).toFixed(0)}% of the profit.`
+          : ' â€” capital returned, no profit to share.'),
     );
   }
 
@@ -920,6 +966,17 @@ export function acceptOffer(
   if (loan) adjustReputation(state.reputation, 'lenders', netProfit > 0 ? 4 : 1);
   else if (netProfit > 0) adjustReputation(state.reputation, 'lenders', 1);
 
+  // Experience comes from completing the round trip either way -- a deal that
+  // lost money teaches at least as much as one that did not. The bonus is for
+  // the margin, scaled so a thin win is not worth the same as a good one.
+  const margin = netProfit / Math.max(1, salePrice);
+  gainXp(
+    state,
+    XP_AWARDS.sale +
+      (netProfit > 0 ? XP_AWARDS.profitableSaleBonus * Math.min(1, margin / 0.15) : 0),
+    'a completed sale',
+  );
+
   log(
     state,
     netProfit >= 0 ? 'good' : 'bad',
@@ -973,7 +1030,7 @@ function buildPostMortem(
     amount: scopeMiss,
     note:
       scopeMiss < 0
-        ? `Spent $${Math.abs(scopeMiss).toLocaleString()} more than budgeted — a wider scope, or change orders.`
+        ? `Spent $${Math.abs(scopeMiss).toLocaleString()} more than budgeted â€” a wider scope, or change orders.`
         : `Came in $${scopeMiss.toLocaleString()} under budget.`,
   });
 
@@ -1036,6 +1093,114 @@ function pct(delta: Money, base: Money): string {
 export function isOccupied(prop: Property, day: number): boolean {
   const until = prop.ownership?.occupiedUntilDay;
   return until !== null && until !== undefined && day < until;
+}
+
+// ---------------------------------------------------------------------------
+// Payroll
+// ---------------------------------------------------------------------------
+
+/**
+ * The crew's effect on a quote right now, given how much work is already
+ * running. The single place both the engine and the UI ask, so the quote you
+ * are shown is the quote you are charged.
+ */
+export function crewEffect(state: GameState): { cost: number; time: number } {
+  const active = state.portfolio.filter((p) => p.ownership?.renovation).length;
+  // Quoting a job that has not started yet: count it as one more.
+  const f = crewFactors(state.crew, active + 1);
+  return { cost: f.cost, time: f.time };
+}
+
+/**
+ * Put people on the payroll.
+ *
+ * The signing cost is small; the weekly bill is the decision. A crew is
+ * cheaper and faster per job and finds trouble earlier -- and is owed wages on
+ * every day where every house you own is sitting on the market waiting for a
+ * buyer.
+ */
+export function hireCrew(state: GameState, size: number): ActionResult {
+  if (state.crew) return { ok: false, message: 'You already have a crew. Resize it instead.' };
+  if (size < 1 || size > ECON.CREW.maxSize) {
+    return { ok: false, message: `A crew runs from 1 to ${ECON.CREW.maxSize}.` };
+  }
+  const cost = hireCrewCost(size);
+  if (state.cash < cost) {
+    return { ok: false, message: `Signing them on costs $${cost.toLocaleString()}.` };
+  }
+
+  applyCash(state, -cost, 'renovation', `Signed on a crew of ${size}`);
+  state.crew = createCrew(size, state.day);
+  log(
+    state,
+    'info',
+    `Hired a crew of ${size}. $${crewWeeklyCost(size).toLocaleString()} a week from now on, ` +
+      'whether or not there is work for them.',
+  );
+  return { ok: true, message: `Crew of ${size} on the payroll.` };
+}
+
+export function resizeCrew(state: GameState, size: number): ActionResult {
+  if (!state.crew) return hireCrew(state, size);
+  if (size < 0 || size > ECON.CREW.maxSize) {
+    return { ok: false, message: `A crew runs from 0 to ${ECON.CREW.maxSize}.` };
+  }
+  if (size === 0) return disbandCrew(state);
+
+  const extra = size - state.crew.size;
+  if (extra > 0) {
+    const cost = hireCrewCost(extra);
+    if (state.cash < cost) {
+      return { ok: false, message: `Signing on ${extra} more costs $${cost.toLocaleString()}.` };
+    }
+    applyCash(state, -cost, 'renovation', `Signed on ${extra} more`);
+  }
+  state.crew.size = size;
+  log(state, 'info', `Crew is now ${size}. $${crewWeeklyCost(size).toLocaleString()} a week.`);
+  return { ok: true, message: `Crew resized to ${size}.` };
+}
+
+export function disbandCrew(state: GameState): ActionResult {
+  const crew = state.crew;
+  if (!crew) return { ok: false, message: 'You do not have a crew.' };
+  const active = state.portfolio.filter((p) => p.ownership?.renovation).length;
+  if (active > 0) {
+    return {
+      ok: false,
+      message: 'They are in the middle of a job. Let them finish it first.',
+    };
+  }
+  state.crew = null;
+  log(
+    state,
+    'info',
+    `Let the crew go after ${crew.workingDays + crew.idleDays} days, ` +
+      `$${Math.round(crew.wagesPaid).toLocaleString()} in wages and ` +
+      `${Math.round(crewUtilisation(crew) * 100)}% utilisation.`,
+  );
+  return { ok: true, message: 'Crew let go.' };
+}
+
+/** Put an earned experience point into a skill. */
+export function spendExperience(state: GameState, skill: SkillId): ActionResult {
+  const res = spendPoint(state.experience, state.skills, skill);
+  if (res.ok) log(state, 'good', `Experience spent: ${skill} is now ${state.skills[skill]}.`);
+  return res;
+}
+
+/** Award XP and announce a level. */
+function gainXp(state: GameState, amount: number, what: string): void {
+  const levels = awardXp(state.experience, amount);
+  if (levels > 0) {
+    log(
+      state,
+      'good',
+      `Level ${state.experience.level}. ${state.experience.unspentPoints} experience ` +
+        `point${state.experience.unspentPoints === 1 ? '' : 's'} to spend on a skill.`,
+    );
+  } else if (amount >= 80) {
+    log(state, 'info', `+${Math.round(amount)} experience from ${what}.`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1368,6 +1533,18 @@ export function advanceDay(state: GameState): ActionResult {
     refreshMarket(state, rng, level.neighborhoods, level.listingCount);
     updatePortfolio(state, rng);
   });
+
+  // Wages are due every day, work or no work. That is the whole point of them.
+  if (state.crew) {
+    const active = state.portfolio.filter((p) => p.ownership?.renovation).length;
+    const daily = payCrew(state, active);
+    applyCash(
+      state,
+      -daily,
+      'renovation',
+      active > 0 ? 'Crew wages' : 'Crew wages (no job running)',
+    );
+  }
   withAuctionRng(state, (rng) => refreshAuction(state, rng, level.neighborhoods));
 
   handleLoanMaturity(state);
@@ -1428,16 +1605,20 @@ export function advanceDaysUntilAttention(state: GameState, count: number): Skip
 
 function updateWorld(state: GameState, rng: Rng): void {
   const mods = eventModifiers(state.world);
+  // Difficulty scales how far the world moves under you, not where it is
+  // heading. The mean reversion and the long-run anchor are untouched.
+  const vol = difficultyMods(state.difficulty).volatility;
 
   // Market index: event drift plus a small random walk, gently mean-reverting
   // so a campaign cannot run away to absurd values.
   const pull = (1 - state.world.marketIndex) * 0.0006;
   state.world.marketIndex *= mods.valueDrift;
-  state.world.marketIndex += pull + rng.clampedNormal(0, 0.0011, 2.5);
+  state.world.marketIndex += pull + rng.clampedNormal(0, 0.0011 * vol, 2.5);
   state.world.marketIndex = Math.max(0.55, Math.min(1.9, state.world.marketIndex));
 
   // Rates drift slowly toward a long-run anchor; events shift the effective rate.
-  state.world.baseRate += (0.065 - state.world.baseRate) * 0.002 + rng.clampedNormal(0, 0.0002, 2);
+  state.world.baseRate +=
+    (0.065 - state.world.baseRate) * 0.002 + rng.clampedNormal(0, 0.0002 * vol, 2);
   state.world.baseRate = Math.max(0.02, Math.min(0.14, state.world.baseRate));
   state.world.interestRate = Math.max(0.01, state.world.baseRate + mods.rateDelta);
 
@@ -1447,7 +1628,7 @@ function updateWorld(state: GameState, rng: Rng): void {
     if (!hood) continue;
     const local = eventModifiers(state.world, id);
     const drift = hood.appreciation / 365;
-    const noise = rng.clampedNormal(0, 0.0009 * hood.volatility, 2.5);
+    const noise = rng.clampedNormal(0, 0.0009 * hood.volatility * vol, 2.5);
     const next = idx * local.valueDrift + drift + noise;
     state.world.neighborhoodIndex[id] = Math.max(0.5, Math.min(2.2, next));
   }
@@ -1504,11 +1685,12 @@ function refreshMarket(
   // Rival buyers work the same market. A well-priced house does not sit around
   // waiting for you to finish deliberating, which is the main pressure the
   // game was missing -- previously a good deal would keep indefinitely.
+  const rivalry = difficultyMods(state.difficulty).competition;
   const taken: Property[] = [];
   state.market = state.market.filter((p) => {
     if (!p.listing) return true;
     const heat = p.listing.competition * (1 - Math.min(1, p.listing.daysOnMarket / 150));
-    if (rng.chance(heat * 0.035)) {
+    if (rng.chance(heat * 0.035 * rivalry)) {
       taken.push(p);
       return false;
     }
@@ -1852,11 +2034,19 @@ function checkOutcome(state: GameState): void {
     return;
   }
 
-  if (level.dayLimit !== null && state.day > level.dayLimit) {
+  const limit = campaignDayLimit(state);
+  if (limit !== null && state.day > limit) {
     state.phase = 'lost';
     state.outcomeMessage = `The clock ran out on day ${state.day} with a net worth of $${worth.toLocaleString()}, short of the $${level.goalNetWorth.toLocaleString()} target.`;
     log(state, 'bad', state.outcomeMessage);
   }
+}
+
+/** The campaign clock after difficulty, or null in the sandbox. */
+export function campaignDayLimit(state: GameState): number | null {
+  const level = LEVELS_BY_ID[state.levelId];
+  if (!level || level.dayLimit === null) return null;
+  return Math.round(level.dayLimit * difficultyMods(state.difficulty).clock);
 }
 
 // ---------------------------------------------------------------------------
@@ -1873,3 +2063,4 @@ export function propertyTrueValue(state: GameState, prop: Property): Money {
 }
 
 export { netWorth, skillCost, scheduleDays };
+
