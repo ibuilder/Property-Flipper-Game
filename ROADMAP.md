@@ -69,8 +69,8 @@ The Pygame README listed the author's own future ideas. Status after v2:
 | --- | --- |
 | More property types and locations | **Done** — 7 archetypes, 6 neighborhoods |
 | More diverse upgrades | **Done** — 18 scope items across 8 categories |
-| More detailed market simulation (gentrification) | **Partial** — per-neighborhood indices and a revitalisation event |
-| More complex event types and chains | **Partial** — events exist, chains do not |
+| More detailed market simulation (gentrification) | **Done** — multi-year neighborhood arcs |
+| More complex event types and chains | **Done** — chains with probabilistic links |
 | Improved UI/UX (visual properties, graphs, tooltips) | **Partial** — tooltips and copy done, visuals are Phase 1 |
 | Difficulty levels | **Done** — four campaigns times three settings |
 | More staff types (specialists, agents) | **Done** — a crew on the payroll |
@@ -170,8 +170,14 @@ Make the underwriting itself richer, since that is the differentiator.
   house bought at retail will not refinance however much equity it has — which is precisely why
   BRRRR requires buying below value. Habitability gates letting, so the rehab genuinely comes
   first, and the resulting loan amortises daily rather than ballooning.
-- **Gentrification and decline** as multi-year neighborhood arcs rather than events.
-- **Event chains** — a rate spike leading into a correction leading into distressed inventory.
+- ~~**Gentrification and decline**~~ **Done.** Multi-year arcs rather than events: a neighborhood
+  moves a little every day for two to four years, ramping in and out, and stays silent for its
+  first stretch — so the information is early rather than free. By the time the map says the
+  Millworks is gentrifying, most of the move is still ahead but the cheapest way in has gone.
+- ~~**Event chains**~~ **Done.** A rate spike tends toward a correction, a boom toward a materials
+  spike and then a permit backlog. Probabilities rather than a script, and a chained event stands in
+  for the day's random one rather than arriving on top of it — otherwise "chains" is just a word for
+  more events.
 
 ### Phase 5 — Make it teach deliberately — **mostly done**
 

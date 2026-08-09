@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { NEIGHBORHOODS, type GameState } from '../../engine';
+import { NEIGHBORHOODS, arcIsVisible, type GameState } from '../../engine';
 import { money, percent } from '../format';
 import { SEQUENTIAL } from './Charts';
 
@@ -80,6 +80,17 @@ export default function NeighborhoodMap({
     for (const p of state.portfolio) m[p.neighborhoodId] = (m[p.neighborhoodId] ?? 0) + 1;
     return m;
   }, [state.portfolio.length, state.portfolio.map((p) => p.id).join(',')]);
+
+  // Only arcs that have become visible on the ground. An arc runs silently for
+  // its first stretch, and showing it early would give away the one piece of
+  // information the player is meant to be paying for.
+  const arcs = useMemo(() => {
+    const m: Record<string, 'gentrifying' | 'declining'> = {};
+    for (const arc of state.world.arcs) {
+      if (arcIsVisible(arc, state.day)) m[arc.neighborhoodId] = arc.kind;
+    }
+    return m;
+  }, [state.world.arcs, state.day]);
 
   const active = hover ? NEIGHBORHOODS.find((n) => n.id === hover) : null;
   const activeIndex = hover ? (state.world.neighborhoodIndex[hover] ?? 1) : 0;
@@ -178,6 +189,22 @@ export default function NeighborhoodMap({
                     fill="#3ecf8e"
                   >
                     {owned}
+                  </text>
+                </g>
+              )}
+              {/* A visible arc is marked on the ground rather than only in the
+                  log, because the whole value of noticing one is spatial. */}
+              {arcs[r.id] && (
+                <g pointerEvents="none">
+                  <text
+                    x={r.lx}
+                    y={r.ly + 27}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fontWeight="700"
+                    fill={arcs[r.id] === 'gentrifying' ? '#0d4d2c' : '#5c1418'}
+                  >
+                    {arcs[r.id] === 'gentrifying' ? '▲ gentrifying' : '▼ declining'}
                   </text>
                 </g>
               )}

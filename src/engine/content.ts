@@ -760,6 +760,18 @@ export const ECON = {
   },
 
   /**
+   * Multi-year neighborhood arcs.
+   *
+   * Rare per day but long-lived, so a campaign of any length sees one or two
+   * and a short one may see none. Weighted toward gentrification because
+   * decline is the more punishing of the two to be caught inside.
+   */
+  ARC: {
+    dailyChance: 0.0022,
+    gentrifyingShare: 0.6,
+  },
+
+  /**
    * Experience: the third currency, earned only by doing the work.
    *
    * Superlinear so that levels keep meaning something, and capped so it cannot

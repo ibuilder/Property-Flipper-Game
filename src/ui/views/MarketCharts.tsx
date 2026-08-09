@@ -1,4 +1,4 @@
-import { NEIGHBORHOODS_BY_ID, type GameState } from '../../engine';
+import { ARCS, NEIGHBORHOODS_BY_ID, arcIsVisible, type GameState } from '../../engine';
 import { money, moneyShort, percent } from '../format';
 import { ChartData, LineChart, SERIES, Sparkline } from '../graphics/Charts';
 
@@ -142,9 +142,23 @@ export default function MarketCharts({ state }: { state: GameState }) {
               const now = series[series.length - 1].y;
               const start = series[0].y;
               const delta = now - start;
+              const arc = state.world.arcs.find(
+                (a) => a.neighborhoodId === id && arcIsVisible(a, state.day),
+              );
               return (
                 <div className="spark-cell" key={id}>
-                  <div className="name">{hood?.name ?? id}</div>
+                  <div className="name">
+                    {hood?.name ?? id}
+                    {arc && (
+                      <span
+                        className={`pill ${arc.kind === 'gentrifying' ? 'good' : 'bad'}`}
+                        style={{ marginLeft: 6 }}
+                        title={ARCS[arc.kind].blurb}
+                      >
+                        {arc.kind}
+                      </span>
+                    )}
+                  </div>
                   <div className={`val ${delta >= 0 ? 'good' : 'bad'}`}>
                     {now.toFixed(3)} <span className="faint">({delta >= 0 ? '+' : ''}
                     {(delta * 100).toFixed(1)}%)</span>

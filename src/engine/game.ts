@@ -62,6 +62,7 @@ import {
 } from './auction';
 import { loanFromQuote, quoteFinancing, splitProceeds } from './financing';
 import { DIFFICULTY_META, difficultyMods } from './difficulty';
+import { ARCS, arcDriftFor, arcIsVisible, chainFrom } from './arcs';
 import {
   XP_AWARDS,
   awardXp,
@@ -105,7 +106,7 @@ import {
 import { analyzeDeal } from './analyzer';
 import { buildScenarioProperty, type ScenarioDef } from './scenarios';
 
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 
 /** How often the charts' time series is sampled, in days. */
 export const HISTORY_INTERVAL_DAYS = 5;
@@ -137,6 +138,23 @@ function withAuctionRng<T>(state: GameState, fn: (rng: Rng) => T): T {
   const rng = Rng.fromState(state.auctionRngState);
   const out = fn(rng);
   state.auctionRngState = rng.getState();
+  return out;
+}
+
+/**
+ * The slow world's stream: neighborhood arcs and event chains.
+ *
+ * Same reasoning as the auction. These roll dice every single day, so drawing
+ * them from the main stream meant that adding them reshuffled every campaign
+ * -- the harness moved by 30 percentage points of win rate, almost none of
+ * which was the feature actually doing anything. On its own stream, whatever
+ * the harness reports afterwards is the real economic effect of arcs and
+ * chains rather than the noise of a different shuffle.
+ */
+function withWorldRng<T>(state: GameState, fn: (rng: Rng) => T): T {
+  const rng = Rng.fromState(state.worldRngState);
+  const out = fn(rng);
+  state.worldRngState = rng.getState();
   return out;
 }
 
@@ -190,6 +208,7 @@ export function createGame(
     rngState: seed >>> 0,
     // Offset so the two streams never run in lockstep off the same seed.
     auctionRngState: (seed ^ 0x9e3779b9) >>> 0,
+    worldRngState: (seed ^ 0x85ebca6b) >>> 0,
     levelId,
     day: 1,
     phase: 'playing',
@@ -206,6 +225,7 @@ export function createGame(
       interestRate: level.startingRate,
       neighborhoodIndex: Object.fromEntries(level.neighborhoods.map((id) => [id, 1])),
       activeEvents: [],
+      arcs: [],
     },
     market: [],
     auctionBlock: [],
@@ -1533,6 +1553,7 @@ export function advanceDay(state: GameState): ActionResult {
     refreshMarket(state, rng, level.neighborhoods, level.listingCount);
     updatePortfolio(state, rng);
   });
+  withWorldRng(state, (rng) => updateArcs(state, rng, level.neighborhoods));
 
   // Wages are due every day, work or no work. That is the whole point of them.
   if (state.crew) {
@@ -1627,7 +1648,10 @@ function updateWorld(state: GameState, rng: Rng): void {
     const hood = NEIGHBORHOODS_BY_ID[id];
     if (!hood) continue;
     const local = eventModifiers(state.world, id);
-    const drift = hood.appreciation / 365;
+    // An arc is a second, much slower drift term that runs for years. It is
+    // added rather than multiplied so it compounds with the baseline
+    // appreciation instead of replacing it.
+    const drift = hood.appreciation / 365 + arcDriftFor(state.world, id, state.day);
     const noise = rng.clampedNormal(0, 0.0009 * hood.volatility * vol, 2.5);
     const next = idx * local.valueDrift + drift + noise;
     state.world.neighborhoodIndex[id] = Math.max(0.5, Math.min(2.2, next));
@@ -1643,6 +1667,39 @@ function updateEvents(state: GameState, rng: Rng): void {
     if (def) log(state, 'info', `${def.name} has run its course.`);
   }
   state.world.activeEvents = state.world.activeEvents.filter((a) => a.daysRemaining > 0);
+
+  // An expiring event can lead somewhere. Chains fire on a probability rather
+  // than a certainty, so this is a tendency to plan against rather than a
+  // script to memorise -- and the lag between the trigger and the consequence
+  // is the window you get to act in.
+  // Rolled on the world stream so that adding chains did not reshuffle every
+  // existing campaign.
+  const chained = withWorldRng(state, (worldRng) => {
+    for (const e of expired) {
+      for (const link of chainFrom(e.defId)) {
+        if (state.world.activeEvents.some((a) => a.defId === link.next)) continue;
+        if (!worldRng.chance(link.chance)) continue;
+        const def = EVENTS_BY_ID[link.next];
+        if (!def) continue;
+        state.world.activeEvents.push({
+          defId: def.id,
+          daysRemaining: worldRng.int(def.minDays, def.maxDays),
+          startedDay: state.day,
+        });
+        log(state, 'warn', `${def.name}, following on. ${link.why}`);
+        return true;
+      }
+    }
+    return false;
+  });
+
+  // A chained event stands in for the day's random one rather than arriving on
+  // top of it. The point of a chain is that the *sequence* means something --
+  // a rate spike leading into a correction -- not that the world simply has
+  // more going on. Letting chains stack on the base roll raised total event
+  // pressure enough to cost the leverage campaign a third of its win rate,
+  // which is a difficulty change nobody asked for wearing a feature's clothes.
+  if (chained) return;
 
   // At most two overlapping events, so the modifiers stay legible.
   if (state.world.activeEvents.length >= 2) return;
@@ -1670,6 +1727,58 @@ function updateEvents(state: GameState, rng: Rng): void {
     startedDay: state.day,
   });
   log(state, 'warn', `${chosen.name}: ${chosen.blurb}`);
+}
+
+/**
+ * Start, announce and retire multi-year neighborhood arcs.
+ *
+ * An arc is deliberately silent for its first stretch. The information is
+ * early, not free: by the time the game tells you the Millworks is
+ * gentrifying, most of the move is still ahead but the cheapest way in has
+ * already gone.
+ */
+function updateArcs(state: GameState, rng: Rng, neighborhoods: readonly string[]): void {
+  state.world.arcs = state.world.arcs.filter((arc) => {
+    if (state.day - arc.startedDay < arc.totalDays) return true;
+    const hood = NEIGHBORHOODS_BY_ID[arc.neighborhoodId]?.name ?? arc.neighborhoodId;
+    log(state, 'info', `${hood} has finished ${ARCS[arc.kind].name.toLowerCase()}.`);
+    return false;
+  });
+
+  // Announce the ones that have just become visible on the ground.
+  for (const arc of state.world.arcs) {
+    if (arc.announced) continue;
+    if (!arcIsVisible(arc, state.day)) continue;
+    arc.announced = true;
+    const def = ARCS[arc.kind];
+    log(
+      state,
+      arc.kind === 'gentrifying' ? 'good' : 'bad',
+      `${NEIGHBORHOODS_BY_ID[arc.neighborhoodId]?.name ?? arc.neighborhoodId} is ` +
+        `${def.name.toLowerCase()}. ${def.earlySign} ${def.blurb}`,
+    );
+  }
+
+  // One arc per neighborhood at a time, and no more than two running at once,
+  // so the board stays readable.
+  if (state.world.arcs.length >= 2) return;
+  if (!rng.chance(ECON.ARC.dailyChance)) return;
+
+  const taken = new Set(state.world.arcs.map((a) => a.neighborhoodId));
+  const free = neighborhoods.filter((n) => !taken.has(n));
+  if (free.length === 0) return;
+
+  const kind: 'gentrifying' | 'declining' = rng.chance(ECON.ARC.gentrifyingShare)
+    ? 'gentrifying'
+    : 'declining';
+  const def = ARCS[kind];
+  state.world.arcs.push({
+    neighborhoodId: rng.pick(free),
+    kind,
+    startedDay: state.day,
+    totalDays: rng.int(def.minDays, def.maxDays),
+    announced: false,
+  });
 }
 
 function refreshMarket(

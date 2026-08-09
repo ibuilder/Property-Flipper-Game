@@ -324,8 +324,12 @@ describe('balance', () => {
   }, 150000);
 
   it('runs the longer campaigns to completion without breaking', () => {
+    // Twenty seeds rather than ten. At ten, a two-campaign difference reads as
+    // a twenty-point swing in win rate, which is enough to make a change look
+    // like a balance regression when it is sampling error -- exactly the trap
+    // the event-chain work walked into.
     for (const levelId of ['leverage', 'the_grind', 'sandbox']) {
-      const runs = SEEDS.slice(0, 10).map((s) =>
+      const runs = SEEDS.slice(0, 20).map((s) =>
         runCampaign(levelId, s, { ...CAREFUL, maxConcurrent: 2 }),
       );
       const stats = summarise(`${levelId} @ 70%`, runs);

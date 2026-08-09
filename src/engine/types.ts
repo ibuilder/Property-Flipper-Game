@@ -408,6 +408,23 @@ export interface Auction {
   nextRefreshDay: number;
 }
 
+/**
+ * A multi-year change in what a neighborhood is.
+ *
+ * Not an event: events expire and leave nothing behind. An arc moves the index
+ * a little every day for years, ramping in and out, and is visible on the
+ * ground well before it is finished — which is what makes buying into one an
+ * actual decision rather than a lottery.
+ */
+export interface NeighborhoodArc {
+  neighborhoodId: string;
+  kind: 'gentrifying' | 'declining';
+  startedDay: number;
+  totalDays: number;
+  /** Whether the player has been told. Arcs run silently before that. */
+  announced: boolean;
+}
+
 export type Difficulty = 'forgiving' | 'standard' | 'brutal';
 
 /**
@@ -637,6 +654,8 @@ export interface WorldState {
   /** Per-neighborhood index layered on top of the market index. */
   neighborhoodIndex: Record<string, number>;
   activeEvents: ActiveEvent[];
+  /** Slow, directional neighborhood change. Outlives any event. */
+  arcs: NeighborhoodArc[];
 }
 
 export type GamePhase = 'playing' | 'won' | 'lost';
@@ -671,6 +690,8 @@ export interface GameState {
    * whole campaign exactly.
    */
   auctionRngState: number;
+  /** A third stream for the slow world: neighborhood arcs and event chains. */
+  worldRngState: number;
   levelId: string;
   difficulty: Difficulty;
   day: number;

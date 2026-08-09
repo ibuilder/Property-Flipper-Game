@@ -149,6 +149,14 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.crew = s.crew ?? null;
     return s;
   },
+  // v11 predates neighborhood arcs. An old save resumes with none running;
+  // one may start on any subsequent day.
+  11: (s: any) => {
+    s.world = s.world ?? {};
+    s.world.arcs = s.world.arcs ?? [];
+    s.worldRngState = s.worldRngState ?? (((s.seed ?? 1) ^ 0x85ebca6b) >>> 0);
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {
