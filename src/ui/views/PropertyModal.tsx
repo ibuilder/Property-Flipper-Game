@@ -3,10 +3,11 @@ import {
   ECON,
   analyzeDeal,
   estimateArv,
+  financingMenu,
   makeOffer,
-  maxLoanAmount,
   orderInspection,
   quoteScope,
+  type FinancingKind,
   type Property,
 } from '../../engine';
 import { currentReserve } from '../../engine/market';
@@ -32,8 +33,10 @@ export default function PropertyModal({
   const act = useAction();
   const [scope, setScope] = useState<string[]>(['paint_interior', 'flooring_lvp', 'landscaping_curb']);
   const [offer, setOffer] = useState<number>(0);
-  const [financed, setFinanced] = useState(false);
+  const [kind, setKind] = useState<FinancingKind>('cash');
   const [touchedOffer, setTouchedOffer] = useState(false);
+
+  const financed = kind !== 'cash';
 
   const analysis = useMemo(() => {
     if (!state) return null;
@@ -54,10 +57,17 @@ export default function PropertyModal({
   if (!state || !analysis) return null;
 
   const listing = property.listing;
-  const quote = quoteScope(scope, property, state.world, state.skills, state.reputation.contractors);
-  const loan = financed ? maxLoanAmount(offer) : 0;
-  const cashAtClose = offer - loan + Math.round(offer * ECON.BUY_CLOSING_RATE);
-  const cashAfterRehab = state.cash - cashAtClose - quote.totalCost;
+  const scopeQuote = quoteScope(
+    scope,
+    property,
+    state.world,
+    state.skills,
+    state.reputation.contractors,
+  );
+  const menu = financingMenu(property, offer, state.world, state.reputation, state.cash);
+  const quote = menu.find((q) => q.kind === kind) ?? menu[0];
+  const cashAtClose = quote.cashRequired;
+  const cashAfterRehab = state.cash - cashAtClose - scopeQuote.totalCost;
   const canFund = state.cash >= cashAtClose;
 
   const toggle = (id: string) =>
@@ -141,7 +151,7 @@ export default function PropertyModal({
                 <div className="panel-head">
                   <h2>Planned scope of work</h2>
                   <span className="dim num" style={{ fontSize: 12 }}>
-                    {money(quote.totalCost)} &middot; {quote.totalDays}d
+                    {money(scopeQuote.totalCost)} &middot; {scopeQuote.totalDays}d
                   </span>
                 </div>
                 <div className="panel-body">
@@ -183,35 +193,61 @@ export default function PropertyModal({
                     />
                   </label>
 
-                  <label
-                    className="scope-item"
-                    style={{ marginBottom: 12, background: financed ? 'var(--accent-dim)' : undefined }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={financed}
-                      onChange={(e) => setFinanced(e.target.checked)}
-                    />
-                    <span style={{ flex: 1 }}>
-                      <span className="name">Use hard money</span>
-                      <span className="blurb" style={{ display: 'block' }}>
-                        Borrows {percent(ECON.MAX_LTV, 0)} of the price at{' '}
-                        {percent(state.world.interestRate + ECON.LOAN_SPREAD, 2)} with{' '}
-                        {percent(ECON.LOAN_POINTS, 0)} in points, balloon due in{' '}
-                        {ECON.LOAN_TERM_DAYS} days. Frees up cash for the rehab, but if you have not
-                        sold by maturity the lender takes the house.
+                  <div className="scope-group-label">How you pay for it</div>
+                  {menu.map((q) => (
+                    <label
+                      key={q.kind}
+                      className={`scope-item${kind === q.kind ? ' on' : ''}`}
+                      style={{ opacity: q.available || kind === q.kind ? 1 : 0.55 }}
+                    >
+                      <input
+                        type="radio"
+                        name="financing"
+                        checked={kind === q.kind}
+                        disabled={!q.available}
+                        onChange={() => setKind(q.kind)}
+                      />
+                      <span style={{ flex: 1 }}>
+                        <span className="name">{q.label}</span>
+                        <span className="meta" style={{ display: 'block' }}>
+                          {q.advance > 0 && `${money(q.advance)} advanced · `}
+                          {q.annualRate > 0
+                            ? `${percent(q.annualRate, 2)} · ${q.termDays}d`
+                            : q.profitShare > 0
+                              ? `${percent(q.profitShare, 0)} of the profit`
+                              : 'no financing cost'}
+                          {q.points > 0 && ` · ${money(q.points)} points`}
+                          {q.priceUplift > 0 && ` · +${money(q.priceUplift)} on the price`}
+                        </span>
+                        <span className="blurb" style={{ display: 'block' }}>
+                          {q.available ? q.note : q.reason}
+                        </span>
                       </span>
-                    </span>
-                  </label>
+                    </label>
+                  ))}
 
-                  <div className="kv">
+                  <div className="kv" style={{ marginTop: 10 }}>
                     <span className="k">Cash needed at closing</span>
                     <span className={`v ${canFund ? '' : 'bad'}`}>{money(cashAtClose)}</span>
                   </div>
-                  {financed && (
+                  {quote.advance > 0 && (
                     <div className="kv">
-                      <span className="k">Loan amount</span>
-                      <span className="v">{money(loan)}</span>
+                      <span className="k">
+                        {quote.kind === 'partner' ? 'Partner puts in' : 'Advanced'}
+                      </span>
+                      <span className="v">{money(quote.advance)}</span>
+                    </div>
+                  )}
+                  {quote.priceUplift > 0 && (
+                    <div className="kv">
+                      <span className="k warn">
+                        Seller&rsquo;s price for carrying it
+                        <br />
+                        <span className="faint" style={{ fontSize: 11 }}>
+                          the contract price becomes {money(offer + quote.priceUplift)}
+                        </span>
+                      </span>
+                      <span className="v bad">{money(-quote.priceUplift)}</span>
                     </div>
                   )}
                   <div className="kv">
@@ -250,16 +286,24 @@ export default function PropertyModal({
                             <span className="k">Cash at closing</span>
                             <span className="v bad">{money(-cashAtClose)}</span>
                           </div>
-                          {financed && (
+                          {quote.advance > 0 && (
                             <div className="kv">
                               <span className="k">
-                                Hard money
+                                {quote.label}
                                 <br />
                                 <span className="faint" style={{ fontSize: 11 }}>
-                                  balloon due day {state.day + ECON.LOAN_TERM_DAYS}
+                                  {quote.termDays > 0
+                                    ? `due day ${state.day + quote.termDays}`
+                                    : `${percent(quote.profitShare, 0)} of the profit, forever`}
                                 </span>
                               </span>
-                              <span className="v">{money(loan)}</span>
+                              <span className="v">{money(quote.advance)}</span>
+                            </div>
+                          )}
+                          {quote.priceUplift > 0 && (
+                            <div className="kv">
+                              <span className="k warn">Seller&rsquo;s premium for the note</span>
+                              <span className="v bad">{money(-quote.priceUplift)}</span>
                             </div>
                           )}
                           <div className="kv total">
@@ -288,7 +332,7 @@ export default function PropertyModal({
                         </>
                       }
                       onConfirm={() => {
-                        const res = act((s) => makeOffer(s, property.id, offer, financed));
+                        const res = act((s) => makeOffer(s, property.id, offer, kind));
                         if (res.ok) onClose();
                       }}
                     />

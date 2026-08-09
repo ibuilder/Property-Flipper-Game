@@ -760,6 +760,46 @@ export const ECON = {
   },
 
   /**
+   * The financing menu beyond hard money.
+   *
+   * Each instrument is priced so that none dominates. Private money is cheaper
+   * but lends less and has to be earned. Seller paper is cheapest of all and
+   * the seller charges for it in the price. An equity partner has no rate at
+   * all and takes a third of the upside forever.
+   */
+  FINANCING: {
+    private: {
+      /** Less than hard money: private lenders are conservative. */
+      maxLtv: 0.65,
+      /** Half the points. */
+      points: 0.01,
+      /** Spread over prevailing -- between hard money and a term loan. */
+      spread: 0.028,
+      termDays: 540,
+      /** Nobody lends privately to a stranger. */
+      minReputation: 62,
+    },
+    seller: {
+      downPayment: 0.25,
+      spread: 0.01,
+      termDays: 730,
+      /**
+       * What the seller charges for carrying it. The classic trade: you can
+       * have your price or my terms, not both.
+       */
+      priceUplift: 0.06,
+      /** Only sellers who own it outright and want out will carry paper. */
+      willingSellers: ['estate', 'tired_landlord', 'relocating'],
+    },
+    partner: {
+      /** Share of the total cash requirement they put up. */
+      contribution: 0.5,
+      /** Share of the profit they take, after their capital comes back. */
+      profitShare: 0.35,
+    },
+  },
+
+  /**
    * Trustee sales.
    *
    * Calibrated so the auction is a genuinely different trade rather than a

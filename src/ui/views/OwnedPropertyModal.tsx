@@ -21,6 +21,7 @@ import {
   reducePrice,
   rejectOffer,
   sellingCosts,
+  splitProceeds,
   startRenovation,
   type Property,
 } from '../../engine';
@@ -355,6 +356,28 @@ export default function OwnedPropertyModal({
                         <span className="v bad">{money(-loanPayoff(loan))}</span>
                       </div>
                     )}
+                    {own.partner && (
+                      <div className="kv">
+                        <span className="k">
+                          Partner
+                          <br />
+                          <span className="faint" style={{ fontSize: 11 }}>
+                            {money(own.partner.capital)} of capital back first, then{' '}
+                            {percent(own.partner.profitShare, 0)} of the profit
+                          </span>
+                        </span>
+                        <span className="v bad">
+                          {money(
+                            -splitProceeds(
+                              netAtList,
+                              own.partner.capital,
+                              invested,
+                              own.partner.profitShare,
+                            ).toPartner,
+                          )}
+                        </span>
+                      </div>
+                    )}
                     <div className="kv total">
                       <span className="k">Net proceeds</span>
                       <span className="v">{money(netAtList)}</span>
@@ -606,9 +629,34 @@ function SalePanel({ property, onClose }: { property: Property; onClose: () => v
                       <span className="v bad">{money(-payoff)}</span>
                     </div>
                   )}
+                  {own.partner && (
+                    <div className="kv">
+                      <span className="k">
+                        Partner settlement
+                        <br />
+                        <span className="faint" style={{ fontSize: 11 }}>
+                          capital back before yours, then{' '}
+                          {percent(own.partner.profitShare, 0)} of the profit
+                        </span>
+                      </span>
+                      <span className="v bad">
+                        {money(
+                          -splitProceeds(net, own.partner.capital, invested, own.partner.profitShare)
+                            .toPartner,
+                        )}
+                      </span>
+                    </div>
+                  )}
                   <div className="kv total">
                     <span className="k">Cash to you</span>
-                    <span className="v">{money(net)}</span>
+                    <span className="v">
+                      {money(
+                        own.partner
+                          ? splitProceeds(net, own.partner.capital, invested, own.partner.profitShare)
+                              .toYou
+                          : net,
+                      )}
+                    </span>
                   </div>
                   <div className="kv total">
                     <span className="k">Deal profit</span>

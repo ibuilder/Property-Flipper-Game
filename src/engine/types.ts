@@ -408,6 +408,26 @@ export interface Auction {
   nextRefreshDay: number;
 }
 
+/** How a purchase is paid for. */
+export type FinancingKind = 'cash' | 'hardMoney' | 'private' | 'seller' | 'partner';
+
+export interface FinancePlan {
+  kind: FinancingKind;
+}
+
+/**
+ * An equity partner on a single deal.
+ *
+ * Not debt: there is no rate, no maturity and nothing to default on. What
+ * there is instead is a permanent claim on the upside, and a first claim on
+ * the capital, which is what makes equity the expensive-but-safe option.
+ */
+export interface Partnership {
+  name: string;
+  capital: Money;
+  profitShare: number;
+}
+
 export interface Ownership {
   purchaseDay: number;
   purchasePrice: Money;
@@ -435,6 +455,8 @@ export interface Ownership {
    * which is the cost the courthouse discount is paying for.
    */
   occupiedUntilDay: number | null;
+  /** Set when somebody else put up part of the capital for this deal. */
+  partner: Partnership | null;
 }
 
 export interface SaleListing {
@@ -491,7 +513,7 @@ export interface Rental {
  * enough that the type distinguishes them: hard money is interest-only with a
  * balloon that can take the house, a term loan amortises and simply gets paid.
  */
-export type LoanKind = 'hardMoney' | 'term';
+export type LoanKind = 'hardMoney' | 'term' | 'private' | 'seller';
 
 export interface Loan {
   id: string;

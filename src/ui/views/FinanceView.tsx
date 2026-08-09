@@ -117,8 +117,18 @@ export default function FinanceView() {
                         <tr key={l.id}>
                           <td>{prop?.address ?? l.propertyId}</td>
                           <td>
-                            <span className={`pill ${l.kind === 'term' ? 'info' : 'mute'}`}>
-                              {l.kind === 'term' ? 'amortising' : 'hard money'}
+                            <span
+                              className={`pill ${
+                                l.kind === 'term' ? 'info' : l.kind === 'hardMoney' ? 'mute' : 'good'
+                              }`}
+                            >
+                              {l.kind === 'term'
+                                ? 'amortising'
+                                : l.kind === 'hardMoney'
+                                  ? 'hard money'
+                                  : l.kind === 'private'
+                                    ? 'private'
+                                    : 'seller note'}
                             </span>
                           </td>
                           <td className="right num">{money(l.principal)}</td>

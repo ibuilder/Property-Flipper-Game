@@ -60,10 +60,12 @@ import {
   evictionCost,
   settleAuction,
 } from './auction';
+import { loanFromQuote, quoteFinancing, splitProceeds } from './financing';
 import type {
   ActionResult,
   AuctionLot,
   ClosedDeal,
+  FinancingKind,
   DealProjection,
   GameState,
   HouseSubject,
@@ -89,7 +91,7 @@ import {
 import { analyzeDeal } from './analyzer';
 import { buildScenarioProperty, type ScenarioDef } from './scenarios';
 
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 
 /** How often the charts' time series is sampled, in days. */
 export const HISTORY_INTERVAL_DAYS = 5;
@@ -355,7 +357,12 @@ export function makeOffer(
   state: GameState,
   propertyId: PropertyId,
   amount: Money,
-  useFinancing: boolean,
+  /**
+   * How to pay for it. `false` and `true` are kept as shorthand for cash and
+   * hard money -- they read naturally at the call site and predate the wider
+   * menu.
+   */
+  financing: boolean | FinancingKind = false,
 ): ActionResult {
   if (state.phase !== 'playing') return { ok: false, message: 'The game is over.' };
 
@@ -365,11 +372,20 @@ export function makeOffer(
   if (!prop.listing) return { ok: false, message: 'That property is not listed.' };
   if (amount <= 0) return { ok: false, message: 'Offer must be positive.' };
 
-  const closing = buyClosingCosts(amount);
-  const loanPrincipal = useFinancing ? maxLoanAmount(amount) : 0;
-  const points = Math.round(loanPrincipal * ECON.LOAN_POINTS);
-  const cashNeeded = amount - loanPrincipal + closing;
+  const kind: FinancingKind =
+    financing === true ? 'hardMoney' : financing === false ? 'cash' : financing;
+  const useFinancing = kind !== 'cash';
 
+  const quote = quoteFinancing(kind, prop, amount, state.world, state.reputation, state.cash);
+
+  // Seller paper is bought with a higher price. The offer the seller actually
+  // evaluates is the uplifted one, which is the whole point of the trade.
+  const contractPrice = amount + quote.priceUplift;
+  const closing = buyClosingCosts(contractPrice);
+  const cashNeeded = quote.cashRequired;
+
+  // The shortfall is checked before the generic availability flag so the
+  // player is told the actual number rather than that it "is not available".
   if (state.cash < cashNeeded) {
     return {
       ok: false,
@@ -378,17 +394,18 @@ export function makeOffer(
       ).toLocaleString()}.`,
     };
   }
+  if (!quote.available) return { ok: false, message: quote.reason };
 
-  const outcome = evaluateOffer(prop, amount, state.skills.negotiation);
+  const outcome = evaluateOffer(prop, contractPrice, state.skills.negotiation);
   if (!outcome.accepted) {
-    log(state, 'warn', `Offer of $${amount.toLocaleString()} on ${prop.address} rejected.`);
+    log(state, 'warn', `Offer of $${contractPrice.toLocaleString()} on ${prop.address} rejected.`);
     return { ok: false, message: outcome.message };
   }
 
   // The seller would take it -- but so would somebody else. A thin offer on a
   // contested listing can still lose.
   const rival = withRng(state, (rng) =>
-    competingBid(prop, amount, state.skills.negotiation, rng),
+    competingBid(prop, contractPrice, state.skills.negotiation, rng),
   );
   if (rival !== null) {
     prop.listing.askPrice = Math.max(prop.listing.askPrice, rival);
@@ -409,47 +426,85 @@ export function makeOffer(
   prop.listing = null;
   prop.ownership = {
     purchaseDay: state.day,
-    purchasePrice: amount,
+    purchasePrice: contractPrice,
     closingCosts: closing,
     loanId: null,
     renovation: null,
     saleListing: null,
     holdingCostsPaid: 0,
     renovationSpend: 0,
-    projection: captureProjection(state, prop, amount, useFinancing),
+    projection: captureProjection(state, prop, contractPrice, useFinancing),
     boughtAs: snapshot(prop),
     rental: null,
     cashedOut: 0,
     occupiedUntilDay: null,
+    partner:
+      kind === 'partner'
+        ? { name: 'Your partner', capital: quote.advance, profitShare: quote.profitShare }
+        : null,
   };
 
-  applyCash(state, -amount, 'acquisition', `Purchased ${prop.address}`, prop.id);
+  applyCash(state, -contractPrice, 'acquisition', `Purchased ${prop.address}`, prop.id);
   applyCash(state, -closing, 'closing', `Closing costs on ${prop.address}`, prop.id);
 
-  if (useFinancing && loanPrincipal > 0) {
-    const { loan, netProceeds } = originateLoan(
-      `l${state.loans.length + 1}_${prop.id}`,
-      prop.id,
-      loanPrincipal,
-      state.world,
-      state.day,
-      state.reputation.lenders,
-    );
+  const loan = loanFromQuote(`l${state.loans.length + 1}_${prop.id}`, prop.id, quote, state.day);
+  if (loan) {
     state.loans.push(loan);
     prop.ownership.loanId = loan.id;
-    applyCash(state, netProceeds, 'loan', `Hard money advance on ${prop.address}`, prop.id);
-    applyCash(state, 0, 'financing', `Origination points: $${points.toLocaleString()}`, prop.id);
+    applyCash(
+      state,
+      loan.principal - loan.pointsPaid,
+      'loan',
+      `${quote.label} advance on ${prop.address}`,
+      prop.id,
+    );
+    if (loan.pointsPaid > 0) {
+      applyCash(
+        state,
+        0,
+        'financing',
+        `Origination points: $${loan.pointsPaid.toLocaleString()}`,
+        prop.id,
+      );
+    }
     log(
       state,
       'info',
-      `Financed $${loanPrincipal.toLocaleString()} at ${(loan.annualRate * 100).toFixed(
-        2,
-      )}%. Points of $${points.toLocaleString()} came out of the wire.`,
+      `${quote.label}: $${loan.principal.toLocaleString()} at ${(loan.annualRate * 100).toFixed(2)}%` +
+        (loan.pointsPaid > 0
+          ? `, with $${loan.pointsPaid.toLocaleString()} of points out of the wire`
+          : ', no points') +
+        `, due day ${loan.maturityDay}.`,
+    );
+  }
+
+  if (prop.ownership.partner) {
+    applyCash(
+      state,
+      quote.advance,
+      'loan',
+      `Partner capital on ${prop.address}`,
+      prop.id,
+    );
+    log(
+      state,
+      'info',
+      `A partner put up $${quote.advance.toLocaleString()} for ${(quote.profitShare * 100).toFixed(0)}% of the profit. ` +
+        'No interest and no balloon -- but their capital comes back before yours.',
+    );
+  }
+
+  if (quote.priceUplift > 0) {
+    log(
+      state,
+      'info',
+      `Paid $${quote.priceUplift.toLocaleString()} over your number for the seller to carry the note. ` +
+        'Price and terms are the same trade.',
     );
   }
 
   state.portfolio.push(prop);
-  log(state, 'good', `Bought ${prop.address} for $${amount.toLocaleString()}.`);
+  log(state, 'good', `Bought ${prop.address} for $${contractPrice.toLocaleString()}.`);
   return { ok: true, message: `Closed on ${prop.address}.` };
 }
 
@@ -780,6 +835,38 @@ export function acceptOffer(
     own.renovationSpend -
     own.holdingCostsPaid -
     financingCosts;
+
+  // An equity partner is settled last: their capital comes back before your
+  // profit, and then they take their share of what is left. On a deal that
+  // lost money they get their capital back and no more, which is the whole
+  // reason equity is the expensive-but-safe way to fund something.
+  if (own.partner) {
+    const invested =
+      own.purchasePrice + own.closingCosts + own.renovationSpend + own.holdingCostsPaid;
+    const grossToYou = salePrice - commission - closing - concession - payoff;
+    const split = splitProceeds(
+      grossToYou,
+      own.partner.capital,
+      invested,
+      own.partner.profitShare,
+    );
+    applyCash(
+      state,
+      -split.toPartner,
+      'loan',
+      `Partner settlement on ${prop.address}: $${own.partner.capital.toLocaleString()} capital` +
+        (split.partnerProfit > 0 ? ` plus $${split.partnerProfit.toLocaleString()} profit share` : ''),
+      prop.id,
+    );
+    log(
+      state,
+      split.partnerProfit > 0 ? 'info' : 'warn',
+      `Partner settled on ${prop.address}: $${split.toPartner.toLocaleString()} out` +
+        (split.partnerProfit > 0
+          ? ` — their capital plus ${(own.partner.profitShare * 100).toFixed(0)}% of the profit.`
+          : ' — capital returned, no profit to share.'),
+    );
+  }
 
   const daysHeld = Math.max(1, state.day - own.purchaseDay);
   const cashInvested = Math.max(
@@ -1558,6 +1645,8 @@ function takeAuctionTitle(
     rental: null,
     cashedOut: 0,
     occupiedUntilDay: null,
+    // Nobody partners on a blind cash purchase at the courthouse.
+    partner: null,
   };
 
   state.portfolio.push(prop);
@@ -1571,7 +1660,7 @@ function takeAuctionTitle(
       '.',
   );
 
-  if (lot.occupied) {
+  if (lot.occupied && prop.ownership) {
     const cost = evictionCost(prop, state.world, state.day);
     prop.ownership.occupiedUntilDay = state.day + ECON.AUCTION.evictionDays;
     applyCash(state, -cost, 'holding', `Cash for keys and legal on ${prop.address}`, prop.id);

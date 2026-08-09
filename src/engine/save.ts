@@ -132,6 +132,14 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     }
     return s;
   },
+  // v9 predates the wider financing menu. Every existing deal was funded with
+  // cash or hard money, and neither has a partner.
+  9: (s: any) => {
+    for (const prop of s.portfolio ?? []) {
+      if (prop.ownership) prop.ownership.partner = prop.ownership.partner ?? null;
+    }
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {

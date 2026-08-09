@@ -7,6 +7,7 @@ export * from './events';
 export * from './renovation';
 export * from './rental';
 export * from './auction';
+export * from './financing';
 export * from './explain';
 export * from './mistakes';
 export * from './reputation';
