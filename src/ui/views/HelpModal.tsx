@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { ECON } from '../../engine';
 import Modal from '../components/Modal';
+import { resetHints } from '../components/FirstTime';
 import { money, percent } from '../format';
 
 /**
@@ -11,6 +13,8 @@ import { money, percent } from '../format';
  * drift apart.
  */
 export default function HelpModal({ onClose }: { onClose: () => void }) {
+  const [hintsBack, setHintsBack] = useState(false);
+
   return (
     <Modal
       title="How to flip a house"
@@ -290,6 +294,30 @@ export default function HelpModal({ onClose }: { onClose: () => void }) {
               not care whether the house sold.
             </li>
           </ul>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-head">
+          <h2>Hints</h2>
+        </div>
+        <div className="panel-body">
+          <p className="dim" style={{ marginTop: 0, fontSize: 13 }}>
+            Short notes appear inline the first time you reach each part of the game &mdash; a
+            listing, a house you own, a house on the market &mdash; and then stay dismissed.
+          </p>
+          <div className="btn-row">
+            <button
+              className="btn"
+              disabled={hintsBack}
+              onClick={() => {
+                resetHints();
+                setHintsBack(true);
+              }}
+            >
+              {hintsBack ? 'Hints will show again' : 'Show them all again'}
+            </button>
+          </div>
         </div>
       </div>
     </Modal>

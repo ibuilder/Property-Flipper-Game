@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { DEFECTS_BY_ID } from '../../engine';
 import type { HouseSubject, Property } from '../../engine';
 import { HOUSE_GROUND_Y, HOUSE_VIEWBOX, HOUSE_W, buildHouseArt } from './houseArt';
 
@@ -15,6 +16,7 @@ export default function House({
   className,
   title,
   day = 150,
+  showDefects = false,
 }: {
   /** A live Property, or a snapshot from a closed deal. */
   property: Property | HouseSubject;
@@ -23,16 +25,24 @@ export default function House({
   title?: string;
   /** Drives the season in the scene. */
   day?: number;
+  /**
+   * Pin known defects to where they are. Off at thumbnail size, where the pins
+   * would be larger than the house.
+   */
+  showDefects?: boolean;
 }) {
-  const subject: HouseSubject = useMemo(() => {
-    const live = property as Property;
-    return {
-      ...(property as HouseSubject),
-      renovating:
-        'renovating' in property ? property.renovating : !!live.ownership?.renovation,
-      forSale: 'forSale' in property ? property.forSale : !!live.ownership?.saleListing,
-    };
-  }, [property]);
+  // Deliberately not memoised on `property`. The engine mutates state in place,
+  // so a Property keeps the same object identity from purchase to sale -- a memo
+  // keyed on it would build the facade once and then never notice the crew
+  // arriving, the roof being replaced, or the board going up in the yard.
+  // Building this object is trivial; the expensive step below is memoised on
+  // the fields it actually reads.
+  const live = property as Property;
+  const subject: HouseSubject = {
+    ...(property as HouseSubject),
+    renovating: 'renovating' in property ? property.renovating : !!live.ownership?.renovation,
+    forSale: 'forSale' in property ? property.forSale : !!live.ownership?.saleListing,
+  };
 
   const art = useMemo(
     () => buildHouseArt(subject, day),
@@ -227,6 +237,31 @@ export default function House({
         <rect key={i} x={w.x} y={HOUSE_GROUND_Y - w.h} width="1.2" height={w.h} fill="#556133" />
       ))}
 
+      {/* Scaffolding along the elevation while the crew is on site. A skip
+          alone did not read as "work is happening here". */}
+      {art.works && (
+        <g stroke="#8a8479" strokeWidth="1.4" opacity="0.85">
+          {art.works.scaffoldX.map((x, i) => (
+            <line key={i} x1={x} y1={art.body.y - 4} x2={x} y2={HOUSE_GROUND_Y} />
+          ))}
+          <line
+            x1={art.works.scaffoldX[0]}
+            y1={art.body.y + art.body.h * 0.35}
+            x2={art.works.scaffoldX[art.works.scaffoldX.length - 1]}
+            y2={art.body.y + art.body.h * 0.35}
+          />
+          <line
+            x1={art.works.scaffoldX[0]}
+            y1={art.body.y + art.body.h * 0.75}
+            x2={art.works.scaffoldX[art.works.scaffoldX.length - 1]}
+            y2={art.body.y + art.body.h * 0.75}
+          />
+        </g>
+      )}
+      {art.works?.tarp && (
+        <polygon points={art.roof.points} fill="#2f6fa8" opacity="0.5" />
+      )}
+
       {/* A skip in the drive while the crew is in. */}
       {art.skip && (
         <g>
@@ -238,6 +273,34 @@ export default function House({
           <rect x="22" y={HOUSE_GROUND_Y - 17} width="9" height="5" fill="#6d5230" />
         </g>
       )}
+
+      {/* Known problems, pinned where they actually are. Drawn last so they sit
+          above everything, and only at hero size -- at thumbnail scale the pins
+          would be bigger than the house. */}
+      {showDefects &&
+        art.markers.map((m) => {
+          const tone =
+            m.severity === 'major' ? '#ff6b6b' : m.severity === 'moderate' ? '#f0a848' : '#8fa3b8';
+          const def = DEFECTS_BY_ID[m.defId];
+          return (
+            <g key={m.defId}>
+              <title>
+                {def?.name ?? m.defId} &mdash; {m.severity}
+              </title>
+              <circle cx={m.x} cy={m.y} r="7" fill="#0b0e13" opacity="0.55" />
+              <circle
+                cx={m.x}
+                cy={m.y}
+                r="5.5"
+                fill="none"
+                stroke={tone}
+                strokeWidth="1.6"
+              />
+              <rect x={m.x - 0.7} y={m.y - 3} width="1.4" height="4" fill={tone} />
+              <rect x={m.x - 0.7} y={m.y + 1.8} width="1.4" height="1.4" fill={tone} />
+            </g>
+          );
+        })}
 
       {/* For-sale board */}
       {art.sign !== 'none' && (

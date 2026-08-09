@@ -117,11 +117,34 @@ export function LineChart({
   const ticks = niceTicks(minY, maxY);
   const active = hover === null ? null : data[hover];
 
+  const move = (delta: number) =>
+    setHover((h) => {
+      const next = h === null ? data.length - 1 : h + delta;
+      return Math.max(0, Math.min(data.length - 1, next));
+    });
+
   return (
+    <>
     <svg
       viewBox={`0 0 ${W} ${H}`}
       style={{ width: '100%', height: 'auto', display: 'block' }}
       onMouseLeave={() => setHover(null)}
+      /* The readout used to be reachable by mouse and nothing else. The chart
+         now takes focus and the arrow keys walk the series, which is also the
+         only way to read an individual point on a touch screen. */
+      tabIndex={0}
+      onFocus={() => setHover((h) => h ?? data.length - 1)}
+      onBlur={() => setHover(null)}
+      onKeyDown={(e) => {
+        const step = e.shiftKey ? 10 : 1;
+        if (e.key === 'ArrowRight') move(step);
+        else if (e.key === 'ArrowLeft') move(-step);
+        else if (e.key === 'Home') setHover(0);
+        else if (e.key === 'End') setHover(data.length - 1);
+        else if (e.key === 'Escape') setHover(null);
+        else return;
+        e.preventDefault();
+      }}
       onMouseMove={(e) => {
         const rect = e.currentTarget.getBoundingClientRect();
         const px = ((e.clientX - rect.left) / rect.width) * W;
@@ -235,7 +258,67 @@ export function LineChart({
           </g>
         </g>
       )}
-    </svg>
+      </svg>
+      {/* Announced to screen readers as the selection moves, and invisible
+          otherwise. Without it the arrow keys would move a marker nobody could
+          perceive. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {active ? `${formatX(active.x)}: ${format(active.y)}` : ''}
+      </div>
+    </>
+  );
+}
+
+/**
+ * The same series as a table, collapsed by default.
+ *
+ * A chart is a summary; sometimes you want the number. This is also the plain
+ * fallback for anyone who cannot use the plot at all, and it is why the plot
+ * itself does not have to carry every label.
+ */
+export function ChartData({
+  data,
+  format,
+  formatX = (x) => `Day ${Math.round(x)}`,
+  label,
+  max = 40,
+}: {
+  data: Point[];
+  format: (y: number) => string;
+  formatX?: (x: number) => string;
+  label: string;
+  /** Long series are thinned evenly rather than truncated. */
+  max?: number;
+}) {
+  if (data.length === 0) return null;
+  const stride = Math.max(1, Math.ceil(data.length / max));
+  const rows = data.filter((_, i) => i % stride === 0 || i === data.length - 1);
+
+  return (
+    <details className="chart-data">
+      <summary>
+        {label} as a table
+        {stride > 1 && <span className="faint"> &middot; every {stride}th sample</span>}
+      </summary>
+      <div className="table-wrap" style={{ maxHeight: 240, overflowY: 'auto' }}>
+        <table>
+          <thead>
+            <tr>
+              <th>When</th>
+              <th className="right">{label}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((d, i) => (
+              <tr key={i}>
+                <td className="dim">{formatX(d.x)}</td>
+                <td className="right num">{format(d.y)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }
 

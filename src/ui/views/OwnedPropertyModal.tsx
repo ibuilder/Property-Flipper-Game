@@ -30,6 +30,7 @@ import PropertyFacts from '../components/PropertyFacts';
 import ScopeBuilder from '../components/ScopeBuilder';
 import Modal from '../components/Modal';
 import ConfirmButton from '../components/ConfirmButton';
+import FirstTime from '../components/FirstTime';
 import RentalPanel from './RentalPanel';
 
 /** Manage an owned property: renovate, then list and negotiate the exit. */
@@ -90,6 +91,20 @@ export default function OwnedPropertyModal({
     >
           <div className="grid-2">
             <div>
+              <FirstTime id="first-owned" title="You own it — the clock is running">
+                <p>
+                  From today this house costs you money every day you hold it: taxes, insurance,
+                  utilities, and interest if you borrowed. That carry is what punishes a slow
+                  renovation and a slow sale, and it is why the 30% the rule holds back is not
+                  profit.
+                </p>
+                <p>
+                  Pick a scope and start work, or list it as-is. Anything you leave broken comes
+                  back at closing as a buyer&rsquo;s concession worth more than the repair would
+                  have cost.
+                </p>
+              </FirstTime>
+
               <PropertyFacts property={property} />
 
               {property.inspection !== 'thorough' && !own.renovation && (
@@ -444,6 +459,18 @@ function SalePanel({ property, onClose }: { property: Property; onClose: () => v
         </span>
       </div>
       <div className="panel-body">
+        <FirstTime id="first-listed" title="Price drives traffic, hard">
+          <p>
+            Buyer interest does not taper gently above true value &mdash; it falls off a cliff.
+            Overpricing does not cost you a few extra days, it costs you months of carry and then
+            the price cut anyway.
+          </p>
+          <p>
+            Offers arrive with strings: a financed buyer&rsquo;s lender can appraise below the
+            price and the deal settles at the appraisal, and anything you left unrepaired shows up
+            as a concession.
+          </p>
+        </FirstTime>
         <div className="kv">
           <span className="k">Listed at</span>
           <span className="v" style={{ fontSize: 16, fontWeight: 600 }}>

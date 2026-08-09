@@ -608,6 +608,84 @@ label.field .label {
   font-size: 13px;
 }
 
+/* Charts take focus so the arrow keys can walk the series. */
+.chart-block svg:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.chart-data {
+  margin-top: 6px;
+}
+
+.chart-data > summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-faint);
+  padding: 3px 0;
+  list-style-position: outside;
+}
+
+.chart-data > summary:hover {
+  color: var(--text-dim);
+}
+
+.chart-data[open] > summary {
+  margin-bottom: 6px;
+}
+
+/* One-time contextual hints. Tinted like a note rather than a warning: this is
+   guidance, not a problem with the deal. */
+.first-time {
+  border: 1px solid var(--accent);
+  border-left-width: 3px;
+  background: var(--accent-dim);
+  border-radius: 5px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.first-time .ft-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 5px;
+}
+
+.first-time .ft-head strong {
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+}
+
+.first-time .ft-body {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.first-time .ft-body p {
+  margin: 0 0 6px;
+}
+
+.first-time .ft-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* Present to assistive technology, absent from the page. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .spark-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

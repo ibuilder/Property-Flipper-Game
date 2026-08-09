@@ -10,6 +10,7 @@ import {
 } from '../engine';
 import { gameDate, money, moneyShort, percent } from './format';
 import { advanceDays, quitToMenu, saveGame, useAction, useGame } from './store';
+import { play, setSoundEnabled, soundEnabled } from './sound';
 import LogPanel from './LogPanel';
 import MarketView from './views/MarketView';
 import PortfolioView from './views/PortfolioView';
@@ -28,6 +29,7 @@ export default function GameShell() {
   const [tab, setTab] = useState<Tab>('market');
   const [saveOpen, setSaveOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [sound, setSound] = useState(soundEnabled);
 
   // Autosave every few days so a crash never costs much progress.
   useEffect(() => {
@@ -185,6 +187,19 @@ export default function GameShell() {
           </button>
           <button className="btn" onClick={() => setHelpOpen(true)} title="How to play (?)">
             Help
+          </button>
+          <button
+            className="btn"
+            aria-pressed={sound}
+            onClick={() => {
+              const next = !sound;
+              setSoundEnabled(next);
+              setSound(next);
+              if (next) play('good');
+            }}
+            title={sound ? 'Sound on — click to mute' : 'Sound off — click to enable'}
+          >
+            {sound ? '♪' : '♪̸'}
           </button>
           <button className="btn" onClick={quitToMenu}>
             Menu

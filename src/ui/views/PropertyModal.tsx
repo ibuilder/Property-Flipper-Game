@@ -17,6 +17,7 @@ import PropertyFacts from '../components/PropertyFacts';
 import ScopeBuilder from '../components/ScopeBuilder';
 import Modal from '../components/Modal';
 import ConfirmButton from '../components/ConfirmButton';
+import FirstTime from '../components/FirstTime';
 
 /** The buy-side workflow: inspect, scope, analyze, offer. */
 export default function PropertyModal({
@@ -80,6 +81,20 @@ export default function PropertyModal({
     >
           <div className="grid-2">
             <div>
+              <FirstTime id="first-listing" title="How to read a listing">
+                <p>
+                  Four numbers decide everything here, and they are not the asking price. What is
+                  it worth once repaired (<strong>ARV</strong>), what will the work cost, what will
+                  it cost to hold, and what is the most you can pay and still make money
+                  (<strong>MAO</strong>).
+                </p>
+                <p>
+                  Work down the left column &mdash; the comps set your value, the inspection tells
+                  you what is wrong &mdash; then pick a scope on the right. The projection re-prices
+                  as you go, and the two maximum offers appear at the bottom.
+                </p>
+              </FirstTime>
+
               <PropertyFacts property={property} />
 
               <div className="panel">

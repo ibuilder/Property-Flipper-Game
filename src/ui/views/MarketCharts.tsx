@@ -1,6 +1,6 @@
 import { NEIGHBORHOODS_BY_ID, type GameState } from '../../engine';
 import { money, moneyShort, percent } from '../format';
-import { LineChart, SERIES, Sparkline } from '../graphics/Charts';
+import { ChartData, LineChart, SERIES, Sparkline } from '../graphics/Charts';
 
 /**
  * The time-series panels.
@@ -54,6 +54,11 @@ export default function MarketCharts({ state }: { state: GameState }) {
               format={(v) => moneyShort(v)}
               baseline={first.netWorth}
             />
+            <ChartData
+              data={h.map((p) => ({ x: p.day, y: p.netWorth }))}
+              format={(v) => money(v)}
+              label="Net worth"
+            />
           </div>
 
           <div className="chart-block">
@@ -66,6 +71,11 @@ export default function MarketCharts({ state }: { state: GameState }) {
               format={(v) => moneyShort(v)}
               baseline={0}
               height={120}
+            />
+            <ChartData
+              data={h.map((p) => ({ x: p.day, y: p.cash }))}
+              format={(v) => money(v)}
+              label="Cash"
             />
           </div>
         </div>
@@ -88,6 +98,11 @@ export default function MarketCharts({ state }: { state: GameState }) {
               format={(v) => v.toFixed(2)}
               baseline={1}
             />
+            <ChartData
+              data={h.map((p) => ({ x: p.day, y: p.marketIndex }))}
+              format={(v) => v.toFixed(3)}
+              label="Market index"
+            />
           </div>
 
           <div className="chart-block">
@@ -100,6 +115,11 @@ export default function MarketCharts({ state }: { state: GameState }) {
               format={(v) => `${(v * 100).toFixed(1)}%`}
               color={SERIES.primary}
               height={120}
+            />
+            <ChartData
+              data={h.map((p) => ({ x: p.day, y: p.interestRate }))}
+              format={(v) => percent(v, 2)}
+              label="Interest rate"
             />
           </div>
         </div>

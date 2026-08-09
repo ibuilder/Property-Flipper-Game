@@ -11,6 +11,7 @@ import { conditionLabel, money, moneyShort } from '../format';
 import { useGame, useVersion } from '../store';
 import PropertyModal from './PropertyModal';
 import ClickableRow from '../components/ClickableRow';
+import FirstTime from '../components/FirstTime';
 import SortableTh from '../components/SortableTh';
 import NeighborhoodMap from '../graphics/NeighborhoodMap';
 import House from '../graphics/House';
@@ -181,6 +182,21 @@ export default function MarketView() {
               {onlyWorkable ? '✓ ' : ''}Within reach
             </button>
           </div>
+        </div>
+        <div className="panel-body" style={{ paddingBottom: 0 }}>
+          <FirstTime id="first-market" title="Start here">
+            <p>
+              Open a listing and run the numbers before you do anything else. Nothing on this
+              board works at its asking price &mdash; the margin comes out of what you negotiate
+              off it, and out of listings that have sat long enough for the seller to get
+              realistic.
+            </p>
+            <p>
+              Sort by any column, and use <strong>within reach</strong> to hide the ones that
+              would need an implausible discount. Days on market is the most useful column here:
+              a listing at 60 days has a more flexible seller than the same house at 5.
+            </p>
+          </FirstTime>
         </div>
         <div className="panel-body flush">
           <div className="table-wrap">

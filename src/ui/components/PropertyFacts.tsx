@@ -31,7 +31,7 @@ export default function PropertyFacts({ property }: { property: Property }) {
           <h2>The property</h2>
           <span className={`pill ${cond.tone}`}>{cond.text}</span>
         </div>
-        <House property={property} className="house-hero" />
+        <House property={property} className="house-hero" showDefects />
         <div className="panel-body">
           <div className="kv">
             <span className="k">Area</span>
@@ -115,6 +115,10 @@ export default function PropertyFacts({ property }: { property: Property }) {
             </p>
           ) : (
             <>
+              <p className="faint" style={{ fontSize: 12, marginTop: 0 }}>
+                Each finding is pinned on the picture above, where it actually is &mdash; the
+                sewer under the front yard, the sill plate behind the siding.
+              </p>
               <div className="table-wrap">
                 <table>
                   <thead>

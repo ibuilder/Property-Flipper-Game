@@ -1,4 +1,4 @@
-import { Rng } from '../../engine';
+import { DEFECTS_BY_ID, Rng } from '../../engine';
 import type { HouseSubject } from '../../engine';
 
 /**
@@ -52,6 +52,57 @@ export interface ShrubSpec {
   wild: boolean;
 }
 
+/**
+ * A known problem, pinned to the part of the house it is actually in.
+ *
+ * An inspection report is a list; a list does not tell you that the sewer is
+ * under the front yard and the sill plate is behind the siding. Anchoring each
+ * finding to a place on the drawing is what makes "$14,000 of defects" stop
+ * being an abstract subtraction.
+ */
+export interface DefectMarker {
+  defId: string;
+  x: number;
+  y: number;
+  severity: 'minor' | 'moderate' | 'major';
+}
+
+/** Where on the drawing each defect lives, as fractions of the body box. */
+type Anchor = (g: {
+  bodyX: number;
+  bodyY: number;
+  bodyW: number;
+  bodyH: number;
+  peakY: number;
+  groundY: number;
+  door: { x: number; y: number; w: number };
+  windows: WindowSpec[];
+}) => { x: number; y: number };
+
+const DEFECT_ANCHORS: Record<string, Anchor> = {
+  // Stair-step cracking in the block: the bottom corner of the wall.
+  foundation_settling: (g) => ({ x: g.bodyX + 6, y: g.groundY - 5 }),
+  // Uninsurable wiring runs through the walls; put it beside the meter.
+  knob_and_tube: (g) => ({ x: g.bodyX + g.bodyW - 7, y: g.bodyY + g.bodyH * 0.45 }),
+  roof_failure: (g) => ({ x: g.bodyX + g.bodyW * 0.5, y: (g.peakY + g.bodyY) / 2 }),
+  // The camera scope stops eighteen feet out -- that is under the front yard.
+  sewer_lateral: (g) => ({ x: g.door.x + g.door.w / 2, y: g.groundY + 9 }),
+  galvanized_supply: (g) => ({ x: g.bodyX + g.bodyW * 0.3, y: g.groundY - 8 }),
+  // Crawlspace: below the floor, front centre-left.
+  mold_remediation: (g) => ({ x: g.bodyX + g.bodyW * 0.22, y: g.groundY - 3 }),
+  // Sill plate along the south wall.
+  termite_damage: (g) => ({ x: g.bodyX + g.bodyW - 12, y: g.groundY - 4 }),
+  // Under the floor you were going to demo.
+  asbestos_tile: (g) => ({ x: g.door.x + g.door.w / 2, y: g.groundY - 6 }),
+  hvac_dead: (g) => ({ x: g.bodyX + g.bodyW - 4, y: g.bodyY + g.bodyH * 0.75 }),
+  window_rot: (g) =>
+    g.windows.length > 0
+      ? { x: g.windows[0].x + g.windows[0].w / 2, y: g.windows[0].y + g.windows[0].h / 2 }
+      : { x: g.bodyX + 10, y: g.bodyY + 12 },
+  deck_unsafe: (g) => ({ x: g.bodyX + g.bodyW + 8, y: g.groundY - 4 }),
+  water_heater: (g) => ({ x: g.bodyX + g.bodyW * 0.68, y: g.groundY - 7 }),
+};
+
 export interface HouseArt {
   /** viewBox is always 0 0 200 140. */
   palette: HousePalette;
@@ -75,6 +126,10 @@ export interface HouseArt {
   stains: { x: number; y: number; w: number; h: number; o: number }[];
   /** A skip in the drive while work is underway. */
   skip: boolean;
+  /** Scaffold bays and a roof tarp, drawn while a crew is on site. */
+  works: { scaffoldX: number[]; tarp: boolean } | null;
+  /** Where the known, unrepaired problems actually are. */
+  markers: DefectMarker[];
   /** Sale sign planted in the yard. */
   sign: 'none' | 'sale' | 'sold';
   /** Drives ground colour and a dusting of snow in winter. */
@@ -268,6 +323,34 @@ export function buildHouseArt(prop: HouseSubject, day = 150): HouseArt {
     o: rng.float(0.05, 0.16),
   }));
 
+  // --- known problems, pinned where they actually are ---------------------
+  const geometry = { bodyX, bodyY, bodyW, bodyH, peakY, groundY: GROUND_Y, door, windows };
+  const markers: DefectMarker[] = prop.defects
+    .filter((d) => d.revealed && !d.repaired)
+    .map((d) => {
+      const anchor = DEFECT_ANCHORS[d.defId];
+      const at = anchor
+        ? anchor(geometry)
+        : { x: bodyX + bodyW * 0.5, y: bodyY + bodyH * 0.5 };
+      return {
+        defId: d.defId,
+        x: at.x,
+        y: at.y,
+        severity: DEFECTS_BY_ID[d.defId]?.severity ?? 'moderate',
+      };
+    });
+
+  // --- work in progress ---------------------------------------------------
+  // A skip alone did not read as "a crew is here". Scaffolding along the
+  // elevation does, and a tarp goes up whenever the roof is part of the job or
+  // is the reason for it.
+  const works = renovating
+    ? {
+        scaffoldX: Array.from({ length: 3 }, (_, i) => bodyX - 5 + i * ((bodyW + 10) / 2)),
+        tarp: !roofSound,
+      }
+    : null;
+
   return {
     palette: palette(c, renovating, day),
     body: { x: bodyX, y: bodyY, w: bodyW, h: bodyH },
@@ -281,6 +364,8 @@ export function buildHouseArt(prop: HouseSubject, day = 150): HouseArt {
     weeds,
     stains,
     skip: renovating,
+    works,
+    markers,
     sign: prop.forSale ? 'sale' : 'none',
     season: seasonOf(day),
   };

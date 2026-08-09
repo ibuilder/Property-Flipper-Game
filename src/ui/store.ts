@@ -9,6 +9,7 @@ import {
   type GameState,
   type ScenarioDef,
 } from '../engine';
+import { cueForLog, play } from './sound';
 
 /**
  * A deliberately small store.
@@ -38,6 +39,36 @@ let toastId = 0;
 function emit(): void {
   snapshot = { ...snapshot, version: snapshot.version + 1 };
   listeners.forEach((l) => l());
+}
+
+/**
+ * Sound the newest log line, if there is one.
+ *
+ * Driven off the engine's own log rather than off individual UI handlers: if
+ * the simulation thought something was worth telling you about, that is
+ * exactly the set of things worth hearing, and the two cannot drift apart.
+ */
+let lastSoundedLogLength = 0;
+
+function soundNewLog(): void {
+  const log = snapshot.state?.log;
+  if (!log) {
+    lastSoundedLogLength = 0;
+    return;
+  }
+  if (log.length <= lastSoundedLogLength) {
+    // Includes a fresh game or a loaded save, where the log can shrink.
+    lastSoundedLogLength = log.length;
+    return;
+  }
+  // Only the most significant of a batch -- advancing thirty days can produce
+  // a dozen lines and playing all of them is a car alarm.
+  const fresh = log.slice(lastSoundedLogLength);
+  lastSoundedLogLength = log.length;
+  const rank = { bad: 3, warn: 2, good: 1, info: 0 } as const;
+  const worst = fresh.reduce((a, b) => (rank[b.tone] > rank[a.tone] ? b : a));
+  const cue = cueForLog(worst.tone, worst.message);
+  if (cue) play(cue);
 }
 
 function subscribe(listener: () => void): () => void {
@@ -80,6 +111,9 @@ export function useAction() {
     }
     toastId += 1;
     snapshot.toast = { id: toastId, message: result.message, tone: result.ok ? 'ok' : 'error' };
+    // A refused action never reaches the log, so give it its own sound.
+    if (!result.ok) play('warn');
+    else soundNewLog();
     emit();
     return result;
   }, []);
@@ -125,6 +159,7 @@ export function advanceDays(count: number): void {
   if (!state) return;
 
   const result = advanceDaysUntilAttention(state, count);
+  soundNewLog();
   if (result.stoppedEarly && result.daysAdvanced < count) {
     toastId += 1;
     snapshot.toast = {
