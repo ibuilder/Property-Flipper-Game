@@ -1,41 +1,135 @@
 ﻿import { useMemo, useState } from 'react';
-import { NEIGHBORHOODS_BY_ID, ARCHETYPES_BY_ID, type Property } from '../../engine';
+import {
+  NEIGHBORHOODS_BY_ID,
+  ARCHETYPES_BY_ID,
+  analyzeDeal,
+  estimateArv,
+  type GameState,
+  type Property,
+} from '../../engine';
 import { conditionLabel, money, moneyShort } from '../format';
 import { useGame, useVersion } from '../store';
 import PropertyModal from './PropertyModal';
 import ClickableRow from '../components/ClickableRow';
+import SortableTh from '../components/SortableTh';
 import NeighborhoodMap from '../graphics/NeighborhoodMap';
 import House from '../graphics/House';
 
-type SortKey = 'ask' | 'condition' | 'sqft' | 'estimate' | 'dom';
+type SortKey =
+  | 'address'
+  | 'area'
+  | 'type'
+  | 'sqft'
+  | 'built'
+  | 'condition'
+  | 'ask'
+  | 'estimate'
+  | 'spread'
+  | 'dom'
+  | 'interest';
+
+/** Columns where the interesting end is the large one, so sort there first. */
+const DESCENDING_FIRST: ReadonlySet<SortKey> = new Set(['sqft', 'spread', 'dom', 'interest', 'built']);
+
+/**
+ * The scope the screening filter assumes.
+ *
+ * A maximum offer is only defined relative to a scope, and the screen cannot
+ * know what you intend to do to the house. It assumes the cheapest plausible
+ * cosmetic refresh -- the same three items the offer screen starts you with --
+ * which makes it optimistic about anything needing systems work.
+ */
+const SCREEN_SCOPE = ['paint_interior', 'flooring_lvp', 'landscaping_curb'];
+
+/**
+ * How much of the asking price a maximum offer covers.
+ *
+ * Almost nothing clears a maximum offer at the asking price -- across 400
+ * day-one listings, four did. That is not a flaw in the model, it is the
+ * business: the margin comes from what you negotiate off the ask and from
+ * listings that go stale. So the useful screening question is not "does this
+ * work today" but "how big a discount would this need", and a house needing
+ * 40% off is not worth the click.
+ */
+function screenRatio(prop: Property, state: GameState): number {
+  const ask = prop.listing?.askPrice ?? 0;
+  if (ask <= 0) return 0;
+  const arv = estimateArv(prop, state.world, state.day, SCREEN_SCOPE);
+  const a = analyzeDeal(prop, state.world, state.day, arv, SCREEN_SCOPE, state.skills, {});
+  return Math.min(a.mao70, a.maoDetailed) / ask;
+}
+
+/**
+ * Discount threshold for "within reach".
+ *
+ * Calibrated against the hidden seller reserves: it hides 60% of listings and
+ * has never yet hidden one that was actually workable. Loose on purpose -- a
+ * screen that occasionally wastes a click is far better than one that buries
+ * the deal.
+ */
+const WITHIN_REACH = 0.75;
 
 export default function MarketView() {
   const state = useGame();
   const version = useVersion();
   const [selected, setSelected] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>('ask');
+  const [descending, setDescending] = useState(false);
   const [hood, setHood] = useState<string>('all');
+  const [onlyWorkable, setOnlyWorkable] = useState(false);
   const [mapOpen, setMapOpen] = useState(true);
+
+  const onSort = (key: SortKey) => {
+    if (key === sort) {
+      setDescending((d) => !d);
+    } else {
+      setSort(key);
+      setDescending(DESCENDING_FIRST.has(key));
+    }
+  };
 
   const rows = useMemo(() => {
     if (!state) return [];
     let list = state.market.filter((p) => p.listing);
     if (hood !== 'all') list = list.filter((p) => p.neighborhoodId === hood);
-    return [...list].sort((a, b) => {
+    if (onlyWorkable) list = list.filter((p) => screenRatio(p, state) >= WITHIN_REACH);
+
+    const dir = descending ? -1 : 1;
+    const by = (a: Property, b: Property): number => {
       switch (sort) {
+        case 'address':
+          return a.address.localeCompare(b.address);
+        case 'area':
+          return (NEIGHBORHOODS_BY_ID[a.neighborhoodId]?.name ?? '').localeCompare(
+            NEIGHBORHOODS_BY_ID[b.neighborhoodId]?.name ?? '',
+          );
+        case 'type':
+          return (ARCHETYPES_BY_ID[a.archetypeId]?.name ?? '').localeCompare(
+            ARCHETYPES_BY_ID[b.archetypeId]?.name ?? '',
+          );
         case 'condition':
           return a.condition - b.condition;
         case 'sqft':
-          return b.sqft - a.sqft;
+          return a.sqft - b.sqft;
+        case 'built':
+          return a.yearBuilt - b.yearBuilt;
         case 'estimate':
           return a.appraisal.point - b.appraisal.point;
+        case 'spread':
+          return (
+            a.appraisal.point - (a.listing?.askPrice ?? 0) -
+            (b.appraisal.point - (b.listing?.askPrice ?? 0))
+          );
         case 'dom':
-          return (b.listing?.daysOnMarket ?? 0) - (a.listing?.daysOnMarket ?? 0);
+          return (a.listing?.daysOnMarket ?? 0) - (b.listing?.daysOnMarket ?? 0);
+        case 'interest':
+          return (a.listing?.competition ?? 0) - (b.listing?.competition ?? 0);
         default:
           return (a.listing?.askPrice ?? 0) - (b.listing?.askPrice ?? 0);
       }
-    });
-  }, [version, state?.market, sort, hood, state?.day]);
+    };
+    return [...list].sort((a, b) => by(a, b) * dir);
+  }, [version, state?.market, sort, descending, hood, onlyWorkable, state?.day]);
 
   if (!state) return null;
   const active = state.market.find((p) => p.id === selected) ?? null;
@@ -77,18 +171,15 @@ export default function MarketView() {
                 </option>
               ))}
             </select>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
-              className="btn small"
-              style={{ paddingRight: 24 }}
+            <button
+              className={`btn small${onlyWorkable ? ' primary' : ''}`}
+              onClick={() => setOnlyWorkable((v) => !v)}
+              title={`Hide listings that would need more than a ${Math.round(
+                (1 - WITHIN_REACH) * 100,
+              )}% discount off asking before the numbers could work`}
             >
-              <option value="ask">Sort: asking price</option>
-              <option value="estimate">Sort: estimated value</option>
-              <option value="condition">Sort: worst condition</option>
-              <option value="sqft">Sort: largest</option>
-              <option value="dom">Sort: longest on market</option>
-            </select>
+              {onlyWorkable ? '✓ ' : ''}Within reach
+            </button>
           </div>
         </div>
         <div className="panel-body flush">
@@ -97,17 +188,31 @@ export default function MarketView() {
               <thead>
                 <tr>
                   <th aria-label="Preview"></th>
-                  <th>Address</th>
-                  <th>Area</th>
-                  <th>Type</th>
-                  <th className="right">Sqft</th>
-                  <th className="right">Built</th>
-                  <th>Condition</th>
-                  <th className="right">Asking</th>
-                  <th className="right">Est. as-is</th>
-                  <th className="right">Spread</th>
-                  <th className="right">DOM</th>
-                  <th>Interest</th>
+                  {(
+                    [
+                      ['address', 'Address', 'left'],
+                      ['area', 'Area', 'left'],
+                      ['type', 'Type', 'left'],
+                      ['sqft', 'Sqft', 'right'],
+                      ['built', 'Built', 'right'],
+                      ['condition', 'Condition', 'left'],
+                      ['ask', 'Asking', 'right'],
+                      ['estimate', 'Est. as-is', 'right'],
+                      ['spread', 'Spread', 'right'],
+                      ['dom', 'DOM', 'right'],
+                      ['interest', 'Interest', 'left'],
+                    ] as [SortKey, string, 'left' | 'right'][]
+                  ).map(([key, label, align]) => (
+                    <SortableTh
+                      key={key}
+                      id={key}
+                      label={label}
+                      align={align}
+                      active={sort}
+                      descending={descending}
+                      onSort={onSort}
+                    />
+                  ))}
                   <th>Due diligence</th>
                 </tr>
               </thead>
@@ -123,7 +228,13 @@ export default function MarketView() {
               </tbody>
             </table>
           </div>
-          {rows.length === 0 && <div className="empty">No listings match that filter.</div>}
+          {rows.length === 0 && (
+            <div className="empty">
+              {onlyWorkable
+                ? 'Nothing on the board is close enough to be worth underwriting today. Advance the clock — listings that sit get cheaper, and new ones arrive.'
+                : 'No listings match that filter.'}
+            </div>
+          )}
         </div>
       </div>
 
@@ -131,6 +242,17 @@ export default function MarketView() {
         The asking price is what the seller wants. The estimate is what your comps suggest it is
         worth as-is, and it carries real error &mdash; open a listing to see the confidence band and
         run the numbers before you offer.
+        {onlyWorkable && (
+          <>
+            {' '}
+            <strong>Within reach</strong> is a screen, not an answer. Almost nothing works at the
+            asking price &mdash; the margin comes out of what you negotiate off it, so this hides
+            only the listings that would need more than a{' '}
+            {Math.round((1 - WITHIN_REACH) * 100)}% discount before the arithmetic could ever
+            close. It assumes a cosmetic refresh and nothing more, which makes it optimistic about
+            any house that needs a roof or a furnace.
+          </>
+        )}
       </p>
 
       {active && <PropertyModal property={active} onClose={() => setSelected(null)} />}

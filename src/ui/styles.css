@@ -289,6 +289,43 @@ th {
   z-index: 1;
 }
 
+/* A sortable header is a button, so it has to shed every button default and
+   inherit the header's own type styling instead. */
+button.th-sort {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+
+th.right button.th-sort {
+  flex-direction: row;
+}
+
+button.th-sort:hover {
+  color: var(--text-dim);
+}
+
+button.th-sort.active {
+  color: var(--accent);
+}
+
+button.th-sort:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+button.th-sort .arrow {
+  font-size: 8px;
+  opacity: 0.9;
+}
+
 td {
   padding: 9px 12px;
   border-bottom: 1px solid var(--border);

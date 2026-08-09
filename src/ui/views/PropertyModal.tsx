@@ -16,6 +16,7 @@ import DealAnalyzer from '../components/DealAnalyzer';
 import PropertyFacts from '../components/PropertyFacts';
 import ScopeBuilder from '../components/ScopeBuilder';
 import Modal from '../components/Modal';
+import ConfirmButton from '../components/ConfirmButton';
 
 /** The buy-side workflow: inspect, scope, analyze, offer. */
 export default function PropertyModal({
@@ -214,16 +215,68 @@ export default function PropertyModal({
                   )}
 
                   <div className="btn-row" style={{ marginTop: 14 }}>
-                    <button
+                    <ConfirmButton
                       className="btn primary"
                       disabled={!canFund || offer <= 0}
-                      onClick={() => {
+                      label={`Submit offer of ${money(offer)}`}
+                      title="Submit this offer?"
+                      confirmLabel={`Offer ${money(offer)}`}
+                      body={
+                        <>
+                          <p style={{ marginTop: 0 }}>
+                            An offer is binding. If the seller takes it you own {property.address}{' '}
+                            at that price, with everything that is still wrong with it.
+                          </p>
+                          <div className="kv">
+                            <span className="k">Offer</span>
+                            <span className="v">{money(offer)}</span>
+                          </div>
+                          <div className="kv">
+                            <span className="k">Cash at closing</span>
+                            <span className="v bad">{money(-cashAtClose)}</span>
+                          </div>
+                          {financed && (
+                            <div className="kv">
+                              <span className="k">
+                                Hard money
+                                <br />
+                                <span className="faint" style={{ fontSize: 11 }}>
+                                  balloon due day {state.day + ECON.LOAN_TERM_DAYS}
+                                </span>
+                              </span>
+                              <span className="v">{money(loan)}</span>
+                            </div>
+                          )}
+                          <div className="kv total">
+                            <span className="k">Left to fund the rehab</span>
+                            <span className={`v ${cashAfterRehab < 0 ? 'bad' : ''}`}>
+                              {money(cashAfterRehab)}
+                            </span>
+                          </div>
+                          {property.inspection === 'none' && (
+                            <div className="verdict thin" style={{ marginTop: 12 }}>
+                              <strong>You have not inspected it</strong>
+                              Anything wrong with this house is still hidden. It will surface as a
+                              change order once the walls are open, or as a buyer&rsquo;s concession
+                              when you sell &mdash; and by then the seller is no longer the one
+                              paying for it.
+                            </div>
+                          )}
+                          {offer > analysis.mao70 && offer > analysis.maoDetailed && (
+                            <div className="verdict thin" style={{ marginTop: 12 }}>
+                              <strong>Above both of your maximums</strong>
+                              This offer clears neither the 70% rule ({money(analysis.mao70)}) nor
+                              your own itemised costs ({money(analysis.maoDetailed)}). You may have
+                              a reason; the numbers do not.
+                            </div>
+                          )}
+                        </>
+                      }
+                      onConfirm={() => {
                         const res = act((s) => makeOffer(s, property.id, offer, financed));
                         if (res.ok) onClose();
                       }}
-                    >
-                      Submit offer of {money(offer)}
-                    </button>
+                    />
                     <button className="btn" onClick={onClose}>
                       Walk away
                     </button>

@@ -29,6 +29,7 @@ import DealAnalyzer from '../components/DealAnalyzer';
 import PropertyFacts from '../components/PropertyFacts';
 import ScopeBuilder from '../components/ScopeBuilder';
 import Modal from '../components/Modal';
+import ConfirmButton from '../components/ConfirmButton';
 import RentalPanel from './RentalPanel';
 
 /** Manage an owned property: renovate, then list and negotiate the exit. */
@@ -180,17 +181,76 @@ export default function OwnedPropertyModal({
                       </div>
 
                       <div className="btn-row" style={{ marginTop: 14 }}>
-                        <button
+                        <ConfirmButton
                           className="btn primary"
                           disabled={scope.length === 0}
-                          onClick={() =>
-                            act((s) =>
-                              startRenovation(s, property.id, scope, contingency / 100),
-                            )
+                          label="Start work"
+                          title="Commit to this scope?"
+                          confirmLabel={`Commit ${money(
+                            Math.round(quote.totalCost * (1 + contingency / 100)),
+                          )}`}
+                          body={
+                            <>
+                              <p style={{ marginTop: 0 }}>
+                                {scope.length} line item{scope.length === 1 ? '' : 's'} on{' '}
+                                {property.address}, {quote.totalDays} days of work. The money leaves
+                                now and the crew cannot be un-hired.
+                              </p>
+                              <div className="kv">
+                                <span className="k">Contracted work</span>
+                                <span className="v">{money(quote.totalCost)}</span>
+                              </div>
+                              <div className="kv">
+                                <span className="k">
+                                  Contingency held in escrow ({contingency}%)
+                                  <br />
+                                  <span className="faint" style={{ fontSize: 11 }}>
+                                    returned to you if nothing surfaces
+                                  </span>
+                                </span>
+                                <span className="v">
+                                  {money(Math.round(quote.totalCost * (contingency / 100)))}
+                                </span>
+                              </div>
+                              <div className="kv total">
+                                <span className="k">Cash afterwards</span>
+                                <span
+                                  className={`v ${
+                                    state.cash - quote.totalCost * (1 + contingency / 100) < 0
+                                      ? 'bad'
+                                      : ''
+                                  }`}
+                                >
+                                  {money(
+                                    Math.round(
+                                      state.cash - quote.totalCost * (1 + contingency / 100),
+                                    ),
+                                  )}
+                                </span>
+                              </div>
+                              <div className="kv">
+                                <span className="k">Carry while the crew is on site</span>
+                                <span className="v bad">
+                                  {money(
+                                    dailyHoldingCost(property, state.world, state.day) *
+                                      quote.totalDays,
+                                  )}
+                                </span>
+                              </div>
+                              {contingency === 0 && (
+                                <div className="verdict thin" style={{ marginTop: 12 }}>
+                                  <strong>No contingency</strong>
+                                  Every change order will come straight out of cash. On a house you
+                                  have not had inspected, that is how a good deal becomes a forced
+                                  sale.
+                                </div>
+                              )}
+                            </>
                           }
-                        >
-                          Start work
-                        </button>
+                          onConfirm={() =>
+                            act((s) => startRenovation(s, property.id, scope, contingency / 100))
+                          }
+                        />
                         <button
                           className="btn"
                           onClick={() => act((s) => listForSale(s, property.id, suggestedList))}
@@ -499,15 +559,70 @@ function SalePanel({ property, onClose }: { property: Property; onClose: () => v
                     <span className={`v ${profit >= 0 ? 'good' : 'bad'}`}>{money(profit)}</span>
                   </div>
                   <div className="btn-row" style={{ marginTop: 12 }}>
-                    <button
+                    <ConfirmButton
                       className="btn primary"
-                      onClick={() => {
+                      label="Accept"
+                      title="Sell at this price?"
+                      confirmLabel={`Sell for ${money(settles)}`}
+                      body={
+                        <>
+                          <p style={{ marginTop: 0 }}>
+                            This closes the deal on {property.address}. It cannot be undone, and
+                            any other offer on the table goes away with it.
+                          </p>
+                          <div className="kv">
+                            <span className="k">Settles at</span>
+                            <span className="v">{money(settles)}</span>
+                          </div>
+                          {gap && (
+                            <div className="kv">
+                              <span className="k warn">
+                                Below the {money(o.amount)} offered
+                                <br />
+                                <span className="faint" style={{ fontSize: 11 }}>
+                                  the lender&rsquo;s appraisal caps the loan, so the price falls to it
+                                </span>
+                              </span>
+                              <span className="v bad">{money(settles - o.amount)}</span>
+                            </div>
+                          )}
+                          <div className="kv">
+                            <span className="k">Costs of sale</span>
+                            <span className="v bad">
+                              {money(-(commission + closing + o.inspectionConcession))}
+                            </span>
+                          </div>
+                          {payoff > 0 && (
+                            <div className="kv">
+                              <span className="k">Loan payoff</span>
+                              <span className="v bad">{money(-payoff)}</span>
+                            </div>
+                          )}
+                          <div className="kv total">
+                            <span className="k">Cash to you</span>
+                            <span className="v">{money(net)}</span>
+                          </div>
+                          <div className="kv total">
+                            <span className="k">Profit on everything in</span>
+                            <span className={`v ${profit >= 0 ? 'good' : 'bad'}`}>
+                              {money(profit)}
+                            </span>
+                          </div>
+                          {profit < 0 && (
+                            <div className="verdict thin" style={{ marginTop: 12 }}>
+                              <strong>This closes at a loss</strong>
+                              Sometimes that is still the right call &mdash; carry compounds and a
+                              cheaper exit today can beat a better one in four months. Just make it
+                              a decision rather than an accident.
+                            </div>
+                          )}
+                        </>
+                      }
+                      onConfirm={() => {
                         const res = act((s) => acceptOffer(s, property.id, o.id));
                         if (res.ok) onClose();
                       }}
-                    >
-                      Accept
-                    </button>
+                    />
                     <button
                       className="btn"
                       onClick={() => act((s) => rejectOffer(s, property.id, o.id))}

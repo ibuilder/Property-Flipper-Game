@@ -1,6 +1,17 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 
 /**
+ * Which dialogs are currently open, innermost last.
+ *
+ * A confirmation dialog opens on top of the property dialog that launched it.
+ * Both listen for Escape on the document at capture phase, where
+ * stopPropagation does not stop a sibling listener on the same node -- so
+ * without this, one Escape closed both and the player lost their whole scope.
+ * Only the dialog on top of the stack responds.
+ */
+const stack: symbol[] = [];
+
+/**
  * Accessible modal shell.
  *
  * The hand-rolled backdrops this replaces had none of the behaviour a dialog
@@ -27,13 +38,19 @@ export default function Modal({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreTo = useRef<HTMLElement | null>(null);
+  const token = useRef<symbol>(Symbol('modal'));
 
   useEffect(() => {
     restoreTo.current = document.activeElement as HTMLElement | null;
     // Move focus into the dialog so the keyboard lands somewhere sensible.
     panelRef.current?.focus();
 
+    const me = token.current;
+    stack.push(me);
+    const isTopmost = () => stack[stack.length - 1] === me;
+
     const onKeyDown = (e: KeyboardEvent) => {
+      if (!isTopmost()) return;
       if (e.key === 'Escape' && dismissable && onClose) {
         e.stopPropagation();
         onClose();
@@ -64,7 +81,10 @@ export default function Modal({
 
     return () => {
       document.removeEventListener('keydown', onKeyDown, true);
-      document.body.style.overflow = previousOverflow;
+      const at = stack.indexOf(me);
+      if (at >= 0) stack.splice(at, 1);
+      // Only the last dialog to close should restore the page's scrolling.
+      if (stack.length === 0) document.body.style.overflow = previousOverflow;
       restoreTo.current?.focus?.();
     };
   }, [onClose, dismissable]);

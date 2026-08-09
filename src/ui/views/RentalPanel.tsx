@@ -18,6 +18,7 @@ import {
 } from '../../engine';
 import { money, percent } from '../format';
 import { useAction, useGame } from '../store';
+import ConfirmButton from '../components/ConfirmButton';
 
 /**
  * Hold it instead of selling it.
@@ -289,14 +290,52 @@ export default function RentalPanel({ property }: { property: Property }) {
         )}
 
         <div className="btn-row" style={{ marginTop: 12 }}>
-          <button
+          <ConfirmButton
             className="btn primary"
             disabled={!quote.eligible || !t || tapped}
-            title={!t ? 'Lenders underwrite the income — get a tenant first' : undefined}
-            onClick={() => act((s) => refinance(s, property.id))}
-          >
-            Refinance and take {money(Math.max(0, quote.cashOut))} out
-          </button>
+            buttonTitle={!t ? 'Lenders underwrite the income — get a tenant first' : undefined}
+            label={`Refinance and take ${money(Math.max(0, quote.cashOut))} out`}
+            title="Take this loan?"
+            confirmLabel={`Take ${money(Math.max(0, quote.cashOut))} out`}
+            body={
+              <>
+                <p style={{ marginTop: 0 }}>
+                  This puts a 30-year loan on {property.address} and hands you the difference. The
+                  cash is yours to redeploy; the payment is due every month whether the unit is let
+                  or not.
+                </p>
+                <div className="kv">
+                  <span className="k">New loan</span>
+                  <span className="v">{money(quote.maxLoan)}</span>
+                </div>
+                <div className="kv">
+                  <span className="k">Payment</span>
+                  <span className="v bad">
+                    {money(quote.monthlyPayment)}/mo at {percent(quote.rate, 2)}
+                  </span>
+                </div>
+                <div className="kv total">
+                  <span className="k">Cash to you</span>
+                  <span className="v good">{money(quote.cashOut)}</span>
+                </div>
+                <div className="kv">
+                  <span className="k">Monthly cash flow afterwards</span>
+                  <span
+                    className={`v ${annualNoi / 12 - quote.monthlyPayment >= 0 ? 'good' : 'bad'}`}
+                  >
+                    {money(annualNoi / 12 - quote.monthlyPayment)}
+                  </span>
+                </div>
+                <div className="verdict thin" style={{ marginTop: 12 }}>
+                  <strong>Coverage falls to {quote.dscrAtMax.toFixed(2)}&times;</strong>
+                  That is the whole margin between the rent and the payment. One long vacancy, or a
+                  tenant who leaves in a soft market, and this property starts costing you money
+                  every month rather than making it.
+                </div>
+              </>
+            }
+            onConfirm={() => act((s) => refinance(s, property.id))}
+          />
         </div>
         <p className="faint" style={{ fontSize: 12, marginTop: 10, marginBottom: 0 }}>
           Equity is not the same as borrowing capacity. When the income binds before the value
