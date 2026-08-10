@@ -37,6 +37,7 @@ export default function PropertyModal({
   const [offer, setOffer] = useState<number>(0);
   const [kind, setKind] = useState<FinancingKind>('cash');
   const [touchedOffer, setTouchedOffer] = useState(false);
+  const [counter, setCounter] = useState<number | null>(null);
 
   const financed = kind !== 'cash';
 
@@ -378,12 +379,53 @@ export default function PropertyModal({
                       onConfirm={() => {
                         const res = act((s) => makeOffer(s, property.id, offer, kind));
                         if (res.ok) onClose();
+                        else setCounter(res.counterPrice ?? null);
                       }}
                     />
                     <button className="btn" onClick={onClose}>
                       Walk away
                     </button>
                   </div>
+
+                  {/* A counter used to be a sentence in a toast that the player
+                      had to read and retype. It is a decision, so it gets to be
+                      one — and the only thing that matters about it is whether
+                      it still clears your own maximum. */}
+                  {counter !== null && (
+                    <div
+                      className={`verdict ${counter <= analysis.maoDetailed ? 'fair' : 'thin'}`}
+                      style={{ marginTop: 12 }}
+                    >
+                      <strong>The seller countered at {money(counter)}</strong>
+                      {counter <= analysis.maoDetailed ? (
+                        <>
+                          That is still inside your itemised maximum of{' '}
+                          {money(analysis.maoDetailed)}. The deal survives it.
+                        </>
+                      ) : (
+                        <>
+                          That is {money(counter - analysis.maoDetailed)} above your itemised
+                          maximum of {money(analysis.maoDetailed)}. Taking it means buying a
+                          different deal from the one you underwrote.
+                        </>
+                      )}
+                      <div className="btn-row" style={{ marginTop: 10 }}>
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            setTouchedOffer(true);
+                            setOffer(counter);
+                            setCounter(null);
+                          }}
+                        >
+                          Put {money(counter)} in the box
+                        </button>
+                        <button className="btn" onClick={() => setCounter(null)}>
+                          Leave it
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <p className="faint" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}>
                     The seller has a reserve you cannot see. A rejected offer costs nothing but the

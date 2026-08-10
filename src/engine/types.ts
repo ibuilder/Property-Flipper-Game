@@ -814,4 +814,15 @@ export interface ClosedDeal {
 export interface ActionResult {
   ok: boolean;
   message: string;
+  /**
+   * A price the seller said they would take, when a rejected offer was close
+   * enough to draw a counter.
+   *
+   * Structured rather than left buried in the message text so the interface
+   * can offer it as a decision. Making the player read a number out of a toast
+   * and retype it is the kind of friction that turns a negotiation into
+   * paperwork -- and it hides the actual question, which is whether the
+   * countered price still clears your own maximum.
+   */
+  counterPrice?: Money;
 }

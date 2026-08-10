@@ -476,7 +476,11 @@ export function makeOffer(
   const outcome = evaluateOffer(prop, contractPrice, state.skills.negotiation);
   if (!outcome.accepted) {
     log(state, 'warn', `Offer of $${contractPrice.toLocaleString()} on ${prop.address} rejected.`);
-    return { ok: false, message: outcome.message };
+    return {
+      ok: false,
+      message: outcome.message,
+      ...(outcome.counterPrice ? { counterPrice: outcome.counterPrice } : {}),
+    };
   }
 
   // The seller would take it -- but so would somebody else. A thin offer on a
