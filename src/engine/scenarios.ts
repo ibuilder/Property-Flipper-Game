@@ -7,10 +7,12 @@ import {
 } from './content';
 import { Rng } from './rng';
 import type {
+  ClosedDeal,
   Defect,
   GameState,
   Money,
   Property,
+  ScenarioProperty,
   SellerTypeId,
 } from './types';
 
@@ -24,19 +26,9 @@ import type {
  * at the mercy of a random draw.
  */
 
-export interface ScenarioProperty {
-  archetypeId: string;
-  neighborhoodId: string;
-  sqft: number;
-  yearBuilt: number;
-  /** 0-1. */
-  condition: number;
-  defectIds: string[];
-  /** Defects already on the table before any inspection. */
-  disclosedIds: string[];
-  sellerType: SellerTypeId;
-  askPrice: Money;
-}
+// Defined in types.ts, because replaying a closed deal needs the same shape
+// and one definition is what keeps a replay faithful to what it replays.
+export type { ScenarioProperty } from './types';
 
 export interface ScenarioDef {
   id: string;
@@ -201,6 +193,65 @@ export const SCENARIOS: ScenarioDef[] = [
 export const SCENARIOS_BY_ID: Record<string, ScenarioDef> = Object.fromEntries(
   SCENARIOS.map((s) => [s.id, s]),
 );
+
+// ---------------------------------------------------------------------------
+// Replaying a deal you have already closed
+// ---------------------------------------------------------------------------
+
+/**
+ * Turn a finished deal back into a problem.
+ *
+ * The learning research this comes from is specific: attempting a problem
+ * before being taught beats being taught first, but only when the instruction
+ * actually follows. The post-mortem already supplies the instruction -- what
+ * varied, and how professionals avoid it. What was missing was the third beat,
+ * where you get to use it.
+ *
+ * So the same house, the same seller, the same market, the same money. What
+ * changes is only what you know, which is the entire point: it isolates
+ * judgement from luck, and it is the only way to find out whether the lesson
+ * actually landed or merely sounded reasonable.
+ *
+ * The pass mark is your own result. Beating an abstract target teaches you
+ * about the target; beating yourself teaches you about the decision.
+ */
+export function replayScenario(deal: ClosedDeal): ScenarioDef | null {
+  const cap = deal.replay;
+  if (!cap) return null;
+
+  const beat = Math.max(1000, Math.round(deal.netProfit));
+  const lost = deal.netProfit <= 0;
+
+  return {
+    id: `replay_${deal.propertyId}_${deal.soldDay}`,
+    name: `Replay: ${deal.address}`,
+    brief: lost
+      ? `The same house, the same seller, the same market, and the same money in your pocket. ` +
+        `Last time it lost ${formatMoney(Math.abs(deal.netProfit))} over ${deal.daysHeld} days. ` +
+        `Anything above breaking even beats it.`
+      : `The same house, the same seller, the same market, and the same money in your pocket. ` +
+        `Last time you made ${formatMoney(deal.netProfit)} over ${deal.daysHeld} days. Beat it.`,
+    lesson:
+      'Knowing what went wrong and acting on it are different skills. The first is the ' +
+      'post-mortem; this was the second. If the second run went better, the difference was ' +
+      'judgement rather than luck -- and judgement is the part that carries to the next deal.',
+    startingCash: cap.cashAtPurchase,
+    // Generous enough that the clock is not the lesson. The lesson is the deal.
+    dayLimit: Math.max(240, Math.round(deal.daysHeld * 1.6)),
+    marketIndex: cap.marketIndex,
+    interestRate: cap.interestRate,
+    targetProfit: lost ? 1 : beat + 1,
+    property: cap.property,
+    // No distractors: you are not being asked to find the deal again, you are
+    // being asked to underwrite this one properly.
+    distractors: 0,
+    builtIn: false,
+  };
+}
+
+function formatMoney(n: number): string {
+  return `$${Math.round(n).toLocaleString()}`;
+}
 
 // ---------------------------------------------------------------------------
 // Building the authored property

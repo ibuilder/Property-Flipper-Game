@@ -157,6 +157,18 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.worldRngState = s.worldRngState ?? (((s.seed ?? 1) ^ 0x85ebca6b) >>> 0);
     return s;
   },
+  // v12 predates replayable deals. Older deals cannot be replayed, because the
+  // house they were is not recoverable after the fact -- the condition has
+  // changed and the defects have been found. Deals closed from here on can.
+  12: (s: any) => {
+    for (const prop of s.portfolio ?? []) {
+      if (prop.ownership) prop.ownership.replay = prop.ownership.replay ?? null;
+    }
+    for (const deal of s.closedDeals ?? []) {
+      deal.replay = deal.replay ?? null;
+    }
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {

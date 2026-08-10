@@ -1,5 +1,13 @@
-import { cardsForDeal, type ClosedDeal, type PostMortem, type VarianceCategory } from '../../engine';
+import {
+  cardsForDeal,
+  replayScenario,
+  type ClosedDeal,
+  type PostMortem,
+  type VarianceCategory,
+} from '../../engine';
 import { money, percent } from '../format';
+import { startScenario } from '../store';
+import ConfirmButton from './ConfirmButton';
 import LessonCards from './LessonCards';
 
 /**
@@ -146,6 +154,67 @@ export default function PostMortemPanel({
           {pm.projected.arv > 0 && <> ({percent(paidOverMao / pm.projected.arv, 1)} of ARV)</>}. The
           rule exists to absorb exactly the surprises listed above.
         </p>
+      )}
+
+      {/* Knowing what went wrong and acting on it are different skills. The
+          panel above is the first; this is the only way to practise the
+          second. */}
+      {deal.replay && (
+        <div className="verdict fair" style={{ marginTop: 16 }}>
+          <strong>Run it again, knowing what you know</strong>
+          The same house, the same seller, the same market, and the same money in your pocket. The
+          only thing that changes is you. Beating {money(Math.max(0, deal.netProfit))} on the second
+          run means the difference was judgement rather than luck.
+          <div className="btn-row" style={{ marginTop: 12 }}>
+            <ConfirmButton
+              className="btn primary"
+              label="Replay this deal"
+              title="Start the replay?"
+              confirmLabel="Replay it"
+              body={
+                <>
+                  <p style={{ marginTop: 0 }}>
+                    This starts a fresh, self-contained run of {deal.address} and leaves your
+                    current campaign untouched &mdash; but you will be taken out of it. Save first
+                    if you are mid-deal elsewhere.
+                  </p>
+                  <div className="kv">
+                    <span className="k">To beat</span>
+                    <span className={`v ${deal.netProfit >= 0 ? 'good' : 'bad'}`}>
+                      {money(deal.netProfit)} in {deal.daysHeld} days
+                    </span>
+                  </div>
+                  <div className="kv">
+                    <span className="k">Starting cash</span>
+                    <span className="v">{money(deal.replay.cashAtPurchase)}</span>
+                  </div>
+                  <div className="kv">
+                    <span className="k">
+                      What you are told up front
+                      <br />
+                      <span className="faint" style={{ fontSize: 11 }}>
+                        only what the seller disclosed the first time
+                      </span>
+                    </span>
+                    <span className="v">
+                      {deal.replay.property.disclosedIds.length} of{' '}
+                      {deal.replay.property.defectIds.length} defects
+                    </span>
+                  </div>
+                  <p className="faint" style={{ fontSize: 12, marginBottom: 0 }}>
+                    What an inspection found last time is knowledge you paid for, so you pay for it
+                    again. Otherwise the replay would be an easier house than the one you got
+                    wrong.
+                  </p>
+                </>
+              }
+              onConfirm={() => {
+                const def = replayScenario(deal);
+                if (def) startScenario(def);
+              }}
+            />
+          </div>
+        </div>
       )}
     </>
   );

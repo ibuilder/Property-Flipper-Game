@@ -425,6 +425,44 @@ export interface NeighborhoodArc {
   announced: boolean;
 }
 
+/**
+ * Everything needed to rebuild one house exactly.
+ *
+ * Lives here rather than in scenarios.ts because two things need it now: an
+ * authored lesson, and replaying a deal you have already closed. One
+ * definition, so a replay cannot quietly diverge from the house it is
+ * replaying.
+ */
+export interface ScenarioProperty {
+  archetypeId: string;
+  neighborhoodId: string;
+  sqft: number;
+  yearBuilt: number;
+  /** 0-1. */
+  condition: number;
+  defectIds: string[];
+  /** Defects already on the table before any inspection. */
+  disclosedIds: string[];
+  sellerType: SellerTypeId;
+  askPrice: Money;
+}
+
+/**
+ * A closed deal, packaged so it can be played again.
+ *
+ * The market conditions travel with the house because a replay in a different
+ * market is a different problem -- the point is to hand back the same decision
+ * with the benefit of knowing how it went, not a superficially similar one.
+ */
+export interface ReplayCapture {
+  property: ScenarioProperty;
+  marketIndex: number;
+  interestRate: number;
+  /** What the player had to work with, so the replay is neither easier nor harder. */
+  cashAtPurchase: Money;
+  boughtFor: Money;
+}
+
 export type Difficulty = 'forgiving' | 'standard' | 'brutal';
 
 /**
@@ -519,6 +557,12 @@ export interface Ownership {
   occupiedUntilDay: number | null;
   /** Set when somebody else put up part of the capital for this deal. */
   partner: Partnership | null;
+  /**
+   * The deal exactly as it was the day it was bought, in a form that can
+   * rebuild it. Captured at purchase rather than derived at sale, because by
+   * then the condition has changed and every defect has been found.
+   */
+  replay: ReplayCapture | null;
 }
 
 export interface SaleListing {
@@ -762,6 +806,8 @@ export interface ClosedDeal {
   /** How the house looked the day it was bought, and the day it sold. */
   before: HouseSubject | null;
   after: HouseSubject | null;
+  /** Enough to rebuild this deal and let the player run it again. */
+  replay: ReplayCapture | null;
 }
 
 /** Result shape returned by every player action. */

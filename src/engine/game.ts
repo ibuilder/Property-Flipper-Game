@@ -81,6 +81,8 @@ import type {
   ClosedDeal,
   Difficulty,
   FinancingKind,
+  ReplayCapture,
+  ScenarioProperty,
   DealProjection,
   GameState,
   HouseSubject,
@@ -106,7 +108,7 @@ import {
 import { analyzeDeal } from './analyzer';
 import { buildScenarioProperty, type ScenarioDef } from './scenarios';
 
-export const SAVE_VERSION = 12;
+export const SAVE_VERSION = 13;
 
 /** How often the charts' time series is sampled, in days. */
 export const HISTORY_INTERVAL_DAYS = 5;
@@ -370,6 +372,36 @@ function snapshot(prop: Property, opts: { renovating?: boolean; forSale?: boolea
   };
 }
 
+/**
+ * Capture the house well enough to rebuild it, at the moment of purchase.
+ *
+ * Taken now rather than reconstructed at the sale, because by then the
+ * condition has been renovated and every defect has been found -- a replay
+ * built from that would be a different, much easier house.
+ */
+function captureReplaySpec(state: GameState, prop: Property, price: Money): ReplayCapture {
+  return {
+    property: {
+      archetypeId: prop.archetypeId,
+      neighborhoodId: prop.neighborhoodId,
+      sqft: prop.sqft,
+      yearBuilt: prop.yearBuilt,
+      condition: prop.condition,
+      defectIds: prop.defects.filter((d) => !d.repaired).map((d) => d.defId),
+      // Only what the seller had already put on the table. What an inspection
+      // found is knowledge the player paid for and should have to pay for
+      // again -- handing it back free would replay a different, easier deal.
+      disclosedIds: prop.defects.filter((d) => d.revealed && !d.repaired).map((d) => d.defId),
+      sellerType: prop.sellerType,
+      askPrice: prop.listing?.askPrice ?? prop.appraisal.point,
+    },
+    marketIndex: state.world.marketIndex,
+    interestRate: state.world.interestRate,
+    cashAtPurchase: Math.round(state.cash),
+    boughtFor: price,
+  };
+}
+
 /** Capture what the player believed at the moment they committed. */
 function captureProjection(
   state: GameState,
@@ -466,7 +498,9 @@ export function makeOffer(
     };
   }
 
-  // Deal accepted -- close it.
+  // Deal accepted -- close it. The replay spec is taken before the listing is
+  // cleared, since the asking price is part of what made this deal what it was.
+  const replaySpec = captureReplaySpec(state, prop, contractPrice);
   state.market.splice(idx, 1);
   prop.listing = null;
   prop.ownership = {
@@ -487,6 +521,7 @@ export function makeOffer(
       kind === 'partner'
         ? { name: 'Your partner', capital: quote.advance, profitShare: quote.profitShare }
         : null,
+    replay: replaySpec,
   };
 
   applyCash(state, -contractPrice, 'acquisition', `Purchased ${prop.address}`, prop.id);
@@ -974,6 +1009,7 @@ export function acceptOffer(
     postMortem,
     before: own.boughtAs,
     after: snapshot(prop),
+    replay: own.replay,
   };
   state.closedDeals.push(deal);
   state.portfolio = state.portfolio.filter((p) => p.id !== prop.id);
@@ -1938,6 +1974,7 @@ function takeAuctionTitle(
     occupiedUntilDay: null,
     // Nobody partners on a blind cash purchase at the courthouse.
     partner: null,
+    replay: captureReplaySpec(state, prop, price),
   };
 
   state.portfolio.push(prop);
