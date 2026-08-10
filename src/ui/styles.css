@@ -635,6 +635,131 @@ label.field .label {
   margin-bottom: 6px;
 }
 
+/* The stress table. Collapsed by default; the shading is the message. */
+.stress {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.stress-toggle {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  text-align: left;
+}
+
+.stress-toggle:hover {
+  color: var(--text);
+}
+
+.stress-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.stress-toggle .caret {
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.stress-toggle .survival {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.stress-body {
+  padding-top: 8px;
+}
+
+.stress-lead {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  margin: 0 0 10px;
+}
+
+.stress-note {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-faint);
+  margin: 8px 0 0;
+}
+
+table.stress-grid {
+  font-size: 12px;
+  border-collapse: collapse;
+}
+
+table.stress-grid caption {
+  caption-side: top;
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  padding: 0 0 6px;
+  font-weight: 600;
+}
+
+table.stress-grid th {
+  position: static;
+  background: none;
+  border-bottom: 1px solid var(--border);
+  padding: 5px 8px;
+  font-size: 10px;
+}
+
+table.stress-grid th[scope='row'] {
+  text-align: left;
+  border-bottom: none;
+  border-right: 1px solid var(--border);
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+table.stress-grid th.corner {
+  color: var(--text-faint);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+table.stress-grid td {
+  padding: 6px 9px;
+  border-bottom: none;
+  font-variant-numeric: tabular-nums;
+  /* --i is the cell's magnitude relative to the largest on the grid, so the
+     colour carries how badly wrong it goes, not merely whether it does. */
+  background: color-mix(in srgb, var(--tint) calc(var(--i) * 42%), transparent);
+}
+
+table.stress-grid td.pos {
+  --tint: var(--good);
+  color: var(--good);
+}
+
+table.stress-grid td.neg {
+  --tint: var(--bad);
+  color: var(--bad);
+}
+
+table.stress-grid td.base {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  font-weight: 700;
+}
+
 /* One-time contextual hints. Tinted like a note rather than a warning: this is
    guidance, not a problem with the deal. */
 .first-time {

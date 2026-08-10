@@ -69,6 +69,16 @@ export interface DealAnalysis {
   /** Verdict on a specific offer, when one is supplied. */
   breakdown: CostBreakdown | null;
   verdict: 'strong' | 'fair' | 'thin' | 'loss' | null;
+  /**
+   * The assembled inputs and the rate used, so a caller can re-run the same
+   * projection under different assumptions.
+   *
+   * Exposed rather than recomputed by the caller because a stress test built
+   * from slightly different inputs than the analysis it sits beneath would be
+   * confidently, invisibly wrong -- which is worse than not having one.
+   */
+  inputs: AnalyzerInputs;
+  loanRate: number;
 }
 
 /** The classic screen: 70% of ARV, less repairs. */
@@ -213,5 +223,7 @@ export function analyzeDeal(
     dailyCarry: Math.round(dailyCarry),
     breakdown,
     verdict: breakdown ? verdictFor(breakdown.profit, arv) : null,
+    inputs,
+    loanRate: rate,
   };
 }

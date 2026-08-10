@@ -8,6 +8,7 @@ import {
   orderInspection,
   quoteScope,
   returnProfile,
+  stressTest,
   type FinancingKind,
   type Property,
 } from '../../engine';
@@ -47,6 +48,16 @@ export default function PropertyModal({
       useFinancing: financed,
     });
   }, [version, property, scope, offer, financed, state?.day]);
+
+  // Only worth computing once there is an offer to shock, and cheap enough at
+  // twenty cells that it can follow the slider.
+  const stress = useMemo(
+    () =>
+      analysis && offer > 0
+        ? stressTest(offer, analysis.inputs, analysis.dailyCarry, analysis.loanRate)
+        : null,
+    [analysis, offer],
+  );
 
   // Seed the offer box with the more conservative of the two max-offer figures.
   useEffect(() => {
@@ -172,7 +183,7 @@ export default function PropertyModal({
                   <h2>Deal analyzer</h2>
                 </div>
                 <div className="panel-body">
-                  <DealAnalyzer analysis={analysis} offer={offer} />
+                  <DealAnalyzer analysis={analysis} offer={offer} stress={stress} />
                 </div>
               </div>
 

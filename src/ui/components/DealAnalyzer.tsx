@@ -7,9 +7,11 @@ import {
   returnProfile,
   verdictOnReturn,
   type DealAnalysis,
+  type StressTest,
 } from '../../engine';
 import { VERDICT_COPY, money, percent } from '../format';
 import ExplainTable from './ExplainTable';
+import StressTable from './StressTable';
 
 /**
  * The Deal Analyzer panel.
@@ -24,10 +26,17 @@ export default function DealAnalyzer({
   analysis,
   offer,
   showRuleExplainer = true,
+  stress = null,
 }: {
   analysis: DealAnalysis;
   offer: number;
   showRuleExplainer?: boolean;
+  /**
+   * Supplied by the buy screen, where the stress test is a decision aid.
+   * Omitted once the property is owned: the estimates are no longer estimates
+   * at that point, and the question has changed from "should I" to "now what".
+   */
+  stress?: StressTest | null;
 }) {
   const { breakdown, verdict } = analysis;
   const ruleGap = analysis.maoDetailed - analysis.mao70;
@@ -226,6 +235,7 @@ export default function DealAnalyzer({
           lines={explainCostStack(analysis, offer)}
         />
       )}
+      {stress && <StressTable test={stress} />}
     </>
   );
 }
