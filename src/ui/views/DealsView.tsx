@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NEIGHBORHOODS_BY_ID } from '../../engine';
+import { NEIGHBORHOODS_BY_ID, verdictOnReturn } from '../../engine';
 import { conditionLabel, money, moneyShort, percent } from '../format';
 import { useGame } from '../store';
 import { Waterfall } from '../graphics/Charts';
@@ -39,7 +39,22 @@ export default function DealsView() {
   const total = deals.reduce((s, d) => s + d.netProfit, 0);
   const wins = deals.filter((d) => d.netProfit > 0).length;
   const avgDays = deals.reduce((s, d) => s + d.daysHeld, 0) / deals.length;
+
+  /**
+   * Capital-weighted, not the average of the per-deal rates.
+   *
+   * Averaging percentages lets one tiny lucky deal at 400% drown out three
+   * large ones that lost money, which flatters exactly the player who needs
+   * flattering least. Weighting by the cash each deal tied up answers the
+   * question actually being asked: how hard did my money work?
+   */
+  const totalDays = deals.reduce((s, d) => s + d.daysHeld, 0);
+  const capitalWeightedRoi =
+    totalDays > 0
+      ? deals.reduce((s, d) => s + d.roi * d.daysHeld, 0) / totalDays
+      : 0;
   const bestRoi = Math.max(...deals.map((d) => d.roi));
+  const overall = verdictOnReturn(capitalWeightedRoi);
 
   return (
     <>
@@ -50,8 +65,18 @@ export default function DealsView() {
           value={`${wins} / ${deals.length}`}
           sub={percent(wins / deals.length, 0)}
         />
-        <Stat label="Average hold" value={`${Math.round(avgDays)} days`} sub={`best ROI ${percent(bestRoi, 0)} annualised`} />
+        <Stat
+          label="Return on your time"
+          value={percent(capitalWeightedRoi, 0)}
+          tone={capitalWeightedRoi >= 0 ? 'good' : 'bad'}
+          sub={`annualised · ${Math.round(avgDays)}d average hold · best ${percent(bestRoi, 0)}`}
+        />
       </div>
+
+      <p className="faint" style={{ fontSize: 12, marginTop: -4 }}>
+        {overall.text} Returns are annualised against the cash you actually tied up and weighted by
+        how long each deal held it &mdash; a small fast win does not outweigh a large slow loss.
+      </p>
 
       <div className="panel">
         <div className="panel-head">

@@ -7,6 +7,7 @@ import {
   makeOffer,
   orderInspection,
   quoteScope,
+  returnProfile,
   type FinancingKind,
   type Property,
 } from '../../engine';
@@ -312,6 +313,38 @@ export default function PropertyModal({
                               {money(cashAfterRehab)}
                             </span>
                           </div>
+                          {analysis.breakdown && (
+                            <div className="kv total">
+                              <span className="k">
+                                If it goes to plan
+                                <br />
+                                <span className="faint" style={{ fontSize: 11 }}>
+                                  {money(analysis.breakdown.profit)} over {analysis.holdDays} days
+                                </span>
+                              </span>
+                              <span
+                                className={`v ${
+                                  analysis.breakdown.profit >= 0 ? 'good' : 'bad'
+                                }`}
+                              >
+                                {percent(
+                                  returnProfile(
+                                    analysis.breakdown.profit,
+                                    Math.max(
+                                      1,
+                                      analysis.breakdown.purchase +
+                                        analysis.breakdown.buyClosing +
+                                        analysis.breakdown.repairs -
+                                        analysis.breakdown.loan,
+                                    ),
+                                    Math.max(1, analysis.holdDays),
+                                  ).annualised,
+                                  0,
+                                )}{' '}
+                                <span className="faint">a year</span>
+                              </span>
+                            </div>
+                          )}
                           {property.inspection === 'none' && (
                             <div className="verdict thin" style={{ marginTop: 12 }}>
                               <strong>You have not inspected it</strong>

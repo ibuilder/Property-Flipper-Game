@@ -8,9 +8,11 @@ import {
   dailyHoldingCost,
   delist,
   estimateArv,
+  costOfADay,
   inspectionConcession,
   isOccupied,
   jobDaysRemaining,
+  returnProfile,
   jobProgress,
   listForSale,
   hasAppraisalGap,
@@ -79,6 +81,22 @@ export default function OwnedPropertyModal({
   const concession = inspectionConcession(property);
   const { commission, closing } = sellingCosts(effectiveList, state.reputation.agents);
   const netAtList = effectiveList - commission - closing - concession - (loan ? loanPayoff(loan) : 0);
+
+  // Measured against the cash actually tied up rather than everything spent,
+  // because a financed deal ties up far less of your own money -- which is the
+  // entire argument for using leverage and the entire risk of it.
+  const cashTiedUp = Math.max(
+    1,
+    own.purchasePrice + own.closingCosts + own.renovationSpend - (loan?.principal ?? 0),
+  );
+  const daysHeld = Math.max(1, state.day - own.purchaseDay);
+  const heldReturn = returnProfile(netAtList - invested, cashTiedUp, daysHeld);
+  const heldDayCost = costOfADay(
+    netAtList - invested,
+    cashTiedUp,
+    daysHeld,
+    dailyHoldingCost(property, state.world, state.day),
+  );
 
   return (
     <Modal
@@ -386,6 +404,30 @@ export default function OwnedPropertyModal({
                       <span className="k">Profit vs everything in</span>
                       <span className={`v ${netAtList - invested >= 0 ? 'good' : 'bad'}`}>
                         {money(netAtList - invested)}
+                      </span>
+                    </div>
+                    {/* The number that decides whether to hold out for more or
+                        take what is on the table: every extra day both costs
+                        carry and spreads the same profit over a longer hold. */}
+                    <div className="kv total">
+                      <span className="k">
+                        Annualised so far
+                        <br />
+                        <span className="faint" style={{ fontSize: 11 }}>
+                          {state.day - own.purchaseDay} days in, on {money(cashTiedUp)} of your cash
+                        </span>
+                      </span>
+                      <span className={`v ${heldReturn.annualised >= 0 ? 'good' : 'bad'}`}>
+                        {percent(heldReturn.annualised, 0)}
+                      </span>
+                    </div>
+                    <div className="kv">
+                      <span className="k">Every further day</span>
+                      <span className="v bad">
+                        {money(heldDayCost.dollars)}{' '}
+                        <span className="faint">
+                          and {percent(Math.abs(heldDayCost.roiDelta), 2)} off it
+                        </span>
                       </span>
                     </div>
                     <div className="btn-row" style={{ marginTop: 14 }}>

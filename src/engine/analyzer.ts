@@ -44,6 +44,16 @@ export interface CostBreakdown {
   sellClosing: Money;
   totalCost: Money;
   profit: Money;
+  /**
+   * What a lender would advance, or zero for a cash purchase.
+   *
+   * Exposed because return has to be measured against the cash actually tied
+   * up rather than against the price, and leverage is exactly what makes those
+   * two numbers differ -- the same profit on a quarter of the cash is a very
+   * different result, which is the whole argument for borrowing and the whole
+   * risk of it.
+   */
+  loan: Money;
 }
 
 export interface DealAnalysis {
@@ -110,9 +120,10 @@ export function projectDeal(
   const holding = Math.round(dailyCarry * holdDays);
 
   let financing = 0;
+  let loan = 0;
   if (inputs.useFinancing) {
-    const principal = offer * ECON.MAX_LTV;
-    financing = Math.round(principal * ECON.LOAN_POINTS + (principal * rate * holdDays) / 365);
+    loan = Math.round(offer * ECON.MAX_LTV);
+    financing = Math.round(loan * ECON.LOAN_POINTS + (loan * rate * holdDays) / 365);
   }
 
   const commission = Math.round(inputs.arv * ECON.COMMISSION_RATE);
@@ -131,6 +142,7 @@ export function projectDeal(
     sellClosing,
     totalCost,
     profit: Math.round(inputs.arv - totalCost),
+    loan,
   };
 }
 
