@@ -15,6 +15,7 @@ export * from './returns';
 export * from './stress';
 export * from './digest';
 export * from './benchmark';
+export * from './timeline';
 export * from './explain';
 export * from './mistakes';
 export * from './reputation';

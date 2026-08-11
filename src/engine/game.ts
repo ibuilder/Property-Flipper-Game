@@ -1028,6 +1028,7 @@ export function acceptOffer(
     netProfit: Math.round(netProfit),
     roi: (netProfit / cashInvested) * (365 / daysHeld),
     daysHeld,
+    listedDay: sale.listedDay,
     postMortem,
     before: own.boughtAs,
     after: snapshot(prop),

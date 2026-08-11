@@ -635,6 +635,30 @@ label.field .label {
   margin-bottom: 6px;
 }
 
+/* Timeline legend. */
+.timeline-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.timeline-key .key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.timeline-key .key i {
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+}
+
 /* "While you were skipping." Sits directly under the clock, because that is
    the control that produced it. */
 .digest {

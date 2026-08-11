@@ -801,6 +801,14 @@ export interface ClosedDeal {
   /** Annualised return on the cash actually invested. */
   roi: number;
   daysHeld: number;
+  /**
+   * The day it went on the market, so "how long did it sit" is answerable
+   * afterwards rather than only while it was still listed.
+   *
+   * Optional because deals closed before this existed have no record of it,
+   * and inventing one from the ledger would be a guess presented as a fact.
+   */
+  listedDay?: number | null;
   /** Projected-versus-actual, when a projection was captured at purchase. */
   postMortem: PostMortem | null;
   /** How the house looked the day it was bought, and the day it sold. */
