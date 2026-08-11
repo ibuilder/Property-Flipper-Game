@@ -184,7 +184,12 @@ export default function PropertyModal({
                   <h2>Deal analyzer</h2>
                 </div>
                 <div className="panel-body">
-                  <DealAnalyzer analysis={analysis} offer={offer} stress={stress} />
+                  <DealAnalyzer
+                    analysis={analysis}
+                    offer={offer}
+                    stress={stress}
+                    cashOnHand={state.cash}
+                  />
                 </div>
               </div>
 

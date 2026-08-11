@@ -11,7 +11,8 @@ import {
   type ScenarioDef,
 } from '../engine';
 import { gameDate, money, moneyShort, percent } from './format';
-import { advanceDays, quitToMenu, saveGame, useAction, useGame } from './store';
+import { advanceDays, quitToMenu, saveGame, useAction, useDigest, useGame } from './store';
+import TimeDigestBar from './components/TimeDigestBar';
 import { play, setSoundEnabled, soundEnabled } from './sound';
 import LogPanel from './LogPanel';
 import MarketView from './views/MarketView';
@@ -33,6 +34,7 @@ export default function GameShell() {
   const [saveOpen, setSaveOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [sound, setSound] = useState(soundEnabled);
+  const digest = useDigest();
 
   // Autosave every few days so a crash never costs much progress.
   useEffect(() => {
@@ -218,6 +220,8 @@ export default function GameShell() {
           </button>
         </div>
       </header>
+
+      {digest && <TimeDigestBar digest={digest} />}
 
       {events.length > 0 && (
         <div

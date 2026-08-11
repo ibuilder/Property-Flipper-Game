@@ -7,8 +7,12 @@ import {
   serialize,
   type ActionResult,
   type GameState,
+  buildDigest,
+  digestWorthShowing,
+  snapshotWorld,
   type Difficulty,
   type ScenarioDef,
+  type TimeDigest,
 } from '../engine';
 import { cueForLog, play } from './sound';
 
@@ -25,6 +29,8 @@ interface Snapshot {
   state: GameState | null;
   version: number;
   toast: Toast | null;
+  /** What moved during the last multi-day skip, if anything worth saying. */
+  digest: TimeDigest | null;
 }
 
 export interface Toast {
@@ -33,7 +39,7 @@ export interface Toast {
   tone: 'ok' | 'error';
 }
 
-let snapshot: Snapshot = { state: null, version: 0, toast: null };
+let snapshot: Snapshot = { state: null, version: 0, toast: null, digest: null };
 const listeners = new Set<() => void>();
 let toastId = 0;
 
@@ -125,6 +131,15 @@ export function dismissToast(): void {
   emit();
 }
 
+export function useDigest(): TimeDigest | null {
+  return useStore().digest;
+}
+
+export function dismissDigest(): void {
+  snapshot.digest = null;
+  emit();
+}
+
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
@@ -159,7 +174,13 @@ export function advanceDays(count: number): void {
   const state = snapshot.state;
   if (!state) return;
 
+  // Snapshot before, so the skip can report what moved. Almost every day in a
+  // campaign is silent, and without this the player is told nothing at all for
+  // stretches of a hundred days or more.
+  const before = snapshotWorld(state);
   const result = advanceDaysUntilAttention(state, count);
+  const digest = buildDigest(before, state);
+  snapshot.digest = digestWorthShowing(digest) ? digest : null;
   soundNewLog();
   if (result.stoppedEarly && result.daysAdvanced < count) {
     toastId += 1;

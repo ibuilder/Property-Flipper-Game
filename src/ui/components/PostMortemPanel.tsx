@@ -1,5 +1,7 @@
 import {
   cardsForDeal,
+  compareToBenchmark,
+  describeBenchmark,
   replayScenario,
   type ClosedDeal,
   type PostMortem,
@@ -38,6 +40,7 @@ export default function PostMortemPanel({
   const beat = missedBy >= 0;
   const worst = [...pm.lines].sort((a, b) => a.amount - b.amount)[0];
   const paidOverMao = pm.projected.purchasePrice - pm.projected.mao70;
+  const bench = compareToBenchmark(deal);
 
   const cards = cardsForDeal({
     address: deal.address,
@@ -131,6 +134,50 @@ export default function PostMortemPanel({
           </div>
         </div>
       ))}
+
+      {/* The only figures in this game that come from outside it. Placed after
+          the variance and before the lessons, because "how did I do against
+          real flippers" is the question a player asks the moment they see
+          their own number, and the gross-versus-net wedge is the answer that
+          reframes the whole enterprise. */}
+      <div className="scope-group-label" style={{ marginTop: 18 }}>
+        Against the real market
+      </div>
+      <div className="kv">
+        <span className="k">
+          Your gross return
+          <br />
+          <span className="faint" style={{ fontSize: 11 }}>
+            resale against purchase, the basis the headlines use
+          </span>
+        </span>
+        <span className={`v ${bench.beatIt ? 'good' : ''}`}>{percent(bench.grossRoi, 1)}</span>
+      </div>
+      <div className="kv">
+        <span className="k">US median, {bench.year}</span>
+        <span className="v dim">{percent(bench.nationalGrossRoi, 1)}</span>
+      </div>
+      <div className="kv">
+        <span className="k">Days held / national average</span>
+        <span className={`v ${bench.daysGap <= 0 ? 'good' : 'warn'}`}>
+          {bench.daysHeld} / <span className="dim">{bench.nationalDays}</span>
+        </span>
+      </div>
+      <div className="kv total">
+        <span className="k">
+          What it actually returned
+          <br />
+          <span className="faint" style={{ fontSize: 11 }}>
+            after rehab, carry, financing and commission
+          </span>
+        </span>
+        <span className={`v ${bench.netProfit >= 0 ? 'good' : 'bad'}`}>
+          {percent(bench.netRoi, 1)}
+        </span>
+      </div>
+      <p className="faint" style={{ fontSize: 12, marginTop: 8 }}>
+        {describeBenchmark(bench)}
+      </p>
 
       {cards.length > 0 && (
         <>

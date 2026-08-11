@@ -2,12 +2,15 @@
 import {
   NEIGHBORHOODS_BY_ID,
   ARCHETYPES_BY_ID,
+  ECON,
   analyzeDeal,
+  canAffordAtAll,
   estimateArv,
+  minimumCashToBuy,
   type GameState,
   type Property,
 } from '../../engine';
-import { conditionLabel, money, moneyShort } from '../format';
+import { conditionLabel, money, moneyShort, percent } from '../format';
 import { useGame, useVersion } from '../store';
 import PropertyModal from './PropertyModal';
 import ClickableRow from '../components/ClickableRow';
@@ -93,7 +96,16 @@ export default function MarketView() {
     if (!state) return [];
     let list = state.market.filter((p) => p.listing);
     if (hood !== 'all') list = list.filter((p) => p.neighborhoodId === hood);
-    if (onlyWorkable) list = list.filter((p) => screenRatio(p, state) >= WITHIN_REACH);
+    if (onlyWorkable) {
+      // Reach is two separate questions and the filter has to ask both. A
+      // listing can be perfectly priced and still be one you could never fund,
+      // and the second case used to be invisible until the offer was rejected.
+      list = list.filter(
+        (p) =>
+          screenRatio(p, state) >= WITHIN_REACH &&
+          canAffordAtAll(p.listing!.askPrice, state.cash),
+      );
+    }
 
     const dir = descending ? -1 : 1;
     const by = (a: Property, b: Property): number => {
@@ -285,10 +297,20 @@ function MarketRow({
   selected: boolean;
   onClick: () => void;
 }) {
+  const state = useGame()!;
   const cond = conditionLabel(prop.condition);
   const ask = prop.listing?.askPrice ?? 0;
   const est = prop.appraisal.point;
   const spread = est - ask;
+
+  // Marked on the row rather than discovered at the offer. Borrowing the
+  // maximum is the cheapest way in, so if that still exceeds your cash there
+  // is no route to this house at all.
+  const minCash = minimumCashToBuy(ask);
+  const unaffordable = state.cash < minCash;
+  const affordTitle = `Even at ${percent(ECON.MAX_LTV, 0)} leverage, closing needs ${money(
+    minCash,
+  )} and you have ${money(state.cash)}.`;
 
   return (
     <ClickableRow
@@ -307,7 +329,17 @@ function MarketRow({
       <td>
         <span className={`pill ${cond.tone}`}>{cond.text}</span>
       </td>
-      <td className="right num">{money(ask)}</td>
+      <td className={`right num ${unaffordable ? 'faint' : ''}`}>
+        {money(ask)}
+        {unaffordable && (
+          <>
+            <br />
+            <span className="pill mute" style={{ fontSize: 10 }} title={affordTitle}>
+              beyond your cash
+            </span>
+          </>
+        )}
+      </td>
       <td className="right num dim">{moneyShort(est)}</td>
       <td className={`right num ${spread > 0 ? 'good' : 'bad'}`}>
         {spread > 0 ? '+' : ''}

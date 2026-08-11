@@ -4,6 +4,7 @@ import {
   explainCostStack,
   explainRule70,
   explainRuleGap,
+  minimumCashToBuy,
   returnProfile,
   verdictOnReturn,
   type DealAnalysis,
@@ -27,10 +28,13 @@ export default function DealAnalyzer({
   offer,
   showRuleExplainer = true,
   stress = null,
+  cashOnHand,
 }: {
   analysis: DealAnalysis;
   offer: number;
   showRuleExplainer?: boolean;
+  /** Supplied on the buy screen so the panel can say when a deal is unfundable. */
+  cashOnHand?: number;
   /**
    * Supplied by the buy screen, where the stress test is a decision aid.
    * Omitted once the property is owned: the estimates are no longer estimates
@@ -55,6 +59,9 @@ export default function DealAnalyzer({
     analysis.dailyCarry,
   );
   const returnVerdict = verdictOnReturn(projected.annualised);
+
+  const minCash = minimumCashToBuy(offer);
+  const outOfReach = cashOnHand !== undefined && offer > 0 && cashOnHand < minCash;
 
   return (
     <>
@@ -116,6 +123,18 @@ export default function DealAnalyzer({
             </>
           )}
         </p>
+      )}
+
+      {/* Stated before the projection, not after it. A projection showing a
+          strong return on a house you cannot fund is worse than no projection:
+          it invites you to spend the effort of underwriting a deal that was
+          never available, and only the offer screen used to say so. */}
+      {outOfReach && (
+        <div className="verdict loss" style={{ marginTop: 14 }}>
+          <strong>You cannot fund this at any price you would pay</strong>
+          Even borrowing the maximum, closing needs {money(minCash)} and you have{' '}
+          {money(cashOnHand)}. The numbers below describe a deal you cannot take.
+        </div>
       )}
 
       {breakdown && (

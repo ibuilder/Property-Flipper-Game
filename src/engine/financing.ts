@@ -192,6 +192,29 @@ export function quoteFinancing(
   }
 }
 
+/**
+ * The least cash any route into this house requires.
+ *
+ * Used to answer "can I buy this at all", which the game previously never
+ * asked. A player could screen a listing, inspect it, pick a scope, read a
+ * projection showing a strong return, and only discover at the offer that the
+ * closing cost exceeded everything they had. All of that work was spent on a
+ * deal that was never available to them.
+ *
+ * Takes the cheapest route deliberately -- maximum leverage -- because the
+ * question is whether any path exists, not whether the one currently selected
+ * does.
+ */
+export function minimumCashToBuy(price: Money): Money {
+  const mostBorrowable = Math.round(price * ECON.MAX_LTV);
+  return price - mostBorrowable + Math.round(price * ECON.BUY_CLOSING_RATE);
+}
+
+/** Whether any financing route puts this house within reach of this much cash. */
+export function canAffordAtAll(price: Money, cashOnHand: Money): boolean {
+  return cashOnHand >= minimumCashToBuy(price);
+}
+
 /** Every option, in the order they should be shown. */
 export function financingMenu(
   prop: Property,

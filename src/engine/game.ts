@@ -60,7 +60,12 @@ import {
   evictionCost,
   settleAuction,
 } from './auction';
-import { loanFromQuote, quoteFinancing, splitProceeds } from './financing';
+import {
+  loanFromQuote,
+  minimumCashToBuy,
+  quoteFinancing,
+  splitProceeds,
+} from './financing';
 import { DIFFICULTY_META, difficultyMods } from './difficulty';
 import { ARCS, arcDriftFor, arcIsVisible, chainFrom } from './arcs';
 import {
@@ -464,11 +469,24 @@ export function makeOffer(
   // The shortfall is checked before the generic availability flag so the
   // player is told the actual number rather than that it "is not available".
   if (state.cash < cashNeeded) {
+    // Naming the problem without naming the available solution is how a player
+    // walks away from a deal they could have done. If a cheaper route into the
+    // same house exists, say which one and what it costs.
+    let route = '';
+    if (kind === 'cash') {
+      const cheapest = minimumCashToBuy(contractPrice);
+      if (state.cash >= cheapest) {
+        route =
+          ` Borrowing against it would need $${cheapest.toLocaleString()} instead` +
+          ' — the financing options are on this screen.';
+      }
+    }
     return {
       ok: false,
-      message: `You need $${cashNeeded.toLocaleString()} at closing and have $${Math.round(
-        state.cash,
-      ).toLocaleString()}.`,
+      message:
+        `You need $${cashNeeded.toLocaleString()} at closing and have $${Math.round(
+          state.cash,
+        ).toLocaleString()}.` + route,
     };
   }
   if (!quote.available) return { ok: false, message: quote.reason };
