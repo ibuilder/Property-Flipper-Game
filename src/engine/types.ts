@@ -218,6 +218,17 @@ export interface HouseSubject {
   defects: Defect[];
   completedWork: string[];
   noiseSeed: number;
+  /**
+   * Line items a running job has finished but not yet booked.
+   *
+   * Visual only, and deliberately separate from completedWork: writing these
+   * into completedWork would let a half-finished renovation raise the
+   * property's value, which is the one thing a progress indicator must never
+   * do.
+   */
+  workInProgress?: string[];
+  /** 0-1 through the current job, for taking scaffolding down as it nears done. */
+  renovationProgress?: number;
   /** Crew on site: draws a skip in the drive. */
   renovating?: boolean;
   /** Board in the yard. */

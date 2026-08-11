@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { DEFECTS_BY_ID } from '../../engine';
+import { DEFECTS_BY_ID, jobProgress, workFinishedSoFar } from '../../engine';
 import type { HouseSubject, Property } from '../../engine';
 import { HOUSE_GROUND_Y, HOUSE_VIEWBOX, HOUSE_W, buildHouseArt } from './houseArt';
 
@@ -38,10 +38,21 @@ export default function House({
   // Building this object is trivial; the expensive step below is memoised on
   // the fields it actually reads.
   const live = property as Property;
+  const job = live.ownership?.renovation ?? null;
   const subject: HouseSubject = {
     ...(property as HouseSubject),
-    renovating: 'renovating' in property ? property.renovating : !!live.ownership?.renovation,
+    renovating: 'renovating' in property ? property.renovating : !!job,
     forSale: 'forSale' in property ? property.forSale : !!live.ownership?.saleListing,
+    // A snapshot from a closed deal carries its own values; a live property
+    // derives them from the job actually running on it.
+    workInProgress:
+      'workInProgress' in property ? property.workInProgress : job ? workFinishedSoFar(job) : [],
+    renovationProgress:
+      'renovationProgress' in property
+        ? property.renovationProgress
+        : job
+          ? jobProgress(job)
+          : 0,
   };
 
   const art = useMemo(
@@ -54,6 +65,11 @@ export default function House({
       subject.defects.map((d) => `${d.defId}:${d.revealed}:${d.repaired}`).join(','),
       subject.renovating,
       subject.forSale,
+      // Without these the house would freeze at the state it had when the crew
+      // arrived and only catch up on the last day of the job.
+      (subject.workInProgress ?? []).join(','),
+      // Rounded, so the scaffolding steps down rather than redrawing daily.
+      Math.round((subject.renovationProgress ?? 0) * 10),
       // Season, not the day itself -- no need to redraw every tick.
       Math.floor(((day + 59) % 365) / 60),
     ],

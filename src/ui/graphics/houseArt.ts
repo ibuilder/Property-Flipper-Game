@@ -175,8 +175,12 @@ function palette(condition: number, renovating: boolean, day: number): HousePale
 export function buildHouseArt(prop: HouseSubject, day = 150): HouseArt {
   const rng = new Rng(prop.noiseSeed);
   const c = Math.max(0, Math.min(1, prop.condition));
-  const done = new Set(prop.completedWork);
+  // Work finished by a running job counts for the picture but not for anything
+  // else. A new roof stops having holes in it the day it goes on, rather than
+  // on the day the invoice is booked.
+  const done = new Set([...prop.completedWork, ...(prop.workInProgress ?? [])]);
   const renovating = !!prop.renovating;
+  const progress = Math.max(0, Math.min(1, prop.renovationProgress ?? 0));
 
   // Any defect that is known and unrepaired makes the house look worse than
   // condition alone suggests -- that is the point of an inspection.
@@ -344,9 +348,15 @@ export function buildHouseArt(prop: HouseSubject, day = 150): HouseArt {
   // A skip alone did not read as "a crew is here". Scaffolding along the
   // elevation does, and a tarp goes up whenever the roof is part of the job or
   // is the reason for it.
+  // Scaffolding comes down as the job finishes rather than vanishing all at
+  // once, so a glance at the house tells you roughly how far along it is.
+  const bays = renovating ? Math.max(1, Math.round(3 - progress * 2)) : 0;
   const works = renovating
     ? {
-        scaffoldX: Array.from({ length: 3 }, (_, i) => bodyX - 5 + i * ((bodyW + 10) / 2)),
+        scaffoldX: Array.from(
+          { length: bays + 1 },
+          (_, i) => bodyX - 5 + i * ((bodyW + 10) / Math.max(1, bays)),
+        ),
         tarp: !roofSound,
       }
     : null;

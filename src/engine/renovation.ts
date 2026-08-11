@@ -183,6 +183,68 @@ export function jobDaysRemaining(job: RenovationJob): number {
 }
 
 /**
+ * The order trades actually run in.
+ *
+ * Structure and systems come before anything that covers them up, finishes go
+ * in after, and curb appeal is last because it is the first thing to get
+ * damaged by everything else. Used only to decide what a half-finished house
+ * should look like -- the engine still applies every line at completion, so
+ * this cannot affect a valuation.
+ */
+const TRADE_ORDER: Record<string, number> = {
+  structural: 0,
+  systems: 1,
+  additions: 2,
+  kitchen: 3,
+  bathrooms: 4,
+  cosmetic: 5,
+  exterior: 6,
+  marketing: 7,
+};
+
+function tradeRank(line: ScopeLineItem): number {
+  // Change orders sort last regardless of trade, because they are discovered
+  // partway through: the work already finished does not un-finish itself
+  // because somebody found termites. Ranking them by trade instead let a
+  // mid-job defect repair insert itself ahead of a completed roof, which made
+  // the holes reappear in the picture.
+  if (line.changeOrder) return 100;
+  // A planned defect repair is remedial and does go first, before anything is
+  // closed up over the top of it.
+  if (isDefectScopeId(line.itemId)) return -1;
+  const category = SCOPE_BY_ID[line.itemId]?.category;
+  return TRADE_ORDER[category ?? 'cosmetic'] ?? 5;
+}
+
+/**
+ * Which line items a job has plausibly finished by now.
+ *
+ * Purely for the picture. The schedule the engine runs is a single total
+ * rather than a per-line plan -- trades overlap, which is why the total is the
+ * longest task plus a fraction of the rest -- so this apportions each line's
+ * quoted days across that total in trade order. It is an approximation, and it
+ * is the honest kind: a roof that has been replaced stops having holes in it
+ * partway through the job rather than snapping into place on the last day.
+ */
+export function workFinishedSoFar(job: RenovationJob): string[] {
+  const progress = jobProgress(job);
+  if (progress >= 1) return job.lines.map((l) => l.itemId);
+
+  const ordered = [...job.lines].sort((a, b) => tradeRank(a) - tradeRank(b));
+  const totalQuoted = ordered.reduce((s, l) => s + Math.max(1, l.quotedDays), 0);
+  if (totalQuoted <= 0) return [];
+
+  const done: string[] = [];
+  let cumulative = 0;
+  for (const line of ordered) {
+    cumulative += Math.max(1, line.quotedDays);
+    if (cumulative / totalQuoted <= progress) done.push(line.itemId);
+    else break;
+  }
+  return done;
+}
+
+/**
  * Apply a saved template to the current scope selection.
  *
  * A template swaps out the *discretionary* line items and leaves everything
