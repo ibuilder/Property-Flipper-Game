@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import {
   NEIGHBORHOODS_BY_ID,
-  dailyHoldingCost,
+  cashRunway,
+  describeRunway,
   isOccupied,
   jobDaysRemaining,
   jobProgress,
   loanPayoff,
+  runwayLevel,
   type Property,
+  type RunwayLine,
 } from '../../engine';
 import { conditionLabel, money, moneyShort } from '../format';
+import HoldingCost from '../graphics/HoldingCost';
 import { useGame } from '../store';
 import OwnedPropertyModal from './OwnedPropertyModal';
 import ClickableRow from '../components/ClickableRow';
@@ -19,6 +23,9 @@ export default function PortfolioView() {
   if (!state) return null;
 
   const active = state.portfolio.find((p) => p.id === selected) ?? null;
+  const runway = cashRunway(state);
+  const level = runwayLevel(runway);
+  const holdingNote = describeRunway(runway);
 
   if (state.portfolio.length === 0) {
     return (
@@ -38,14 +45,22 @@ export default function PortfolioView() {
       <div className="panel">
         <div className="panel-head">
           <h2>Portfolio</h2>
+          {/* Was the carry alone, which is the smaller half and reads as the
+              whole cost. Across eight measured campaigns carry averaged $2,104
+              a deal against $7,386 of financing, so the old figure understated
+              what holding costs by roughly a factor of four. */}
           <span className="dim" style={{ fontSize: 12 }}>
-            {money(
-              state.portfolio.reduce((s, p) => s + dailyHoldingCost(p, state.world, state.day), 0),
-            )}
-            /day in carry
+            {money(runway.burn + runway.accruing)}/day to hold
           </span>
         </div>
         <div className="panel-body flush">
+          {/* Above the table, because it is the sentence the table is an
+              itemisation of. The largest piece of it appears nowhere else in
+              the game until the closing statement. */}
+          <div className="holding-wrap">
+            <HoldingCost runway={runway} level={level} />
+            {holdingNote && <p className="holding-note">{holdingNote}</p>}
+          </div>
           <div className="table-wrap">
             <table>
               <thead>
@@ -56,7 +71,7 @@ export default function PortfolioView() {
                   <th className="right">Paid</th>
                   <th className="right">In</th>
                   <th className="right">Est. value</th>
-                  <th className="right">Carry/day</th>
+                  <th className="right">Cost/day</th>
                   <th className="right">Debt</th>
                   <th className="right">Held</th>
                   <th></th>
@@ -67,6 +82,7 @@ export default function PortfolioView() {
                   <PortfolioRow
                     key={p.id}
                     prop={p}
+                    line={runway.lines.find((l) => l.propertyId === p.id) ?? null}
                     onClick={() => setSelected(p.id)}
                     selected={p.id === selected}
                   />
@@ -84,10 +100,13 @@ export default function PortfolioView() {
 
 function PortfolioRow({
   prop,
+  line,
   onClick,
   selected,
 }: {
   prop: Property;
+  /** This property's slice of the daily cost, or null if it is not owned. */
+  line: RunwayLine | null;
   onClick: () => void;
   selected: boolean;
 }) {
@@ -140,8 +159,23 @@ function PortfolioRow({
       <td className="right num">{moneyShort(own.purchasePrice)}</td>
       <td className="right num dim">{moneyShort(invested)}</td>
       <td className="right num">{moneyShort(prop.appraisal.point)}</td>
+      {/* The full daily cost, not the carry alone, so this column agrees with
+          the figure in the panel head. Interest that is only accruing is shown
+          in the warning colour: it is real money, it just has not left yet. */}
       <td className="right num dim">
-        {money(dailyHoldingCost(prop, state.world, state.day))}
+        {line ? (
+          <>
+            {money(line.carry + line.debtService + line.accruing)}
+            {line.accruing > 0.5 && (
+              <span className="warn" title="accruing on interest-only debt, unpaid until closing">
+                {' '}
+                incl. {money(line.accruing)}
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="faint">&mdash;</span>
+        )}
       </td>
       <td className="right num">
         {loan ? <span className="bad">{moneyShort(loanPayoff(loan))}</span> : <span className="faint">&mdash;</span>}

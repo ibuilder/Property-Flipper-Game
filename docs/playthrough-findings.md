@@ -101,10 +101,60 @@ Ordered by how much each would change the experience, not by effort.
    subject marked, the selected comps highlighted. The mismatch warning
    currently explains in words what one chart would show instantly.
 
-5. **The cash runway.** A simple bar showing cash against committed spend and
-   expected proceeds. Running out of money mid-renovation is the most common
-   way a campaign is lost and there is no visual warning of it approaching.
+5. ~~**The cash runway.**~~ **Corrected — see below.** I wrote here that running
+   out of money mid-renovation was the most common way a campaign is lost. That
+   was an impression from playing, not a measurement, and when measured it is
+   false. Built as *the daily cost of holding* instead.
 
 6. **Neighborhood arcs on the map over time.** Arcs run for years and are shown
    as a text pill. A small sparkline per region on the map would show a
    neighborhood turning while it is still worth acting on.
+
+## Liquidity never binds, and that is a balance question
+
+Item 5 above claimed running out of cash was the main way a campaign is lost.
+Measured across eight campaigns of three hundred days, buying every deal that
+cleared the 70% rule:
+
+| measure | result |
+| --- | --- |
+| occasions the player could not afford to start a job | **0** |
+| occasions free cash was below the cheapest listing | **0** |
+| `startRenovation` refusals | **0** |
+| median cash held | $83,705 |
+| median upfront job cost | $21,024 |
+| days of cash at the current burn | 524 (p10) to 17,475 (p90) |
+
+Even the tenth-percentile cash balance ($26,169) covers the median job. There is
+no liquidity pressure in this game as currently balanced, so a runway gauge
+would have sat on permanent green and taught that a danger exists where the
+model contains none.
+
+**What is actually true** is that time is expensive and half the cost is
+invisible. Across the same runs, on closed deals:
+
+| measure | result |
+| --- | --- |
+| mean carry per deal | $2,104 |
+| mean financing per deal | $7,386 |
+| carry + financing as a share of profit before carry | 10.8% |
+| worst observed | 184 days held, $23,103 of time cost against $5,837 of profit |
+
+Financing is three and a half times the carry, and on an interest-only loan it
+accrues without ever appearing in the cash balance or as money moving in the
+ledger. It is settled whole at closing. The portfolio header had been reporting
+the carry alone — on a financed deal that is $41/day against a true $161/day, a
+fourfold understatement of what holding costs.
+
+So item 5 shipped as **the daily cost of holding**: a segmented bar with the
+accruing portion hatched, and a note that converts the daily rate into what it
+costs over a realistic hold.
+
+### Open question for balance
+
+Whether liquidity *should* bind is a design decision, not a bug. Real flipping
+is substantially a game about running out of money, and this one currently is
+not. Making cash scarce — lower starting balances, staged renovation draws
+rather than payment upfront, or a lender who will not fund the next deal until
+the last one closes — would change the difficulty of every scenario, so it is
+not something to slip in alongside a graphics change. Flagged, not actioned.

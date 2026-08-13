@@ -16,6 +16,7 @@ export * from './stress';
 export * from './digest';
 export * from './benchmark';
 export * from './timeline';
+export * from './runway';
 export * from './explain';
 export * from './mistakes';
 export * from './reputation';

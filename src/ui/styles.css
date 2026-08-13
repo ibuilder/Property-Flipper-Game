@@ -817,6 +817,96 @@ label.field .label {
   margin: 8px 0 0;
 }
 
+/* What holding the portfolio costs per day. */
+.holding-wrap {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.holding-cost .holding-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.holding-total {
+  font-size: 19px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.holding-cost.costly .holding-total {
+  color: var(--warn);
+}
+
+.holding-cost.bleeding .holding-total {
+  color: var(--bad);
+}
+
+.holding-total .per {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-faint);
+  margin-left: 2px;
+}
+
+.holding-credit {
+  font-size: 12px;
+  color: var(--good);
+}
+
+.holding-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 7px 0 0;
+}
+
+.holding-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.holding-legend .swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.holding-legend .swatch.carry {
+  background: var(--text-faint);
+}
+
+.holding-legend .swatch.debt {
+  background: var(--warn);
+}
+
+/* Hatched, to match the bar: money that is owed but has not left yet. */
+.holding-legend .swatch.accruing {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--bad),
+    var(--bad) 1.5px,
+    transparent 1.5px,
+    transparent 3px
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bad) 55%, transparent);
+}
+
+.holding-note {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  margin: 9px 0 0;
+}
+
 /* The comp scatter. */
 .comp-chart {
   margin-top: 12px;
