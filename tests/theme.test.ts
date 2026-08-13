@@ -281,6 +281,47 @@ describe('the theme tokens', () => {
   });
 });
 
+describe('the blueprint geometry', () => {
+  /** The declarations of one top-level rule, as written. */
+  function rule(selector: string): string {
+    const i = CSS.indexOf(`\n${selector} {`);
+    expect(i, `no rule for ${selector}`).toBeGreaterThan(-1);
+    return CSS.slice(i, CSS.indexOf('}', i));
+  }
+
+  it('is square', () => {
+    expect(DARK['--radius']).toBe('0px');
+  });
+
+  it('draws panels as lines rather than surfaces', () => {
+    // "Never a surface fill, never a radius." A filled card competes with the
+    // one filled object that is supposed to mean "do this".
+    const panel = rule('.panel');
+    expect(panel).toMatch(/background:\s*transparent/);
+    expect(panel).toMatch(/border:\s*1px solid var\(--color-divider\)/);
+    expect(panel).toMatch(/border-radius:\s*var\(--radius\)/);
+  });
+
+  it('gives panels their registration marks', () => {
+    expect(CSS).toMatch(/\.panel::before,\s*\n\.panel::after/);
+    expect(CSS).toContain('var(--mark)');
+    expect(DARK['--mark']).toBeTruthy();
+  });
+
+  it('leaves the primary button as the only filled object', () => {
+    expect(rule('.btn')).toMatch(/background:\s*transparent/);
+    expect(rule('.btn.primary')).toMatch(/background:\s*var\(--color-accent-solid\)/);
+    expect(rule('.pill')).toMatch(/background:\s*transparent/);
+  });
+
+  it('keeps the primary label legible on its fill', () => {
+    for (const [name, tokens] of THEMES) {
+      const c = contrast(colour(tokens, '--color-bg'), colour(tokens, '--color-accent-solid'));
+      expect(c, `${name} primary button label is ${c.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
 describe('the components', () => {
   it('carry no theme-dependent colour of their own', () => {
     // House.tsx is exempt: a brick house is brick-coloured on paper and on

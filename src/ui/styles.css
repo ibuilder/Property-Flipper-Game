@@ -84,6 +84,17 @@
   --color-loss: #e8595e;
   --color-loss-bg: #38191c;
 
+  /*
+   * The accent as a *fill*, which is not always the accent as a *line*.
+   *
+   * The handoff paints the primary button `--color-accent` with a
+   * `--color-bg` label. On the dark ground that is 8.9:1 and fine. On the
+   * light ground it is 3.71:1 -- under AA for a 13px label, measured. So
+   * filled objects take their own step of the same ramp: same hue, same
+   * family, enough contrast to carry text in both themes.
+   */
+  --color-accent-solid: var(--color-accent);
+
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.45);
   --shadow-md: 0 3px 10px rgb(0 0 0 / 0.5);
   --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.55);
@@ -129,6 +140,9 @@
 
   --color-loss: #8a2f2f;
   --color-loss-bg: #f7ecec;
+
+  /* Three steps down the ramp, so a paper-coloured label clears AA on it. */
+  --color-accent-solid: var(--color-accent-700);
 
   --shadow-sm: 0 1px 2px color-mix(in srgb, #2b2b2d 14%, transparent);
   --shadow-md: 0 3px 10px color-mix(in srgb, #2b2b2d 16%, transparent);
@@ -184,7 +198,19 @@
   --bad: var(--color-loss);
   --bad-dim: var(--color-loss-bg);
 
-  --radius: 6px;
+  /*
+   * Square, everywhere.
+   *
+   * The handoff's rule is that cards, figures and buttons are drawings rather
+   * than surfaces, and a radius is the single strongest signal of a surface.
+   * Kept as a token rather than deleted so the rare genuinely-non-blueprint
+   * element (a pill, a progress bar cap) can still ask for one explicitly.
+   */
+  --radius: 0px;
+  --radius-pill: 999px;
+  /* The ink registration marks are drawn in. Half-strength so they read as
+     drafting furniture rather than as content. */
+  --mark: color-mix(in srgb, var(--color-text) 50%, transparent);
   --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Consolas', 'Roboto Mono', monospace;
   --sans: 'Barlow', 'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif;
   /*
@@ -391,11 +417,43 @@ button {
 
 /* ----------------------------------------------------------------- panels */
 
+/*
+ * A panel is a line drawing, not a surface: no fill, one hairline, square
+ * corners, and registration marks at two opposing corners.
+ *
+ * Two marks rather than four because they can be drawn with the element's own
+ * pseudo-elements and need no markup, and because the handoff already uses a
+ * tl/br pair on its smaller objects. The cross itself is two one-pixel
+ * gradients, which stays crisp at any zoom.
+ */
 .panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
+  position: relative;
+  background: transparent;
+  border: 1px solid var(--color-divider);
   border-radius: var(--radius);
   margin-bottom: 16px;
+}
+
+.panel::before,
+.panel::after {
+  content: '';
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--mark) 0 0) 5px 0 / 1px 100% no-repeat,
+    linear-gradient(var(--mark) 0 0) 0 5px / 100% 1px no-repeat;
+}
+
+.panel::before { top: -6px; left: -6px; }
+.panel::after { bottom: -6px; right: -6px; }
+
+/* Nested panels drop the marks -- registration marks inside registration
+   marks read as noise rather than as drafting. */
+.panel .panel::before,
+.panel .panel::after {
+  display: none;
 }
 
 .panel-head {
@@ -523,13 +581,19 @@ td.right {
 
 /* ---------------------------------------------------------------- buttons */
 
+/*
+ * The solid accent primary is the only filled object in the interface.
+ * Everything else is an outline, which is what makes the one filled thing on
+ * a screen read as the action to take.
+ */
 .btn {
   appearance: none;
-  border: 1px solid var(--border-strong);
-  background: var(--bg-raised);
+  border: 1px solid var(--color-divider);
+  background: transparent;
   color: var(--text);
   padding: 7px 13px;
   border-radius: var(--radius);
+  font-family: var(--font-heading);
   font-size: 13px;
   font-weight: 500;
   transition: background 0.12s, border-color 0.12s;
@@ -546,9 +610,9 @@ td.right {
 }
 
 .btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #06121f;
+  background: var(--color-accent-solid);
+  border-color: var(--color-accent-solid);
+  color: var(--color-bg);
   font-weight: 600;
 }
 
@@ -649,40 +713,41 @@ label.field .label {
 
 /* ------------------------------------------------------------------- misc */
 
+/*
+ * Outline tags, not pills.
+ *
+ * Square and unfilled, per the handoff: the solid accent primary button is
+ * meant to be the only filled object on a screen, and a row of coloured
+ * lozenges competes with it directly. The colour still carries the state; it
+ * carries it in the ink and the hairline instead of in a fill.
+ */
 .pill {
   display: inline-block;
-  padding: 1px 8px;
-  border-radius: 20px;
+  padding: 1px 7px;
+  border-radius: var(--radius);
+  font-family: var(--font-heading);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  border: 1px solid transparent;
+  letter-spacing: 0.03em;
+  background: transparent;
+  border: 1px solid currentColor;
+  color: var(--text-dim);
 }
 
 .pill.good {
-  background: var(--good-dim);
   color: var(--good);
-  border-color: #1d5638;
 }
 .pill.warn {
-  background: var(--warn-dim);
   color: var(--warn);
-  border-color: #5c4a17;
 }
 .pill.bad {
-  background: var(--bad-dim);
   color: var(--bad);
-  border-color: #5c2429;
 }
 .pill.info {
-  background: var(--accent-dim);
   color: var(--accent);
-  border-color: #2b5580;
 }
 .pill.mute {
-  background: #1f2732;
-  color: var(--text-dim);
-  border-color: var(--border-strong);
+  color: var(--text-faint);
 }
 
 .bar {
@@ -1907,7 +1972,7 @@ table.stress-grid td.base {
 .modal {
   background: var(--bg-raised);
   border: 1px solid var(--border-strong);
-  border-radius: 10px;
+  border-radius: var(--radius);
   width: 100%;
   max-width: 1080px;
   max-height: 92vh;
