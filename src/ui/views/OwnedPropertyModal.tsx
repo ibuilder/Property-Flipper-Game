@@ -30,6 +30,7 @@ import {
 import { money, percent } from '../format';
 import { useAction, useGame, useVersion } from '../store';
 import DealAnalyzer from '../components/DealAnalyzer';
+import ForecastPanel from '../components/ForecastPanel';
 import PropertyFacts from '../components/PropertyFacts';
 import ScopeBuilder from '../components/ScopeBuilder';
 import Modal from '../components/Modal';
@@ -336,6 +337,23 @@ export default function OwnedPropertyModal({
                       />
                     </div>
                   </div>
+
+                  {/* Directly under the engine's projection, because the useful
+                      question is whether you agree with it. Only before the
+                      house is listed: after that it is not a forecast. */}
+                  {!own.saleListing && (
+                    <div className="panel">
+                      <div className="panel-head">
+                        <h2>Your forecast</h2>
+                      </div>
+                      <div className="panel-body">
+                        <ForecastPanel
+                          property={property}
+                          projectedProfit={analysis.breakdown?.profit ?? 0}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 

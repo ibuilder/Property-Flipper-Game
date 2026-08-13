@@ -817,6 +817,50 @@ label.field .label {
   margin: 8px 0 0;
 }
 
+/* Committing to a forecast, and being scored on it. */
+.forecast-lead {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  margin: 0 0 12px;
+}
+
+.forecast-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.forecast.committed .kv.total {
+  border-bottom: none;
+}
+
+.calib-verdict {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  margin: 12px 0 0;
+}
+
+.calib-strip {
+  margin-top: 14px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.calib-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+.calib-axis .mid {
+  color: var(--good);
+}
+
 /* Per-neighborhood price movement under the map. */
 .trend-strip {
   margin-top: 12px;

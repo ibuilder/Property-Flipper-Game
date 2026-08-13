@@ -169,6 +169,19 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     }
     return s;
   },
+  // v13 predates committed forecasts. Deals closed before this have none and
+  // are left unscored rather than back-filled: a forecast invented after the
+  // outcome is known would corrupt the one measurement this feature exists to
+  // make. Properties still held can be forecast from here on.
+  13: (s: any) => {
+    for (const prop of s.portfolio ?? []) {
+      if (prop.ownership) prop.ownership.forecast = prop.ownership.forecast ?? null;
+    }
+    for (const deal of s.closedDeals ?? []) {
+      deal.forecast = deal.forecast ?? null;
+    }
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {

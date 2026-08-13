@@ -196,3 +196,34 @@ not. Making cash scarce — lower starting balances, staged renovation draws
 rather than payment upfront, or a lender who will not fund the next deal until
 the last one closes — would change the difficulty of every scenario, so it is
 not something to slip in alongside a graphics change. Flagged, not actioned.
+
+## The projection at purchase is a ceiling, not a centre
+
+Building the forecast feature required knowing how good the engine's own
+projection actually is, because the panel pre-fills a range around it.
+Measured over six campaigns, forecasting every purchase at the projection and
+scoring against the profit that actually landed:
+
+| buying discipline | resolved | median error vs the projection | misses that were too high |
+| --- | --- | --- | --- |
+| pays 1.05× asking on anything | 59 | **−78%** | 70% |
+| never above the itemised max offer | 49 | **−49%** | 82% |
+
+Both halves matter: recklessness accounts for roughly thirty points of it, and
+the rest is the projection itself. That is by design rather than a defect —
+`captureProjection` prices a cosmetic scope on a house nobody has opened up
+yet, and the post-mortem exists precisely to report the difference — but it
+means a range centred on the projection is wrong before it is made.
+
+Two consequences:
+
+- The forecast panel pre-fills **asymmetrically** (0.5× to 1.25× of the
+  projection) and says why in as many words: what is still hidden can only cost
+  you. It does not supply the measured correction; finding your own is the
+  exercise.
+- The verdict is diagnosed on **median error**, not on the share of misses that
+  fell one way. At −49% with 76–82% of misses one-sided, a share-based test set
+  at 80% classifies this as *overconfident* and advises widening the ranges —
+  exactly backwards, since the ranges are in the wrong place rather than the
+  wrong size. That mis-call was live until it was measured; there is now a test
+  pinning the corrected behaviour.

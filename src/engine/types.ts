@@ -574,6 +574,13 @@ export interface Ownership {
    * then the condition has changed and every defect has been found.
    */
   replay: ReplayCapture | null;
+  /**
+   * The profit range committed to at purchase, if the player made one.
+   *
+   * Held here while the deal is live and copied onto the closed deal at sale,
+   * so the record survives the property leaving the portfolio.
+   */
+  forecast?: Forecast | null;
 }
 
 export interface SaleListing {
@@ -827,6 +834,43 @@ export interface ClosedDeal {
   after: HouseSubject | null;
   /** Enough to rebuild this deal and let the player run it again. */
   replay: ReplayCapture | null;
+  /**
+   * The profit range the player committed to before buying, if they did.
+   *
+   * Optional and nullable: forecasting is voluntary, and deals closed before
+   * it existed have none. A skipped forecast is not scored — being made to
+   * guess would produce numbers that measure compliance rather than belief.
+   */
+  forecast?: Forecast | null;
+}
+
+/**
+ * A range the player commits to before the outcome is known.
+ *
+ * Stored against the property at purchase and copied onto the closed deal so
+ * it survives the sale. Immutable once made: a forecast you can revise after
+ * seeing how the work is going is not a forecast.
+ */
+export interface Forecast {
+  propertyId: string;
+  /** The day it was committed. */
+  day: number;
+  low: Money;
+  high: Money;
+  /** The confidence the range is declared at, e.g. 0.8. */
+  confidence: number;
+}
+
+/** A forecast with the outcome measured against it. */
+export interface ScoredForecast extends Forecast {
+  actual: Money;
+  hit: boolean;
+  /** 0 at the low end, 1 at the high end; outside [0,1] means missed. */
+  position: number;
+  /** Half-width over midpoint: how precise the claim was. */
+  relativeWidth: number;
+  /** Signed error against the midpoint, as a fraction. */
+  error: number;
 }
 
 /** Result shape returned by every player action. */

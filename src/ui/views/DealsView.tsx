@@ -3,6 +3,7 @@ import { NEIGHBORHOODS_BY_ID, verdictOnReturn } from '../../engine';
 import { conditionLabel, money, moneyShort, percent } from '../format';
 import { useGame } from '../store';
 import { Waterfall } from '../graphics/Charts';
+import CalibrationPanel from '../components/CalibrationPanel';
 import PostMortemPanel from '../components/PostMortemPanel';
 import House from '../graphics/House';
 
@@ -77,6 +78,10 @@ export default function DealsView() {
         {overall.text} Returns are annualised against the cash you actually tied up and weighted by
         how long each deal held it &mdash; a small fast win does not outweigh a large slow loss.
       </p>
+
+      {/* Above the per-deal breakdown, because it is the question the whole
+          track record is trying to answer and a single deal cannot. */}
+      <CalibrationPanel deals={deals} />
 
       <div className="panel">
         <div className="panel-head">

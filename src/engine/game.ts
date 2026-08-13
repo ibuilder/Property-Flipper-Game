@@ -54,6 +54,7 @@ import {
   quoteScopeItem,
   scheduleDays,
 } from './renovation';
+import { makeForecast } from './forecast';
 import {
   createAuction,
   createAuctionLot,
@@ -113,7 +114,7 @@ import {
 import { analyzeDeal } from './analyzer';
 import { buildScenarioProperty, type ScenarioDef } from './scenarios';
 
-export const SAVE_VERSION = 13;
+export const SAVE_VERSION = 14;
 
 /** How often the charts' time series is sampled, in days. */
 export const HISTORY_INTERVAL_DAYS = 5;
@@ -622,6 +623,44 @@ export function makeOffer(
  * lower the offer, widen the contingency, or walk. The fee is sunk whether or
  * not you end up buying, which is exactly the real trade-off.
  */
+/**
+ * Commit to a profit range on a property you own.
+ *
+ * Allowed once, and only before the house is listed. Both restrictions are the
+ * feature: a forecast you can revise once the work has gone badly measures
+ * nothing, and one made after the offers are in is not a forecast at all.
+ */
+export function commitForecast(
+  state: GameState,
+  propertyId: PropertyId,
+  low: Money,
+  high: Money,
+): ActionResult {
+  const prop = findOwned(state, propertyId);
+  if (!prop?.ownership) return { ok: false, message: 'You do not own that property.' };
+  if (prop.ownership.forecast) {
+    return { ok: false, message: 'You have already committed a forecast on this one.' };
+  }
+  if (prop.ownership.saleListing) {
+    return {
+      ok: false,
+      message: 'It is already listed. A forecast made once the offers are coming in is not a forecast.',
+    };
+  }
+  if (!Number.isFinite(low) || !Number.isFinite(high)) {
+    return { ok: false, message: 'That is not a range.' };
+  }
+
+  prop.ownership.forecast = makeForecast(prop.id, state.day, Math.round(low), Math.round(high));
+  const f = prop.ownership.forecast;
+  log(
+    state,
+    'info',
+    `Forecast on ${prop.address}: profit between $${f.low.toLocaleString()} and $${f.high.toLocaleString()}.`,
+  );
+  return { ok: true, message: 'Forecast recorded. It cannot be changed.' };
+}
+
 export function orderInspection(
   state: GameState,
   propertyId: PropertyId,
@@ -1033,6 +1072,9 @@ export function acceptOffer(
     before: own.boughtAs,
     after: snapshot(prop),
     replay: own.replay,
+    // Carried across so the forecast outlives the property. Scored against
+    // netProfit, which is the figure the player was asked to predict.
+    forecast: own.forecast ?? null,
   };
   state.closedDeals.push(deal);
   state.portfolio = state.portfolio.filter((p) => p.id !== prop.id);

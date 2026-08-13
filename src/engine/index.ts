@@ -18,6 +18,7 @@ export * from './benchmark';
 export * from './timeline';
 export * from './runway';
 export * from './trends';
+export * from './forecast';
 export * from './explain';
 export * from './mistakes';
 export * from './reputation';
