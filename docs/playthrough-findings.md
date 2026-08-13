@@ -57,9 +57,9 @@ Three fixes:
 
 ---
 
-## Not fixed, worth doing
+## Not fixed, worth doing — both since fixed
 
-### The player cannot follow a property
+### ~~The player cannot follow a property~~ — done
 
 Three times in one campaign a listing being tracked went under contract to
 another buyer, and the only sign was an offer failing with "that property is no
@@ -68,7 +68,7 @@ idea which one you cared about. A watchlist — even just a star on the row —
 would let the digest say *"the one you were watching is gone"*, which is the
 sentence that actually matters.
 
-### The annualised figure flatters a thin deal
+### ~~The annualised figure flatters a thin deal~~ — done
 
 The playthrough sold in 32 days for $14,671 net on a $250,163 purchase — a
 5.9% return on the money, reported as **167% annualised**. Both numbers are
