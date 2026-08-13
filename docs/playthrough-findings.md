@@ -108,7 +108,45 @@ Ordered by how much each would change the experience, not by effort.
 
 6. **Neighborhood arcs on the map over time.** Arcs run for years and are shown
    as a text pill. A small sparkline per region on the map would show a
-   neighborhood turning while it is still worth acting on.
+   neighborhood turning while it is still worth acting on. **Built — but as
+   price movement rather than as arcs, and relative rather than absolute; see
+   below for why the obvious version would have been misleading.**
+
+All six are now built. Items 1–4 shipped as described; 5 was rebuilt after
+measurement contradicted the premise, and 6 was rebuilt after measurement
+showed the obvious encoding would teach the opposite of the truth.
+
+## The obvious neighborhood sparkline draws the wrong picture
+
+Item 6 asked for a sparkline of each neighborhood's index. Measured over three
+900-day campaigns, that chart would have been actively misleading, because
+market-wide drift is much larger than any arc:
+
+| neighborhood | arc | own index over the campaign |
+| --- | --- | --- |
+| millworks (seed 606) | none | **+49.1%** |
+| riverside_flats (seed 606) | declining | +0.5% |
+| maple_heights (seed 606) | declining | +13.3% |
+
+Drawn absolutely, a neighborhood in decline has a line that climbs, and the
+one with nothing happening has the steepest line on the board. So the chart
+plots each neighborhood **against the average of all of them**, and shades the
+gap. Riverside Flats then reads −4% on its own index but −10% against the
+city, which is the true statement.
+
+It is deliberately not an arc detector, and does not claim to be. Over six
+900-day campaigns a divergence had an arc behind it 9 times out of 29, and the
+largest divergence observed — 32% ahead — had no arc at all. Neighborhoods
+differ in volatility by roughly 4× (0.13% to 0.58% per five-day step), so one
+can outrun the pack for a long stretch on nothing. That ambiguity is correct
+and is left in place: prices set value whether or not the engine has an arc
+object behind them, and a player who buys into a neighborhood that has run 32%
+is right about the money even without a story. The announced pill remains the
+reliable signal; the chart is the evidence you weigh yourself.
+
+The first thresholds fired on 20 of the 24 neighborhoods with nothing going on,
+mostly to report a 2% wobble. Tightened to speak only on a clear divergence of
+4% or more.
 
 ## Liquidity never binds, and that is a balance question
 

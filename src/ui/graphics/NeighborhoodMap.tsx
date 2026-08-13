@@ -1,7 +1,15 @@
 import { useMemo, useState } from 'react';
-import { NEIGHBORHOODS, arcIsVisible, type GameState } from '../../engine';
+import {
+  NEIGHBORHOODS,
+  NEIGHBORHOODS_BY_ID,
+  allTrends,
+  arcIsVisible,
+  describeTrend,
+  type GameState,
+} from '../../engine';
 import { money, percent } from '../format';
 import { SEQUENTIAL } from './Charts';
+import TrendSpark from './TrendSpark';
 
 /**
  * A stylized map of the six areas, heat-coloured by current price index.
@@ -243,6 +251,51 @@ export default function NeighborhoodMap({
           )}
         </span>
       </div>
+
+      <TrendStrip state={state} />
+    </div>
+  );
+}
+
+/**
+ * Where money has been moving, over the last eight months.
+ *
+ * Below the map rather than on it: at the size these shapes are drawn, six
+ * sparklines inside the polygons would be six illegible squiggles. The value
+ * is in comparing them, and a column does that better than a map does.
+ *
+ * Ordered by divergence, so whatever is happening is at the ends.
+ */
+function TrendStrip({ state }: { state: GameState }) {
+  const trends = useMemo(() => allTrends(state), [state.day, state.history.length]);
+  if (trends.every((t) => t.points.length < 3)) return null;
+
+  return (
+    <div className="trend-strip">
+      <div className="trend-strip-head">
+        Price movement, last {trends[0]?.days ?? 0} days
+        <span className="faint"> &middot; dashed line is the city average</span>
+      </div>
+      {trends.map((t) => {
+        const note = describeTrend(t);
+        return (
+          <div key={t.neighborhoodId} className="trend-row">
+            <span className="trend-name">{NEIGHBORHOODS_BY_ID[t.neighborhoodId]?.name}</span>
+            <TrendSpark trend={t} />
+            <span className={`trend-net ${t.netChange >= 0 ? 'good' : 'bad'}`}>
+              {t.netChange >= 0 ? '+' : ''}
+              {(t.netChange * 100).toFixed(0)}%
+            </span>
+            <span className="trend-note">{note ?? ''}</span>
+          </div>
+        );
+      })}
+      {/* Said once, under the whole strip, because it applies to every row and
+          it is the thing that stops this being read as a tip sheet. */}
+      <p className="trend-caveat">
+        A neighborhood can run ahead of the pack for months with nothing behind it, and an
+        announced arc can be slow to show up here. This is evidence, not a verdict.
+      </p>
     </div>
   );
 }

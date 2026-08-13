@@ -817,6 +817,58 @@ label.field .label {
   margin: 8px 0 0;
 }
 
+/* Per-neighborhood price movement under the map. */
+.trend-strip {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.trend-strip-head {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.trend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0;
+  font-size: 11.5px;
+}
+
+.trend-name {
+  flex: none;
+  width: 108px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trend-net {
+  flex: none;
+  width: 42px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend-note {
+  color: var(--text-faint);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trend-caveat {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-faint);
+  margin: 8px 0 0;
+}
+
 /* What holding the portfolio costs per day. */
 .holding-wrap {
   padding: 12px 14px 10px;
