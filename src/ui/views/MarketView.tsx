@@ -8,10 +8,11 @@ import {
   estimateArv,
   minimumCashToBuy,
   type GameState,
+  toggleWatch,
   type Property,
 } from '../../engine';
 import { conditionLabel, money, moneyShort, percent } from '../format';
-import { useGame, useVersion } from '../store';
+import { useAction, useGame, useVersion } from '../store';
 import PropertyModal from './PropertyModal';
 import ClickableRow from '../components/ClickableRow';
 import FirstTime from '../components/FirstTime';
@@ -298,6 +299,8 @@ function MarketRow({
   onClick: () => void;
 }) {
   const state = useGame()!;
+  const act = useAction();
+  const watched = state.watched.includes(prop.id);
   const cond = conditionLabel(prop.condition);
   const ask = prop.listing?.askPrice ?? 0;
   const est = prop.appraisal.point;
@@ -321,7 +324,24 @@ function MarketRow({
       <td style={{ padding: '4px 8px' }}>
         <House property={prop} className="house-thumb" />
       </td>
-      <td style={{ fontWeight: 500 }}>{prop.address}</td>
+      <td style={{ fontWeight: 500 }}>
+        {/* A star, and nothing more. The digest already counted the listings
+            that went to other buyers; this is what tells it which one you
+            cared about. Stops propagation so following a listing is not also
+            a click into it. */}
+        <button
+          className={`watch-star${watched ? ' on' : ''}`}
+          aria-pressed={watched}
+          title={watched ? 'Watching — you will be told if it goes' : 'Watch this listing'}
+          onClick={(e) => {
+            e.stopPropagation();
+            act((sx) => toggleWatch(sx, prop.id));
+          }}
+        >
+          {watched ? '★' : '☆'}
+        </button>
+        {prop.address}
+      </td>
       <td className="dim">{NEIGHBORHOODS_BY_ID[prop.neighborhoodId]?.name}</td>
       <td className="dim">{ARCHETYPES_BY_ID[prop.archetypeId]?.name}</td>
       <td className="right num">{prop.sqft.toLocaleString()}</td>

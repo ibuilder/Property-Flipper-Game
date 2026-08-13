@@ -780,6 +780,13 @@ export interface GameState {
   log: LogEntry[];
   /** Sale results, kept for the performance screen. */
   closedDeals: ClosedDeal[];
+  /**
+   * Listings the player is following.
+   *
+   * Ids rather than objects, because a listing leaves the market when someone
+   * else buys it and the whole point is to be told that it is gone.
+   */
+  watched: PropertyId[];
   /** Sampled time series for the charts. */
   history: HistoryPoint[];
   /**

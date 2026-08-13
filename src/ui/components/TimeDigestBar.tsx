@@ -61,7 +61,14 @@ export default function TimeDigestBar({ digest }: { digest: TimeDigest }) {
         {d.listingsLost > 0 && (
           <span className="fact">
             <b>Gone</b>
-            <span className="warn">{d.listingsLost}</span>
+            <span className="warn">
+              {d.listingsLost}
+              {/* Named when it was one you were following. A count is a
+                  statistic; the address is the thing worth reading. */}
+              {d.watchedLost.length > 0 && (
+                <span className="faint"> · incl. {d.watchedLost.join(', ')}</span>
+              )}
+            </span>
           </span>
         )}
         {Math.abs(d.marketIndexDelta) > 0.002 && (

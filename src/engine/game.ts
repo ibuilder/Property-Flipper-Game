@@ -114,7 +114,7 @@ import {
 import { analyzeDeal } from './analyzer';
 import { buildScenarioProperty, type ScenarioDef } from './scenarios';
 
-export const SAVE_VERSION = 14;
+export const SAVE_VERSION = 15;
 
 /** How often the charts' time series is sampled, in days. */
 export const HISTORY_INTERVAL_DAYS = 5;
@@ -243,6 +243,7 @@ export function createGame(
     ledger: [],
     log: [],
     closedDeals: [],
+    watched: [],
     history: [],
     scenarioId: null,
     scenario: null,
@@ -659,6 +660,23 @@ export function commitForecast(
     `Forecast on ${prop.address}: profit between $${f.low.toLocaleString()} and $${f.high.toLocaleString()}.`,
   );
   return { ok: true, message: 'Forecast recorded. It cannot be changed.' };
+}
+
+/**
+ * Follow a listing, or stop following it.
+ *
+ * The digest already knew how many listings went to other buyers; it had no
+ * idea which one you cared about. A star is the cheapest possible way to tell
+ * it, and it turns a statistic into the sentence that changes what you do.
+ */
+export function toggleWatch(state: GameState, propertyId: PropertyId): ActionResult {
+  const i = state.watched.indexOf(propertyId);
+  if (i >= 0) {
+    state.watched.splice(i, 1);
+    return { ok: true, message: 'No longer watching.' };
+  }
+  state.watched.push(propertyId);
+  return { ok: true, message: 'Watching. You will be told if it goes.' };
 }
 
 export function orderInspection(

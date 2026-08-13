@@ -66,6 +66,13 @@ export interface TimeDigest {
   newListings: number;
   /** Listings that went under contract to somebody else. */
   listingsLost: number;
+  /**
+   * The ones you were actually following, by name.
+   *
+   * A count of listings lost is a statistic; the address of the one you had
+   * starred is the sentence that changes what you do next.
+   */
+  watchedLost: string[];
   /** The largest reduction on anything still available. */
   biggestCut: PriceCut | null;
   cutCount: number;
@@ -109,7 +116,13 @@ export function buildDigest(before: WorldSnapshot, state: GameState): TimeDigest
   }
 
   const stillListed = new Set(state.market.filter((p) => p.listing).map((p) => p.id));
-  const listingsLost = Object.keys(before.asks).filter((id) => !stillListed.has(id)).length;
+  const gone = Object.keys(before.asks).filter((id) => !stillListed.has(id));
+  const listingsLost = gone.length;
+  // Named, not counted. The digest already reported how many listings went to
+  // somebody else, which told the player nothing about whether it mattered.
+  const watchedLost = gone
+    .filter((id) => state.watched.includes(id))
+    .map((id) => before.asks[id].address);
 
   let moverId: string | null = null;
   let moverDelta = 0;
@@ -147,6 +160,7 @@ export function buildDigest(before: WorldSnapshot, state: GameState): TimeDigest
     rateDelta: state.world.interestRate - before.interestRate,
     newListings,
     listingsLost,
+    watchedLost,
     biggestCut,
     cutCount,
     moverId,
@@ -168,6 +182,7 @@ export function digestWorthShowing(d: TimeDigest): boolean {
   return (
     d.cutCount > 0 ||
     d.newListings > 0 ||
+    d.watchedLost.length > 0 ||
     d.listingsLost > 0 ||
     Math.abs(d.carryPaid) > 0 ||
     Math.abs(d.marketIndexDelta) > 0.004 ||
@@ -192,6 +207,12 @@ export function digestHeadline(d: TimeDigest): string {
   if (d.biggestCut) {
     const cut = d.biggestCut.from - d.biggestCut.to;
     return `${d.biggestCut.address} came down $${cut.toLocaleString()} to $${d.biggestCut.to.toLocaleString()}.`;
+  }
+  if (d.watchedLost.length > 0) {
+    // Ahead of the count, because this is the one the player cared about.
+    return d.watchedLost.length === 1
+      ? `${d.watchedLost[0]} went to another buyer. You were watching that one.`
+      : `${d.watchedLost.join(' and ')} both went to other buyers while you waited.`;
   }
   if (d.listingsLost > 0) {
     return `${d.listingsLost} listing${d.listingsLost === 1 ? '' : 's'} went to another buyer while you waited.`;

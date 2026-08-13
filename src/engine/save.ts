@@ -182,6 +182,12 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     }
     return s;
   },
+  // v14 predates the watchlist. An old save resumes watching nothing, which
+  // is exactly what it was doing.
+  14: (s: any) => {
+    s.watched = s.watched ?? [];
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {
@@ -223,4 +229,5 @@ function validate(state: any): void {
   state.log = state.log ?? [];
   state.closedDeals = state.closedDeals ?? [];
   state.history = state.history ?? [];
+  state.watched = state.watched ?? [];
 }

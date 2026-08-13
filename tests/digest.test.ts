@@ -8,7 +8,9 @@ import {
   makeOffer,
   snapshotWorld,
   startRenovation,
+  toggleWatch,
 } from '../src/engine';
+import { deserialize, serialize } from '../src/engine/save';
 import { currentReserve } from '../src/engine/market';
 
 function skip(state: ReturnType<typeof createGame>, days: number) {
@@ -113,6 +115,7 @@ describe('the time digest', () => {
       rateDelta: 0,
       newListings: 0,
       listingsLost: 0,
+    watchedLost: [],
       biggestCut: null,
       cutCount: 0,
       moverId: null,
@@ -123,5 +126,58 @@ describe('the time digest', () => {
     expect(digestHeadline(quiet)).toMatch(/staler/i);
     // And a genuinely empty window is not shown at all.
     expect(digestWorthShowing(quiet)).toBe(false);
+  });
+});
+
+describe('the watchlist', () => {
+  it('names a watched listing that went to someone else', () => {
+    // The digest already counted listings lost, which told the player nothing
+    // about whether any of them mattered.
+    const state = createGame('sandbox', 909);
+    const target = state.market.find((p) => p.listing)!;
+    toggleWatch(state, target.id);
+    expect(state.watched).toContain(target.id);
+
+    const before = snapshotWorld(state);
+    // Somebody else buys it.
+    state.market = state.market.filter((p) => p.id !== target.id);
+
+    const d = buildDigest(before, state);
+    expect(d.listingsLost).toBeGreaterThan(0);
+    expect(d.watchedLost).toContain(target.address);
+    expect(digestHeadline(d)).toContain(target.address);
+    expect(digestHeadline(d)).toMatch(/watching/i);
+  });
+
+  it('says nothing special when the lost listing was not being followed', () => {
+    const state = createGame('sandbox', 909);
+    const target = state.market.find((p) => p.listing)!;
+    const before = snapshotWorld(state);
+    state.market = state.market.filter((p) => p.id !== target.id);
+
+    const d = buildDigest(before, state);
+    expect(d.listingsLost).toBeGreaterThan(0);
+    expect(d.watchedLost).toEqual([]);
+    expect(digestHeadline(d)).not.toMatch(/watching/i);
+  });
+
+  it('toggles off again', () => {
+    const state = createGame('sandbox', 909);
+    const id = state.market[0].id;
+    toggleWatch(state, id);
+    expect(state.watched).toContain(id);
+    toggleWatch(state, id);
+    expect(state.watched).not.toContain(id);
+  });
+
+  it('survives a save round trip and migrates an older one', () => {
+    const state = createGame('sandbox', 909);
+    toggleWatch(state, state.market[0].id);
+    const file = JSON.parse(JSON.stringify(serialize(state)));
+    expect(deserialize(file).watched).toHaveLength(1);
+
+    file.version = 14;
+    delete file.state.watched;
+    expect(deserialize(file).watched).toEqual([]);
   });
 });
