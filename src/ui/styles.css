@@ -817,6 +817,53 @@ label.field .label {
   margin: 8px 0 0;
 }
 
+/* The comp scatter. */
+.comp-chart {
+  margin-top: 12px;
+  padding: 10px 4px 4px;
+  background: var(--panel-2, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.comp-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 6px 0 0;
+  padding: 0 8px;
+  line-height: 1.5;
+}
+
+.comp-legend .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+}
+
+/* Not the first child, so the gap before each swatch reads as a separator. */
+.comp-legend .dot:not(:first-child) {
+  margin-left: 8px;
+}
+
+.comp-legend .dot.local {
+  background: var(--good);
+}
+
+.comp-legend .dot.away {
+  background: var(--warn);
+}
+
+.comp-legend .dot.hollow {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--text-faint);
+}
+
 table.stress-grid {
   font-size: 12px;
   border-collapse: collapse;

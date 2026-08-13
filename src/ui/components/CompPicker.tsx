@@ -1,11 +1,14 @@
 import {
   NEIGHBORHOODS_BY_ID,
   compFit,
+  compScatter,
+  describeCompShape,
   selectComps,
   type GameState,
   type Property,
 } from '../../engine';
 import { money, percent } from '../format';
+import CompScatter from '../graphics/CompScatter';
 import { useAction } from '../store';
 
 /**
@@ -44,6 +47,9 @@ export default function CompPicker({
     ? (property.appraisal.high - property.appraisal.low) / property.appraisal.point
     : 0;
 
+  const scatter = compScatter(property, property.compPool, property.selectedComps);
+  const shapeWarning = describeCompShape(scatter);
+
   return (
     <div>
       <div className="kv total" style={{ marginTop: 0 }}>
@@ -61,6 +67,27 @@ export default function CompPicker({
           {percent(band / 2, 1)})
         </span>
       </div>
+
+      {/* Placed above the table deliberately. The chart is how you decide; the
+          table is how you check. Reversing them makes this a spreadsheet with
+          a decoration on the end. */}
+      <div className="comp-chart">
+        <CompScatter scatter={scatter} />
+        <p className="comp-legend">
+          <span className="dot local" /> in this neighborhood
+          <span className="dot away" /> elsewhere
+          <span className="dot hollow" /> not in use
+          <span className="faint"> &middot; the small ring is what it sold for, the filled dot what
+          it implies for a house in this condition</span>
+        </p>
+      </div>
+
+      {shapeWarning && (
+        <div className="verdict thin" style={{ marginTop: 10 }}>
+          <strong>Look at the shape of your selection</strong>
+          {shapeWarning}
+        </div>
+      )}
 
       <div className="table-wrap" style={{ marginTop: 12 }}>
         <table>

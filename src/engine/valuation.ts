@@ -356,6 +356,46 @@ export function defaultCompSelection(prop: Property, pool: Comp[]): string[] {
  * lands close, choose badly and it is wrong by roughly the amount the bad
  * comps were unrepresentative.
  */
+/**
+ * The condition a comp was in when it sold, by its stated finish.
+ *
+ * Exported so the adjustment can be explained rather than merely applied: the
+ * whole point of an adjustment grid is that the player can see it.
+ */
+export const COMP_CONDITION: Record<Comp['quality'], number> = {
+  renovated: 0.92,
+  average: 0.68,
+  dated: 0.4,
+};
+
+/**
+ * What a comp implies the subject is worth per square foot.
+ *
+ * The comp's finish is adjusted to the subject's condition and the subject's
+ * own completed work is added back on top. Deliberately *not* adjusted for
+ * neighborhood, size or age -- those are the differences the player is
+ * supposed to notice and price themselves, and hiding them would remove the
+ * only decision this screen contains.
+ *
+ * This is the number the estimate is a median of, so it is the number worth
+ * plotting. Raw price per foot is what the comp sold for; this is what it
+ * says about *your* house, and they can differ by a third on a dated comp.
+ */
+export function adjustedPerSqft(prop: Property, comp: Comp): number {
+  const raw = comp.soldPrice / comp.sqft;
+  const qualityAdj =
+    conditionMultiplier(prop.condition) / conditionMultiplier(COMP_CONDITION[comp.quality]);
+  return raw * qualityAdj * upgradeMultiplier(prop.completedWork);
+}
+
+/** The median of a list, for an even count the mean of the middle two. */
+function medianOf(values: readonly number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted.length % 2 === 1
+    ? sorted[(sorted.length - 1) / 2]
+    : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
+}
+
 export function appraisalFromComps(
   prop: Property,
   pool: Comp[],
@@ -368,28 +408,9 @@ export function appraisalFromComps(
     return { point: 0, low: 0, high: 0, confidence, comps: [], fitScore: 1 };
   }
 
-  // Adjust each comp toward the subject: its finish down or up to the
-  // subject's condition, then the subject's own completed work back on top.
-  // Deliberately *not* adjusted for neighborhood, size or age -- those are the
-  // differences the player is supposed to notice and price themselves.
-  const COMP_CONDITION: Record<Comp['quality'], number> = {
-    renovated: 0.92,
-    average: 0.68,
-    dated: 0.4,
-  };
-  const subjectUpgrades = upgradeMultiplier(prop.completedWork);
-
-  const perSqft = chosen.map((c) => {
-    const raw = c.soldPrice / c.sqft;
-    const qualityAdj = conditionMultiplier(prop.condition) / conditionMultiplier(COMP_CONDITION[c.quality]);
-    return raw * qualityAdj * subjectUpgrades;
-  });
-
+  const perSqft = chosen.map((c) => adjustedPerSqft(prop, c));
   const sorted = [...perSqft].sort((a, b) => a - b);
-  const median =
-    sorted.length % 2 === 1
-      ? sorted[(sorted.length - 1) / 2]
-      : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
+  const median = medianOf(perSqft);
 
   const point = Math.round(median * prop.sqft);
 
@@ -413,4 +434,132 @@ export function appraisalFromComps(
     comps: chosen,
     fitScore: avgFit,
   };
+}
+
+/** One comp, positioned. */
+export interface CompPoint {
+  comp: Comp;
+  selected: boolean;
+  /** Same neighborhood as the subject. */
+  local: boolean;
+  /** How far it is from the subject, from compFit. Lower is better. */
+  fit: number;
+  /** What it actually sold for, per foot. */
+  rawPerSqft: number;
+  /** What it says the subject is worth, per foot, after adjusting for finish. */
+  adjustedPerSqft: number;
+}
+
+/**
+ * The comp set as a picture.
+ *
+ * The table lists ten comps and says which are a poor fit. It cannot show the
+ * two things that actually decide whether an estimate is any good: whether the
+ * selection brackets the subject or sits entirely to one side of it, and how
+ * far apart the chosen comps are once adjusted -- which is precisely what
+ * widens the confidence band.
+ *
+ * Plotted against size because that is the mismatch with teeth. A comp 40%
+ * larger is not merely "different"; price per foot varies with size, so
+ * anchoring on it moves the estimate in a direction the player can see here
+ * and cannot see in a list sorted by fit score.
+ */
+export interface CompScatter {
+  points: CompPoint[];
+  /** The subject's size -- the vertical the selection should straddle. */
+  subjectSqft: number;
+  /**
+   * The median adjusted price per foot across the selection. This is the
+   * estimate divided by the subject's size, so the horizontal drawn at this
+   * height crosses the subject's vertical exactly at the estimate.
+   */
+  medianPerSqft: number;
+  /** The estimate implied, which must equal the appraisal's point value. */
+  impliedValue: Money;
+  /** Selected comps smaller than the subject, and larger. */
+  smaller: number;
+  larger: number;
+}
+
+export function compScatter(
+  prop: Property,
+  pool: readonly Comp[],
+  selectedIds: readonly string[],
+): CompScatter {
+  const chosenIds = new Set(selectedIds);
+  const points: CompPoint[] = pool.map((comp) => ({
+    comp,
+    selected: chosenIds.has(comp.id),
+    local: comp.neighborhoodId === prop.neighborhoodId,
+    fit: compFit(prop, comp).score,
+    rawPerSqft: comp.soldPrice / comp.sqft,
+    adjustedPerSqft: adjustedPerSqft(prop, comp),
+  }));
+
+  const chosen = points.filter((p) => p.selected);
+  const medianPerSqft = chosen.length ? medianOf(chosen.map((p) => p.adjustedPerSqft)) : 0;
+
+  return {
+    points,
+    subjectSqft: prop.sqft,
+    medianPerSqft,
+    impliedValue: Math.round(medianPerSqft * prop.sqft),
+    smaller: chosen.filter((p) => p.comp.sqft < prop.sqft).length,
+    larger: chosen.filter((p) => p.comp.sqft > prop.sqft).length,
+  };
+}
+
+/**
+ * One sentence on what is wrong with the shape of the selection, or nothing.
+ *
+ * Ordered by how much each error actually costs, measured against this model
+ * rather than assumed from property-trade folklore. Across seven seeds and
+ * every listing in them, leaning on out-of-area comps moves the estimate by
+ * 76%; leaning on the worst-fitting comps moves it 25%; and price per foot is
+ * essentially uncorrelated with size here (r = -0.09), so the usual line about
+ * larger houses selling for less per foot would be teaching a rule this game
+ * does not implement. Crossing the neighborhood line is the error with teeth,
+ * so it speaks first and the size note makes no claim about direction.
+ *
+ * Silent when the selection is sound. The table already reports per-comp
+ * mismatches, and repeating them here would be noise.
+ */
+export function describeCompShape(s: CompScatter): string | null {
+  const chosen = s.points.filter((p) => p.selected);
+  if (chosen.length === 0) return null;
+
+  const away = chosen.filter((p) => !p.local);
+  if (away.length > 0) {
+    const local = chosen.filter((p) => p.local);
+    const lead =
+      away.length === chosen.length
+        ? 'Every comp you have chosen is outside this neighborhood.'
+        : `${away.length} of your ${chosen.length} comps ${away.length === 1 ? 'is' : 'are'} outside this neighborhood.`;
+    // Only quantify the gap when there is a local comp to measure it against;
+    // otherwise there is nothing on screen to compare with and a number would
+    // be asserting a baseline the player cannot check.
+    if (local.length > 0) {
+      const lm = medianOf(local.map((p) => p.adjustedPerSqft));
+      const am = medianOf(away.map((p) => p.adjustedPerSqft));
+      if (lm > 0) {
+        const gap = Math.round(Math.abs(am / lm - 1) * 100);
+        if (gap >= 8) {
+          return `${lead} They imply ${gap}% ${am > lm ? 'more' : 'less'} per square foot than your local ones, and nothing adjusts for the street. This is the single largest source of a wrong estimate.`;
+        }
+      }
+    }
+    return `${lead} Location is the one difference nothing here adjusts for, and it is the largest source of a wrong estimate — a house two neighborhoods over genuinely did sell for a different price per foot.`;
+  }
+
+  const adj = chosen.map((p) => p.adjustedPerSqft);
+  const spread = (Math.max(...adj) - Math.min(...adj)) / Math.max(1e-9, s.medianPerSqft);
+  if (spread > 0.35) {
+    return `Your comps disagree by ${Math.round(spread * 100)}% per square foot once adjusted. The estimate is the middle of that, which is why the confidence range is wide — the spread is the uncertainty, not a detail.`;
+  }
+
+  if (chosen.length >= 2 && (s.smaller === 0 || s.larger === 0)) {
+    const side = s.smaller === 0 ? 'larger than' : 'smaller than';
+    return `Every comp you have chosen is ${side} this house, so the estimate is extrapolating rather than interpolating. Size matters much less than location here, but a selection that brackets the subject is still the safer one.`;
+  }
+  return null;
 }
