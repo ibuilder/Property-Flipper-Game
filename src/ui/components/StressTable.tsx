@@ -1,5 +1,10 @@
 import { useState } from 'react';
-import { describeResilience, type StressTest } from '../../engine';
+import {
+  describeResilience,
+  type StressField as StressFieldData,
+  type StressTest,
+} from '../../engine';
+import StressField from '../graphics/StressField';
 // Full figures rather than the abbreviated form used elsewhere: a grid exists
 // to be compared across, and "$9,926" next to "$12k" cannot be.
 import { money, percent } from '../format';
@@ -17,7 +22,14 @@ import { money, percent } from '../format';
  * work — what matters is not any single number but where the sign flips, and
  * how far that boundary sits from the cell you actually underwrote.
  */
-export default function StressTable({ test }: { test: StressTest }) {
+export default function StressTable({
+  test,
+  field = null,
+}: {
+  test: StressTest;
+  /** The finely sampled version, for the contour. */
+  field?: StressFieldData | null;
+}) {
   const [open, setOpen] = useState(false);
 
   const worst = Math.max(...test.rows.flat().map((c) => Math.abs(c.profit)), 1);
@@ -40,6 +52,14 @@ export default function StressTable({ test }: { test: StressTest }) {
         <div className="stress-body">
           <p className="stress-lead">{describeResilience(test)}</p>
 
+          {field && <StressField field={field} baseProfit={test.base.profit} />}
+
+          {/* The same figures as a table. Not a fallback bolted on: a contour
+              tells you the shape and a table tells you the number, and an
+              underwriter wants both. It is also the only version that works
+              without colour. */}
+          <details className="stress-numbers">
+            <summary>The same grid as numbers</summary>
           <div className="table-wrap">
             <table className="stress-grid">
               <caption>
@@ -90,12 +110,13 @@ export default function StressTable({ test }: { test: StressTest }) {
               </tbody>
             </table>
           </div>
+          </details>
 
           <p className="stress-note">
-            The outlined cell is the deal as you underwrote it. Everything below and to the left of
-            it is a version of this deal where you were wrong about something &mdash; which is most
-            deals. A profit that only exists in the top-right corner is not a margin, it is a
-            forecast.
+            The ring is the deal as you underwrote it and the dark line is where it breaks even.
+            Everything below and to the left is a version of this deal where you were wrong about
+            something &mdash; which is most deals. A profit that only exists in the top-right corner
+            is not a margin, it is a forecast.
           </p>
         </div>
       )}

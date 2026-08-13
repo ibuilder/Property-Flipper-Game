@@ -8,6 +8,7 @@ import {
   orderInspection,
   quoteScope,
   returnProfile,
+  stressField,
   stressTest,
   type FinancingKind,
   type Property,
@@ -56,6 +57,16 @@ export default function PropertyModal({
     () =>
       analysis && offer > 0
         ? stressTest(offer, analysis.inputs, analysis.dailyCarry, analysis.loanRate)
+        : null,
+    [analysis, offer],
+  );
+
+  // A thousand samples rather than twenty, so the break-even line is a curve
+  // instead of a staircase. Still only a millisecond of arithmetic.
+  const field = useMemo(
+    () =>
+      analysis && offer > 0
+        ? stressField(offer, analysis.inputs, analysis.dailyCarry, analysis.loanRate)
         : null,
     [analysis, offer],
   );
@@ -188,6 +199,7 @@ export default function PropertyModal({
                     analysis={analysis}
                     offer={offer}
                     stress={stress}
+                    stressField={field}
                     cashOnHand={state.cash}
                   />
                 </div>

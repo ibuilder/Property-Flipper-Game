@@ -140,6 +140,80 @@ export function stressTest(
 }
 
 /**
+ * The same question sampled finely enough to draw.
+ *
+ * The table answers "what happens at these five points". A field answers
+ * "where does this deal die", which is a shape rather than a set of numbers,
+ * and it is the thing a player should be able to see without reading anything.
+ */
+export interface StressField {
+  /** Profit at [row][col], rows are cost overruns, cols are ARV deltas. */
+  grid: Money[][];
+  arvAt: number[];
+  costAt: number[];
+  /**
+   * The profit = 0 contour, as one point per column in grid space
+   * (col index, fractional row index). Null where the column never crosses.
+   *
+   * Computed by interpolating within each column rather than by marching
+   * squares, which is exact here: profit falls monotonically as ARV drops and
+   * as costs rise, so the zero set is a single curve with at most one crossing
+   * per column.
+   */
+  breakEven: ({ col: number; row: number } | null)[];
+  min: Money;
+  max: Money;
+}
+
+export function stressField(
+  offer: Money,
+  inputs: AnalyzerInputs,
+  dailyCarry: Money,
+  rate: number,
+  cols = 41,
+  rows = 25,
+  arvRange: [number, number] = [-0.2, 0.08],
+  costRange: [number, number] = [0, 0.7],
+): StressField {
+  const arvAt = Array.from(
+    { length: cols },
+    (_, i) => arvRange[0] + ((arvRange[1] - arvRange[0]) * i) / (cols - 1),
+  );
+  const costAt = Array.from(
+    { length: rows },
+    (_, j) => costRange[0] + ((costRange[1] - costRange[0]) * j) / (rows - 1),
+  );
+
+  const grid: Money[][] = costAt.map((cost) =>
+    arvAt.map((arv) => cellFor(inputs, dailyCarry, rate, offer, arv, cost).profit),
+  );
+
+  let min = Infinity;
+  let max = -Infinity;
+  for (const row of grid) {
+    for (const v of row) {
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+  }
+
+  const breakEven = arvAt.map((_, col) => {
+    for (let r = 0; r < rows - 1; r++) {
+      const a = grid[r][col];
+      const b = grid[r + 1][col];
+      if (a >= 0 && b < 0) {
+        // Linear interpolation to the crossing.
+        const t = a / (a - b);
+        return { col, row: r + t };
+      }
+    }
+    return null;
+  });
+
+  return { grid, arvAt, costAt, breakEven, min, max };
+}
+
+/**
  * One sentence on how much room the deal has.
  *
  * Deliberately about margin for error rather than about profit. Two deals with

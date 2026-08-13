@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARV_DELTAS, COST_DELTAS, describeResilience, stressTest } from '../src/engine';
+import { ARV_DELTAS, COST_DELTAS, describeResilience, stressField, stressTest } from '../src/engine';
 import type { AnalyzerInputs } from '../src/engine/analyzer';
 import { projectDeal } from '../src/engine/analyzer';
 
@@ -139,5 +139,119 @@ describe('the stress table', () => {
     expect(comfortable.survivalRate).toBeGreaterThan(tight.survivalRate);
     expect(comfortable.survivalRate).toBeLessThanOrEqual(1);
     expect(tight.survivalRate).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('the stress field', () => {
+  it('samples the axes it says it does', () => {
+    const f = stressField(150_000, inputs(), CARRY, RATE, 41, 25, [-0.2, 0.08], [0, 0.7]);
+    expect(f.arvAt).toHaveLength(41);
+    expect(f.costAt).toHaveLength(25);
+    expect(f.grid).toHaveLength(25);
+    for (const row of f.grid) expect(row).toHaveLength(41);
+    expect(f.arvAt[0]).toBeCloseTo(-0.2);
+    expect(f.arvAt[40]).toBeCloseTo(0.08);
+    expect(f.costAt[0]).toBeCloseTo(0);
+    expect(f.costAt[24]).toBeCloseTo(0.7);
+  });
+
+  it('is priced by the engine, not by a copy of it', () => {
+    // Same contract as the table: every cell is projectDeal on shocked inputs.
+    // A heat map that drifts from the pricing is a picture of nothing.
+    const i = inputs();
+    const offer = 150_000;
+    const f = stressField(offer, i, CARRY, RATE, 41, 25, [-0.2, 0.08], [0, 0.7]);
+    for (const [r, c] of [
+      [0, 0],
+      [12, 20],
+      [24, 40],
+    ]) {
+      const direct = projectDeal(
+        offer,
+        {
+          ...i,
+          arv: Math.round(i.arv * (1 + f.arvAt[c])),
+          repairEstimate: Math.round(i.repairEstimate * (1 + f.costAt[r])),
+        },
+        CARRY,
+        RATE,
+      );
+      expect(f.grid[r][c]).toBe(direct.profit);
+    }
+  });
+
+  it('falls monotonically in both directions', () => {
+    // The contour is interpolated per column on the assumption of a single
+    // crossing. That is only sound because the surface is monotone, so the
+    // assumption is worth asserting rather than trusting.
+    const f = stressField(150_000, inputs(), CARRY, RATE, 41, 25, [-0.2, 0.08], [0, 0.7]);
+    for (const row of f.grid) {
+      for (let c = 1; c < row.length; c++) expect(row[c]).toBeGreaterThan(row[c - 1]);
+    }
+    for (let r = 1; r < f.grid.length; r++) {
+      for (let c = 0; c < f.grid[r].length; c++) {
+        expect(f.grid[r][c]).toBeLessThan(f.grid[r - 1][c]);
+      }
+    }
+  });
+
+  it('puts the break-even line where the sign actually changes', () => {
+    const f = stressField(150_000, inputs(), CARRY, RATE, 41, 25, [-0.2, 0.08], [0, 0.7]);
+    const found = f.breakEven.filter((p) => p !== null);
+    expect(found.length).toBeGreaterThan(0);
+    for (const p of found) {
+      const above = Math.floor(p!.row);
+      expect(f.grid[above][p!.col]).toBeGreaterThanOrEqual(0);
+      expect(f.grid[above + 1][p!.col]).toBeLessThan(0);
+    }
+  });
+
+  it('never bridges a gap it did not measure', () => {
+    // The chart draws the contour as one polyline over the non-null columns.
+    // If those columns were ever discontiguous the line would jump across the
+    // gap and assert a boundary nobody computed. Monotonicity says they cannot
+    // be -- columns that lose money even on budget sit entirely to the left,
+    // and columns that profit even at full overrun sit entirely to the right.
+    for (const offer of [120_000, 150_000, 170_000, 185_000, 210_000]) {
+      const f = stressField(offer, inputs(), CARRY, RATE, 41, 25, [-0.2, 0.08], [0, 0.7]);
+      const cols = f.breakEven.map((p) => p !== null);
+      const first = cols.indexOf(true);
+      const last = cols.lastIndexOf(true);
+      if (first === -1) continue;
+      for (let c = first; c <= last; c++) {
+        expect(cols[c], `offer ${offer} has a hole at column ${c}`).toBe(true);
+      }
+    }
+  });
+
+  it('draws no line at all for a deal that is dead everywhere', () => {
+    const f = stressField(260_000, inputs(), CARRY, RATE, 41, 25, [-0.2, 0.08], [0, 0.7]);
+    expect(f.max).toBeLessThan(0);
+    expect(f.breakEven.every((p) => p === null)).toBe(true);
+  });
+
+  it('draws no line for a deal that survives the whole grid', () => {
+    const f = stressField(60_000, inputs(), CARRY, RATE, 41, 25, [-0.2, 0.08], [0, 0.7]);
+    expect(f.min).toBeGreaterThan(0);
+    expect(f.breakEven.every((p) => p === null)).toBe(true);
+  });
+
+  it('agrees with the table it sits above', () => {
+    // Both are drawn from the same deal, so the single-variable break-even the
+    // table reports has to land on the field's contour. If they disagreed the
+    // player would be reading two different deals on one screen.
+    const i = inputs();
+    const offer = 150_000;
+    const t = stressTest(offer, i, CARRY, RATE);
+    const f = stressField(offer, i, CARRY, RATE, 41, 25, [-0.2, 0.08], [0, 0.7]);
+
+    // The table's ARV break-even, at plan cost, is where the contour meets the
+    // top row of the field.
+    const topRowCrossing = f.grid[0].findIndex((v) => v >= 0);
+    expect(topRowCrossing).toBeGreaterThan(0);
+    const bracketLo = f.arvAt[topRowCrossing - 1];
+    const bracketHi = f.arvAt[topRowCrossing];
+    expect(t.breakEvenArvDelta!).toBeGreaterThanOrEqual(bracketLo);
+    expect(t.breakEvenArvDelta!).toBeLessThanOrEqual(bracketHi);
   });
 });

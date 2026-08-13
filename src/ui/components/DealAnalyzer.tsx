@@ -8,6 +8,7 @@ import {
   returnProfile,
   verdictOnReturn,
   type DealAnalysis,
+  type StressField as StressFieldData,
   type StressTest,
 } from '../../engine';
 import { VERDICT_COPY, money, percent } from '../format';
@@ -28,6 +29,7 @@ export default function DealAnalyzer({
   offer,
   showRuleExplainer = true,
   stress = null,
+  stressField = null,
   cashOnHand,
 }: {
   analysis: DealAnalysis;
@@ -41,6 +43,8 @@ export default function DealAnalyzer({
    * at that point, and the question has changed from "should I" to "now what".
    */
   stress?: StressTest | null;
+  /** The finely sampled version, so the break-even line is a curve. */
+  stressField?: StressFieldData | null;
 }) {
   const { breakdown, verdict } = analysis;
   const ruleGap = analysis.maoDetailed - analysis.mao70;
@@ -254,7 +258,7 @@ export default function DealAnalyzer({
           lines={explainCostStack(analysis, offer)}
         />
       )}
-      {stress && <StressTable test={stress} />}
+      {stress && <StressTable test={stress} field={stressField} />}
     </>
   );
 }

@@ -784,6 +784,25 @@ label.field .label {
   padding-top: 8px;
 }
 
+.stress-numbers {
+  margin-top: 10px;
+}
+
+.stress-numbers > summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-faint);
+  padding: 3px 0;
+}
+
+.stress-numbers > summary:hover {
+  color: var(--text-dim);
+}
+
+.stress-numbers[open] > summary {
+  margin-bottom: 6px;
+}
+
 .stress-lead {
   font-size: 12.5px;
   line-height: 1.5;
