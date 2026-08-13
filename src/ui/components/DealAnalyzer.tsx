@@ -13,6 +13,7 @@ import {
 } from '../../engine';
 import { VERDICT_COPY, money, percent } from '../format';
 import ExplainTable from './ExplainTable';
+import Figure from './Figure';
 import StressTable from './StressTable';
 
 /**
@@ -90,25 +91,28 @@ export default function DealAnalyzer({
 
       <div style={{ height: 14 }} />
 
-      <div className="kv total">
-        <span className="k">
-          Max offer &mdash; 70% rule
-          <br />
-          <span className="faint" style={{ fontSize: 11 }}>
-            (ARV &times; {ECON.RULE_OF_THUMB}) &minus; repairs
-          </span>
-        </span>
-        <span className="v">{money(analysis.mao70)}</span>
-      </div>
-      <div className="kv total">
-        <span className="k">
-          Max offer &mdash; itemised
-          <br />
-          <span className="faint" style={{ fontSize: 11 }}>
-            every real cost, plus 15% target profit
-          </span>
-        </span>
-        <span className="v">{money(analysis.maoDetailed)}</span>
+      {/* The two max offers side by side, each showing its working.
+          This is the best teaching moment in the game: the 70% rule stops
+          being a magic number and becomes a proxy you can audit. */}
+      <div className="mao-pair">
+        <div className="blueprint mao-plate">
+          <Figure
+            label="Max offer — rule of thumb"
+            value={money(analysis.mao70)}
+            formula={`(${money(analysis.arv)} × ${ECON.RULE_OF_THUMB}) − ${money(
+              analysis.repairEstimate,
+            )}`}
+          />
+        </div>
+        <div className="blueprint mao-plate primary">
+          <span className="corner tl" />
+          <span className="corner br" />
+          <Figure
+            label="Max offer — itemised"
+            value={money(analysis.maoDetailed)}
+            formula={`every real cost, plus ${percent(0.15, 0)} target profit`}
+          />
+        </div>
       </div>
 
       {showRuleExplainer && Math.abs(ruleGap) > analysis.arv * 0.015 && (
@@ -146,83 +150,107 @@ export default function DealAnalyzer({
           <div className="scope-group-label" style={{ marginTop: 18 }}>
             Projected P&amp;L at {money(offer)}
           </div>
-          <div className="kv">
-            <span className="k">Purchase</span>
-            <span className="v bad">{money(-breakdown.purchase)}</span>
-          </div>
-          <div className="kv">
-            <span className="k">Closing costs ({percent(ECON.BUY_CLOSING_RATE, 0)})</span>
-            <span className="v bad">{money(-breakdown.buyClosing)}</span>
-          </div>
-          <div className="kv">
-            <span className="k">Renovation</span>
-            <span className="v bad">{money(-breakdown.repairs)}</span>
-          </div>
-          <div className="kv">
-            <span className="k">Holding costs</span>
-            <span className="v bad">{money(-breakdown.holding)}</span>
-          </div>
+          {/* Every line shows how it was reached. The stack is the lesson:
+              the 30% haircut the rule of thumb applies is standing in for
+              exactly these rows, and seeing them itemised is what turns the
+              rule from a number to memorise into one you can check. */}
+          <Figure
+            size="row"
+            label="Sale at ARV"
+            value={money(analysis.arv)}
+            formula="what the comps you picked say it is worth finished"
+          />
+          <Figure
+            size="row"
+            label="Purchase"
+            value={money(-breakdown.purchase)}
+            formula="your offer"
+          />
+          <Figure
+            size="row"
+            label="Buy-side closing"
+            value={money(-breakdown.buyClosing)}
+            formula={`${money(breakdown.purchase)} × ${percent(ECON.BUY_CLOSING_RATE, 0)}`}
+          />
+          <Figure
+            size="row"
+            label="Renovation"
+            value={money(-breakdown.repairs)}
+            formula="your scope of work, quoted for this house"
+          />
+          <Figure
+            size="row"
+            label="Holding costs"
+            value={money(-breakdown.holding)}
+            formula={`${analysis.holdDays} days × ${money(analysis.dailyCarry)}/day`}
+          />
           {breakdown.financing > 0 && (
-            <div className="kv">
-              <span className="k">Financing (points + interest)</span>
-              <span className="v bad">{money(-breakdown.financing)}</span>
-            </div>
+            <Figure
+              size="row"
+              label="Financing"
+              value={money(-breakdown.financing)}
+              formula={`points + ${percent(analysis.loanRate, 2)} on ${money(
+                breakdown.loan,
+              )} for ${analysis.holdDays} days`}
+            />
           )}
-          <div className="kv">
-            <span className="k">Agent commission ({percent(ECON.COMMISSION_RATE, 0)})</span>
-            <span className="v bad">{money(-breakdown.commission)}</span>
-          </div>
-          <div className="kv">
-            <span className="k">Seller closing</span>
-            <span className="v bad">{money(-breakdown.sellClosing)}</span>
-          </div>
-          <div className="kv">
-            <span className="k">Sale at ARV</span>
-            <span className="v good">{money(analysis.arv)}</span>
-          </div>
-          <div className="kv total">
-            <span className="k">Projected profit</span>
-            <span className={`v ${breakdown.profit >= 0 ? 'good' : 'bad'}`}>
-              {money(breakdown.profit)}{' '}
-              <span className="faint">({percent(breakdown.profit / analysis.arv, 1)})</span>
-            </span>
+          <Figure
+            size="row"
+            label="Agent commission"
+            value={money(-breakdown.commission)}
+            formula={`${money(analysis.arv)} × ${percent(ECON.COMMISSION_RATE, 0)}`}
+          />
+          <Figure
+            size="row"
+            label="Seller closing"
+            value={money(-breakdown.sellClosing)}
+            formula="title, escrow and transfer at sale"
+          />
+
+          {/*
+            The verdict plate. This is the one element in the entire game
+            allowed to turn red, and only when the projection is negative --
+            its scarcity is the whole reason it lands.
+          */}
+          <div className={`blueprint verdict-plate${breakdown.profit < 0 ? ' loss' : ''}`}>
+            <span className="corner tl" />
+            <span className="corner tr" />
+            <span className="corner bl" />
+            <span className="corner br" />
+            <Figure
+              size="hero"
+              label="Projected profit"
+              value={money(breakdown.profit)}
+              tone={breakdown.profit < 0 ? 'loss' : undefined}
+              formula={`sale − purchase − closing − work − carry${
+                breakdown.financing > 0 ? ' − financing' : ''
+              } − commission`}
+              note={`${percent(breakdown.profit / analysis.arv, 1)} of the after-repair value.`}
+            />
           </div>
 
           {/* Profit alone cannot separate a tight flip from one that drags,
               and that is the comparison the whole business runs on. It belongs
               here, at the moment of choosing, not only in the track record
               after the decision is irreversible. */}
-          <div className="kv total">
-            <span className="k">
-              Annualised return
-              <br />
-              <span className="faint" style={{ fontSize: 11 }}>
-                on {money(cashIn)} of your cash, over {analysis.holdDays} days
-              </span>
-            </span>
-            <span className={`v ${projected.annualised >= 0 ? 'good' : 'bad'}`}>
-              {percent(projected.annualised, 0)}
-            </span>
-          </div>
-          <div className="kv">
-            <span className="k">
-              Equity multiple
-              <br />
-              <span className="faint" style={{ fontSize: 11 }}>
-                cash back for every dollar in
-              </span>
-            </span>
-            <span className="v">{projected.multiple.toFixed(2)}&times;</span>
-          </div>
-          <div className="kv">
-            <span className="k">Each extra day costs</span>
-            <span className="v bad">
-              {money(dayCost.dollars)}{' '}
-              <span className="faint">
-                and {percent(Math.abs(dayCost.roiDelta), 2)} off the return
-              </span>
-            </span>
-          </div>
+          <Figure
+            size="row"
+            label="Annualised return"
+            value={percent(projected.annualised, 0)}
+            formula={`${money(breakdown.profit)} ÷ ${money(cashIn)} × 365 ÷ ${analysis.holdDays}d`}
+          />
+          <Figure
+            size="row"
+            label="Equity multiple"
+            value={`${projected.multiple.toFixed(2)}×`}
+            formula="cash back for every dollar of your own money in"
+          />
+          <Figure
+            size="row"
+            label="Each extra day costs"
+            value={money(dayCost.dollars)}
+            formula={`carry plus ${percent(Math.abs(dayCost.roiDelta), 2)} off the annualised return`}
+          />
 
           {breakdown.profit > 0 && (
             <p className="faint" style={{ fontSize: 12, margin: '8px 0 0' }}>

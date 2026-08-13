@@ -113,7 +113,16 @@ export default function PropertyModal({
         </>
       }
     >
-          <div className="grid-2">
+          {/*
+            Two columns with the analyser column pinned.
+
+            This is the fix for the worst UX failure in the original: the
+            panel that re-prices the deal scrolled out of the viewport exactly
+            as you changed what it was pricing, so you toggled a comp and then
+            had to go looking for the consequence. Decision and consequence
+            now share a viewport at every scroll position.
+          */}
+          <div className="grid-2 deal-grid">
             <div>
               <FirstTime id="first-listing" title="How to read a listing">
                 <p>
@@ -189,10 +198,11 @@ export default function PropertyModal({
               </div>
             </div>
 
-            <div>
+            <div className="deal-analyser">
               <div className="panel">
                 <div className="panel-head">
                   <h2>Deal analyzer</h2>
+                  <span className="live-kicker">live · every number shows its work</span>
                 </div>
                 <div className="panel-body">
                   <DealAnalyzer
