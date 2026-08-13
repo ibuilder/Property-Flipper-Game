@@ -14,6 +14,7 @@ import { gameDate, money, moneyShort, percent } from './format';
 import { advanceDays, quitToMenu, saveGame, useAction, useDigest, useGame } from './store';
 import TimeDigestBar from './components/TimeDigestBar';
 import { play, setSoundEnabled, soundEnabled } from './sound';
+import { theme, toggleTheme } from './theme';
 import LogPanel from './LogPanel';
 import MarketView from './views/MarketView';
 import PortfolioView from './views/PortfolioView';
@@ -34,6 +35,7 @@ export default function GameShell() {
   const [saveOpen, setSaveOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [sound, setSound] = useState(soundEnabled);
+  const [mode, setMode] = useState(theme);
   const digest = useDigest();
 
   // Autosave every few days so a crash never costs much progress.
@@ -215,6 +217,21 @@ export default function GameShell() {
           >
             {sound ? '♪' : '♪̸'}
           </button>
+          <button
+            className="btn"
+            aria-pressed={mode === 'light'}
+            onClick={() => {
+              toggleTheme();
+              setMode(theme());
+            }}
+            title={
+              mode === 'dark'
+                ? 'Dark ground — click for the light drawing'
+                : 'Light ground — click for the dark drawing'
+            }
+          >
+            {mode === 'dark' ? '◐' : '◑'}
+          </button>
           <button className="btn" onClick={quitToMenu}>
             Menu
           </button>
@@ -228,7 +245,7 @@ export default function GameShell() {
           style={{
             padding: '7px 20px',
             background: 'var(--warn-dim)',
-            borderBottom: '1px solid #5c4a17',
+            borderBottom: '1px solid var(--warn)',
             fontSize: 12.5,
             color: 'var(--warn)',
             flexShrink: 0,
@@ -244,7 +261,7 @@ export default function GameShell() {
           style={{
             padding: '7px 20px',
             background: 'var(--bad-dim)',
-            borderBottom: '1px solid #5c2429',
+            borderBottom: '1px solid var(--bad)',
             fontSize: 12.5,
             color: 'var(--bad)',
             flexShrink: 0,

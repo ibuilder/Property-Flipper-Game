@@ -5,47 +5,208 @@
  * of financial tooling: dense tables, tabular figures that line up in columns,
  * restrained colour reserved for signal (verdicts, deltas, warnings) rather
  * than decoration.
+ *
+ * Adopting the Industry design system from the 3.0 handoff
+ * (docs/design/redesign-3.0-handoff.md): a construction game drawn as
+ * construction documents. Steel-blue accent, one ramp carrying every
+ * quantity, hairline-bordered blueprint objects.
+ *
+ * -- On dark being the default --
+ *
+ * The handoff specifies a light technical ground. This ships dark-first
+ * instead, and the system survives the inversion intact rather than being
+ * bent: a blueprint is *literally* a cyanotype, white lines on blue, and the
+ * handoff's own dark treatment (ground #1d2d3d, text #f2f2f3, accent #94bce3)
+ * is exactly that. Those three values are `--color-accent-900`,
+ * `--color-bg` and `--color-accent-400` from its own token sheet. So the dark
+ * theme is not a second palette to keep in sync; it is the same nine-step
+ * ramp read from the other end, which is why every component rule in the
+ * handoff ports across without a special case.
+ *
+ * Ramp steps keep their *meaning* rather than their absolute lightness:
+ * 100-300 are subtle fills and borders against whatever the ground is, 500 is
+ * base, 700-900 carry text. That holds in both themes, so a component written
+ * against the tokens is correct in both without knowing which is active.
  */
 
+/* ── The Industry tokens, dark (default) ──────────────────────────────── */
 :root {
-  --bg: #0f1319;
-  --bg-raised: #161b23;
-  --bg-inset: #0b0e13;
-  --panel: #1a212b;
-  --border: #26303d;
-  --border-strong: #33404f;
+  color-scheme: dark;
 
-  --text: #e4e9f0;
-  --text-dim: #97a3b4;
-  --text-faint: #64717f;
+  --color-bg: #131e29;
+  --color-surface: #1d2d3d;
+  --color-text: #f2f2f3;
+  --color-accent: #94bce3;
+  --color-divider: color-mix(in srgb, var(--color-text) 16%, transparent);
 
-  --accent: #4d9fff;
-  --accent-dim: #1e3a5f;
+  /* Neutrals, reversed and tinted toward the ink so they sit on the blue
+     ground rather than fighting it. */
+  --color-neutral-100: #1b242e;
+  --color-neutral-200: #232e3a;
+  --color-neutral-300: #2e3a48;
+  --color-neutral-400: #3f4d5d;
+  --color-neutral-500: #5a6878;
+  --color-neutral-600: #7b8896;
+  --color-neutral-700: #9ba7b4;
+  --color-neutral-800: #c2cbd5;
+  --color-neutral-900: #e8edf2;
+
+  /* The handoff's accent ramp, reversed. Same nine colours. */
+  --color-accent-100: #1d2d3d;
+  --color-accent-200: #2c455d;
+  --color-accent-300: #416180;
+  --color-accent-400: #597ea3;
+  --color-accent-500: #749dc4;
+  --color-accent-600: #94bce3;
+  --color-accent-700: #b5d9fd;
+  --color-accent-800: #d6ebff;
+  --color-accent-900: #eef6ff;
+
+  /* The data ramp: index is magnitude, so it must run *away* from the ground.
+     Light theme runs pale-to-deep; dark runs deep-to-pale. */
+  --ramp-0: #22303f;
+  --ramp-1: #2c455d;
+  --ramp-2: #416180;
+  --ramp-3: #597ea3;
+  --ramp-4: #749dc4;
+  --ramp-5: #94bce3;
+  --ramp-6: #b5d9fd;
+  --ramp-7: #d6ebff;
+
+  /*
+   * Loss red, and nothing else is red.
+   *
+   * The handoff reserves it for a negative projected profit alone, on the
+   * argument that its scarcity is what makes it land. The rest of the UI has
+   * not been converted to that discipline yet -- see the legacy aliases below
+   * -- so this token exists ahead of the components that will use it.
+   */
+  --color-loss: #e8595e;
+  --color-loss-bg: #38191c;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.45);
+  --shadow-md: 0 3px 10px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.55);
+}
+
+/* ── The Industry tokens, light ───────────────────────────────────────── */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --color-bg: #f2f2f3;
+  --color-surface: #e9e9ea;
+  --color-text: #1d1f20;
+  --color-accent: #5980a6;
+
+  --color-neutral-100: #f5f5f8;
+  --color-neutral-200: #e7e7ea;
+  --color-neutral-300: #d4d4d7;
+  --color-neutral-400: #b7b7ba;
+  --color-neutral-500: #98989b;
+  --color-neutral-600: #7a7a7d;
+  --color-neutral-700: #5d5d60;
+  --color-neutral-800: #424244;
+  --color-neutral-900: #2b2b2d;
+
+  --color-accent-100: #eef6ff;
+  --color-accent-200: #d6ebff;
+  --color-accent-300: #b5d9fd;
+  --color-accent-400: #94bce3;
+  --color-accent-500: #749dc4;
+  --color-accent-600: #597ea3;
+  --color-accent-700: #416180;
+  --color-accent-800: #2c455d;
+  --color-accent-900: #1d2d3d;
+
+  --ramp-0: #eef6ff;
+  --ramp-1: #d6ebff;
+  --ramp-2: #b5d9fd;
+  --ramp-3: #94bce3;
+  --ramp-4: #749dc4;
+  --ramp-5: #597ea3;
+  --ramp-6: #416180;
+  --ramp-7: #2c455d;
+
+  --color-loss: #8a2f2f;
+  --color-loss-bg: #f7ecec;
+
+  --shadow-sm: 0 1px 2px color-mix(in srgb, #2b2b2d 14%, transparent);
+  --shadow-md: 0 3px 10px color-mix(in srgb, #2b2b2d 16%, transparent);
+  --shadow-lg: 0 12px 32px color-mix(in srgb, #2b2b2d 22%, transparent);
+}
+
+/*
+ * Hatching means "unknown" -- hidden defects, unpermitted work, stale comps.
+ * One definition so it cannot drift between the places that use it.
+ */
+:root {
+  --hatch: repeating-linear-gradient(
+    45deg,
+    var(--color-neutral-400) 0 4px,
+    transparent 4px 8px
+  );
+}
+
+/*
+ * ── Legacy aliases ───────────────────────────────────────────────────────
+ *
+ * The existing UI is written against these names. Aliasing them onto the
+ * Industry tokens is what lets the theme switch work at all today: every
+ * component inherits both themes without being touched, and the names can be
+ * retired file by file as screens are rebuilt rather than in one unreviewable
+ * change.
+ *
+ * The semantic trio (good/warn/bad) is deliberately still here. The handoff
+ * wants one steel ramp carrying every quantity and red reserved for a single
+ * use, which is a real improvement, but converting every chart and verdict to
+ * it is a separate piece of work with its own judgement calls -- doing it in
+ * the same commit as the theme would make both impossible to review.
+ */
+:root {
+  --bg: var(--color-bg);
+  --bg-raised: var(--color-surface);
+  --bg-inset: color-mix(in srgb, var(--color-bg) 82%, #000);
+  --panel: var(--color-surface);
+  --border: var(--color-divider);
+  --border-strong: color-mix(in srgb, var(--color-text) 30%, transparent);
+
+  --text: var(--color-text);
+  --text-dim: var(--color-neutral-700);
+  --text-faint: var(--color-neutral-600);
+
+  --accent: var(--color-accent);
+  --accent-dim: var(--color-accent-200);
 
   --good: #3ecf8e;
   --good-dim: #14331f;
   --warn: #e8b339;
   --warn-dim: #3a2e10;
-  --bad: #f2555a;
-  --bad-dim: #3a1518;
+  --bad: var(--color-loss);
+  --bad-dim: var(--color-loss-bg);
 
   --radius: 6px;
-  --mono: 'SF Mono', 'Cascadia Mono', 'Consolas', 'Roboto Mono', monospace;
-  --sans: 'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Consolas', 'Roboto Mono', monospace;
+  --sans: 'Barlow', 'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  /*
+   * Condensed headings, per the handoff. The real Barlow Condensed is not
+   * bundled -- the build is a single self-contained file with no external
+   * fonts, and shipping a webfont is its own decision about bundle size --
+   * so this falls back through the condensed faces that ship with the major
+   * platforms before giving up and using the body face.
+   */
+  --font-heading: 'Barlow Condensed', 'Roboto Condensed', 'Arial Narrow', 'Helvetica Neue Condensed',
+    var(--sans);
+  --font-body: var(--sans);
 }
 
-/*
- * Deliberately single-theme.
- *
- * This is a dark instrument panel, the way trading and underwriting tools
- * actually look; a light variant would undercut the thing the interface is
- * imitating. So the dark ground is pinned even when a host or the OS asks for
- * light, rather than half-inverting into something neither.
- */
-:root,
-:root[data-theme='light'],
-:root[data-theme='dark'] {
-  color-scheme: dark;
+/* Light mode needs the semantic trio darkened; the dark-theme values are
+   tuned for a dark ground and are illegible on paper. */
+:root[data-theme='light'] {
+  --good: #1a7a52;
+  --good-dim: #e3f5ec;
+  --warn: #8a6410;
+  --warn-dim: #faf0d8;
+  --bg-inset: color-mix(in srgb, var(--color-bg) 92%, #000);
 }
 
 * {

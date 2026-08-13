@@ -117,7 +117,7 @@ export default function PostMortemPanel({
           key={i}
           style={{
             padding: '8px 0',
-            borderTop: i === 0 ? 'none' : '1px solid #202834',
+            borderTop: i === 0 ? 'none' : '1px solid var(--border)',
           }}
         >
           <div className="kv" style={{ padding: 0, border: 'none' }}>

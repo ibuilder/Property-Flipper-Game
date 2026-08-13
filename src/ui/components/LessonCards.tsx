@@ -17,7 +17,7 @@ export default function LessonCards({ cards }: { cards: LessonCard[] }) {
         <div
           key={c.id}
           style={{
-            border: '1px solid #5c4a17',
+            border: '1px solid var(--warn)',
             background: 'var(--warn-dim)',
             borderRadius: 'var(--radius)',
             padding: '12px 14px',

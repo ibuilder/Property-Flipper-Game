@@ -3,33 +3,54 @@ import { useId, useMemo, useState } from 'react';
 /**
  * Charts.
  *
- * Colour was chosen last and validated, not eyeballed. The series steps below
- * were run through the data-viz validator against this app's actual chart
- * surface (#0b0e13), not a generic dark grey:
+ * Every colour here is a token now, so the charts follow the theme rather than
+ * being pinned to one ground. The sequential ramp is the Industry data ramp
+ * from the 3.0 handoff, which is defined per theme and always runs away from
+ * the active ground.
  *
- *   series  #3987e5 / #199e70 / #e66767  -- lightness band, chroma, contrast
- *                                           all pass; the green/red pair sits
- *                                           in the 6-8 CVD band, which is legal
- *                                           only with secondary encoding, so
- *                                           the waterfall labels every bar and
- *                                           encodes sign as direction too.
- *   sequential ramp (map)  #184f95 -> #9ec5f4, monotone with >=0.06 L gaps.
+ * What that costs, stated plainly: the previous literals were not eyeballed,
+ * they were run through the data-viz validator against this app's actual
+ * chart surface (#0b0e13) -- lightness band, chroma and contrast all passing,
+ * with the green/red pair sitting in the 6-8 CVD band and therefore carrying
+ * secondary encoding (the waterfall labels every bar and encodes sign as
+ * direction). The dark theme still resolves to values close to those. **The
+ * light theme's chart colours have not been through that validation.** The
+ * secondary encoding is unchanged and does the heavy lifting either way, but
+ * a validator pass over the light ground is outstanding work, not a thing
+ * that has been done and is being reported.
  *
  * Deliberately one y-axis per chart. Market index and interest rate are
  * different scales, so they are two charts rather than one dual-axis chart.
  */
 
 export const SERIES = {
-  primary: '#3987e5',
-  positive: '#199e70',
-  negative: '#e66767',
+  primary: 'var(--color-accent)',
+  positive: 'var(--good)',
+  negative: 'var(--bad)',
 } as const;
 
-export const SEQUENTIAL = ['#184f95', '#256abf', '#3987e5', '#6da7ec', '#9ec5f4'] as const;
+/**
+ * The Industry data ramp: index is magnitude. Defined per theme in
+ * styles.css so it runs away from whichever ground is active -- pale-to-deep
+ * on paper, deep-to-pale on the dark drawing.
+ */
+export const RAMP = [
+  'var(--ramp-0)',
+  'var(--ramp-1)',
+  'var(--ramp-2)',
+  'var(--ramp-3)',
+  'var(--ramp-4)',
+  'var(--ramp-5)',
+  'var(--ramp-6)',
+  'var(--ramp-7)',
+] as const;
 
-const GRID = '#1e2732';
-const AXIS = '#33404f';
-const MUTED = '#8a95a3';
+/** The five-step subset the map was built against. */
+export const SEQUENTIAL = [RAMP[1], RAMP[3], RAMP[4], RAMP[5], RAMP[6]] as const;
+
+const GRID = 'var(--color-neutral-200)';
+const AXIS = 'var(--color-neutral-400)';
+const MUTED = 'var(--color-neutral-600)';
 
 export interface Point {
   x: number;
@@ -224,7 +245,7 @@ export function LineChart({
         cy={sy(data[data.length - 1].y)}
         r="3.5"
         fill={color}
-        stroke="#0b0e13"
+        stroke="var(--color-bg)"
         strokeWidth="2"
       />
 
@@ -238,18 +259,18 @@ export function LineChart({
             stroke={AXIS}
             strokeWidth="1"
           />
-          <circle cx={sx(active.x)} cy={sy(active.y)} r="4" fill={color} stroke="#0b0e13" strokeWidth="2" />
+          <circle cx={sx(active.x)} cy={sy(active.y)} r="4" fill={color} stroke="var(--color-bg)" strokeWidth="2" />
           <g
             transform={`translate(${Math.min(Math.max(sx(active.x) - 58, M.left), W - M.right - 116)} ${M.top})`}
           >
-            <rect width="116" height="34" rx="4" fill="#161b23" stroke="#33404f" />
-            <text x="8" y="14" fill="#8a95a3" fontSize="10">
+            <rect width="116" height="34" rx="4" fill="var(--color-surface)" stroke="var(--color-neutral-400)" />
+            <text x="8" y="14" fill="var(--color-neutral-600)" fontSize="10">
               {formatX(active.x)}
             </text>
             <text
               x="8"
               y="27"
-              fill="#e4e9f0"
+              fill="var(--color-text)"
               fontSize="12"
               style={{ fontVariantNumeric: 'tabular-nums' }}
             >
@@ -445,7 +466,7 @@ export function Waterfall({
               x={x + barW / 2}
               y={top - 5}
               textAnchor="middle"
-              fill={positive ? '#4bd39b' : '#f2848a'}
+              fill={positive ? 'var(--good)' : 'var(--bad)'}
               fontSize="10"
               style={{ fontVariantNumeric: 'tabular-nums' }}
             >
@@ -488,14 +509,14 @@ export function Waterfall({
               x={x + barW / 2}
               y={top - 5}
               textAnchor="middle"
-              fill={positive ? '#4bd39b' : '#f2848a'}
+              fill={positive ? 'var(--good)' : 'var(--bad)'}
               fontSize="11"
               fontWeight="600"
               style={{ fontVariantNumeric: 'tabular-nums' }}
             >
               {format(total)}
             </text>
-            <text x={x + barW / 2} y={H - M.bottom + 14} textAnchor="middle" fill="#e4e9f0" fontSize="9.5">
+            <text x={x + barW / 2} y={H - M.bottom + 14} textAnchor="middle" fill="var(--color-text)" fontSize="9.5">
               Net
             </text>
           </g>

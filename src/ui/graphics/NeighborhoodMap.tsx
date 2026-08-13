@@ -8,7 +8,7 @@ import {
   type GameState,
 } from '../../engine';
 import { money, percent } from '../format';
-import { SEQUENTIAL } from './Charts';
+import { RAMP } from './Charts';
 import TrendSpark from './TrendSpark';
 
 /**
@@ -43,12 +43,35 @@ const REGIONS: Region[] = [
   { id: 'millworks', points: '330,176 452,96 452,286 318,286', lx: 388, ly: 210 },
 ];
 
-/** Map an index value onto the validated 5-step sequential ramp. */
-function stepFor(index: number, lo: number, hi: number): string {
-  if (hi - lo < 1e-6) return SEQUENTIAL[2];
+/** Map a value onto the 8-step data ramp. Index is magnitude. */
+function stepFor(index: number, lo: number, hi: number): number {
+  if (hi - lo < 1e-6) return Math.floor(RAMP.length / 2);
   const t = (index - lo) / (hi - lo);
-  const i = Math.max(0, Math.min(SEQUENTIAL.length - 1, Math.floor(t * SEQUENTIAL.length)));
-  return SEQUENTIAL[i];
+  return Math.max(0, Math.min(RAMP.length - 1, Math.floor(t * RAMP.length)));
+}
+
+/**
+ * Labels sit on a paper plate, never straight on the parcel.
+ *
+ * The parcel beneath is the data layer and can be any step of the ramp, so
+ * text painted directly on it is legible against some steps and not others.
+ * Choosing ink by ramp step nearly worked and then did not: the step where
+ * paper starts beating ink is not the same in both themes -- measured, light
+ * mode fails at step 4 with 2.55:1 -- so any fixed crossover is wrong in one
+ * theme or the other.
+ *
+ * A plate is the handoff's own answer and it removes the question entirely:
+ * every label is text-on-background, which is checked for AA once and holds
+ * everywhere.
+ */
+const PLATE = {
+  fill: 'var(--color-bg)',
+  stroke: 'var(--color-divider)',
+} as const;
+
+/** Rough advance width, enough to size a plate around a label. */
+function plateWidth(...lines: [string, number][]): number {
+  return Math.max(...lines.map(([text, px]) => text.length * px * 0.52)) + 12;
 }
 
 export default function NeighborhoodMap({
@@ -111,19 +134,19 @@ export default function NeighborhoodMap({
         role="img"
         aria-label="Map of the six neighborhoods, shaded by current price index"
       >
-        <rect x="0" y="0" width="460" height="300" fill="#0b0e13" />
+        <rect x="0" y="0" width="460" height="300" fill="var(--color-bg)" />
 
         {/* The river, which is why Riverside and Harbor Point are where they are. */}
         <path
           d="M-10,120 C60,140 90,190 84,300"
-          stroke="#16293d"
+          stroke="var(--color-neutral-300)"
           strokeWidth="16"
           fill="none"
           strokeLinecap="round"
         />
         <path
           d="M290,0 C300,40 330,60 460,70"
-          stroke="#16293d"
+          stroke="var(--color-neutral-300)"
           strokeWidth="20"
           fill="none"
           strokeLinecap="round"
@@ -134,6 +157,12 @@ export default function NeighborhoodMap({
           const idx = state.world.neighborhoodIndex[r.id] ?? 1;
           const isHover = hover === r.id;
           const owned = holdings[r.id] ?? 0;
+          const step = stepFor(priceOf(r.id), lo, hi);
+          const stats = `$${hood.pricePerSqft}/sqft · ${idx >= 1 ? '+' : ''}${(
+            (idx - 1) *
+            100
+          ).toFixed(1)}%`;
+          const pw = plateWidth([hood.name, 12], [stats, 10.5]);
           return (
             <g
               key={r.id}
@@ -155,65 +184,95 @@ export default function NeighborhoodMap({
             >
               <polygon
                 points={r.points}
-                fill={stepFor(priceOf(r.id), lo, hi)}
-                stroke={isHover ? '#e4e9f0' : '#0b0e13'}
+                fill={RAMP[step]}
+                stroke={isHover ? 'var(--color-text)' : 'var(--color-bg)'}
                 strokeWidth={isHover ? 2 : 2}
                 opacity={isHover ? 1 : 0.92}
               />
-              {/* Label sits on the fill, so it wears ink not the series colour. */}
-              <text
-                x={r.lx}
-                y={r.ly}
-                textAnchor="middle"
-                fontSize="12"
-                fontWeight="600"
-                fill="#0b1119"
-                pointerEvents="none"
-              >
-                {hood.name}
-              </text>
-              <text
-                x={r.lx}
-                y={r.ly + 14}
-                textAnchor="middle"
-                fontSize="10.5"
-                fill="#0b1119"
-                opacity="0.75"
-                pointerEvents="none"
-                style={{ fontVariantNumeric: 'tabular-nums' }}
-              >
-                ${hood.pricePerSqft}/sqft · {idx >= 1 ? '+' : ''}
-                {((idx - 1) * 100).toFixed(1)}%
-              </text>
+              {/* On a plate, so the label is legible over any ramp step. */}
+              <g pointerEvents="none">
+                <rect
+                  x={r.lx - pw / 2}
+                  y={r.ly - 13}
+                  width={pw}
+                  height={31}
+                  fill={PLATE.fill}
+                  stroke={PLATE.stroke}
+                  strokeWidth="1"
+                />
+                <text
+                  x={r.lx}
+                  y={r.ly}
+                  textAnchor="middle"
+                  fontSize="12"
+                  fontWeight="600"
+                  fill="var(--color-text)"
+                >
+                  {hood.name}
+                </text>
+                <text
+                  x={r.lx}
+                  y={r.ly + 13}
+                  textAnchor="middle"
+                  fontSize="10.5"
+                  fill="var(--text-faint)"
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {stats}
+                </text>
+              </g>
               {owned > 0 && (
                 <g pointerEvents="none">
-                  <circle cx={r.lx} cy={r.ly - 18} r="9" fill="#0b0e13" opacity="0.75" />
+                  <circle cx={r.lx} cy={r.ly - 18} r="9" fill="var(--color-bg)" opacity="0.85" />
                   <text
                     x={r.lx}
                     y={r.ly - 14.5}
                     textAnchor="middle"
                     fontSize="11"
                     fontWeight="700"
-                    fill="#3ecf8e"
+                    fill="var(--good)"
                   >
                     {owned}
                   </text>
                 </g>
               )}
               {/* A visible arc is marked on the ground rather than only in the
-                  log, because the whole value of noticing one is spatial. */}
+                  log, because the whole value of noticing one is spatial.
+
+                  On a paper plate, per the handoff's rule for labels over a
+                  data overlay: the parcel beneath can be any step of the ramp,
+                  and a coloured word sitting straight on it is legible against
+                  some of them and not others. */}
               {arcs[r.id] && (
                 <g pointerEvents="none">
-                  <text
-                    x={r.lx}
-                    y={r.ly + 27}
-                    textAnchor="middle"
-                    fontSize="10"
-                    fontWeight="700"
-                    fill={arcs[r.id] === 'gentrifying' ? '#0d4d2c' : '#5c1418'}
-                  >
-                    {arcs[r.id] === 'gentrifying' ? '▲ gentrifying' : '▼ declining'}
-                  </text>
+                  {(() => {
+                    const up = arcs[r.id] === 'gentrifying';
+                    const label = up ? '▲ gentrifying' : '▼ declining';
+                    const w = label.length * 5.4 + 8;
+                    return (
+                      <>
+                        <rect
+                          x={r.lx - w / 2}
+                          y={r.ly + 19}
+                          width={w}
+                          height={13}
+                          fill="var(--color-bg)"
+                          stroke="var(--color-divider)"
+                          strokeWidth="0.5"
+                        />
+                        <text
+                          x={r.lx}
+                          y={r.ly + 28.5}
+                          textAnchor="middle"
+                          fontSize="10"
+                          fontWeight="700"
+                          fill={up ? 'var(--good)' : 'var(--bad)'}
+                        >
+                          {label}
+                        </text>
+                      </>
+                    );
+                  })()}
                 </g>
               )}
             </g>
@@ -233,8 +292,9 @@ export default function NeighborhoodMap({
         }}
       >
         <span>Cheaper</span>
-        <div style={{ display: 'flex', flex: 1, maxWidth: 200, height: 8, borderRadius: 4, overflow: 'hidden' }}>
-          {SEQUENTIAL.map((c) => (
+        {/* Square, and every step of the ramp the map can actually paint. */}
+        <div style={{ display: 'flex', flex: 1, maxWidth: 220, height: 8, overflow: 'hidden' }}>
+          {RAMP.map((c) => (
             <div key={c} style={{ flex: 1, background: c }} />
           ))}
         </div>
