@@ -109,4 +109,31 @@ describe('the deal analyser', () => {
     const { html } = analysisAt(1.0);
     expect(html).toMatch(/\d+ days × \$[\d,]+\/day/);
   });
+
+  it('leads with the plain return on a short hold', () => {
+    // The annualised figure flatters a thin fast deal -- 5.9% on the money
+    // reading as 167% -- and the big number is the one that gets read. On a
+    // short hold the honest one goes first and the annualised one is the
+    // footnote.
+    const state = createGame('sandbox', 909);
+    const prop = state.market.filter((p) => p.listing)[3]!;
+    const arv = estimateArv(prop, state.world, state.day, SCOPE);
+    const base = analyzeDeal(prop, state.world, state.day, arv, SCOPE, state.skills, {});
+    const analysis = analyzeDeal(prop, state.world, state.day, arv, SCOPE, state.skills, {
+      offer: Math.round(base.maoDetailed * 0.8),
+    });
+    const html = renderToStaticMarkup(
+      createElement(DealAnalyzer, { analysis, offer: Math.round(base.maoDetailed * 0.8) }),
+    );
+
+    if (analysis.holdDays < 90) {
+      expect(html).toContain('Return on your cash');
+      expect(html).toContain('…annualised');
+      // And the plain figure is above the annualised one in the document.
+      expect(html.indexOf('Return on your cash')).toBeLessThan(html.indexOf('…annualised'));
+      expect(html).toContain('redeploy immediately');
+    } else {
+      expect(html).toContain('Annualised return');
+    }
+  });
 });

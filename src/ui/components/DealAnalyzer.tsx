@@ -233,12 +233,41 @@ export default function DealAnalyzer({
               and that is the comparison the whole business runs on. It belongs
               here, at the moment of choosing, not only in the track record
               after the decision is irreversible. */}
-          <Figure
-            size="row"
-            label="Annualised return"
-            value={percent(projected.annualised, 0)}
-            formula={`${money(breakdown.profit)} ÷ ${money(cashIn)} × 365 ÷ ${analysis.holdDays}d`}
-          />
+          {/*
+            On a short hold, the plain return leads.
+
+            A playthrough sold in 32 days for $14,671 on $250,163 -- 5.9% on
+            the money, reported as 167% annualised. Both are correct and the
+            caveat about redeploying capital was already shown, but the big
+            number is the one that gets read, and it flatters a thin deal
+            precisely when the player most needs to see that it is thin. So
+            below a quarter the honest figure goes first and the annualised
+            one becomes the footnote rather than the headline.
+          */}
+          {analysis.holdDays < 90 ? (
+            <>
+              <Figure
+                size="row"
+                label="Return on your cash"
+                value={percent(breakdown.profit / cashIn, 1)}
+                formula={`${money(breakdown.profit)} ÷ ${money(cashIn)} over ${analysis.holdDays} days`}
+              />
+              <Figure
+                size="row"
+                label="…annualised"
+                value={percent(projected.annualised, 0)}
+                tone="muted"
+                formula={`× 365 ÷ ${analysis.holdDays}d — only real if you can redeploy immediately`}
+              />
+            </>
+          ) : (
+            <Figure
+              size="row"
+              label="Annualised return"
+              value={percent(projected.annualised, 0)}
+              formula={`${money(breakdown.profit)} ÷ ${money(cashIn)} × 365 ÷ ${analysis.holdDays}d`}
+            />
+          )}
           <Figure
             size="row"
             label="Equity multiple"

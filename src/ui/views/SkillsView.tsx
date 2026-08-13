@@ -19,6 +19,7 @@ import {
 } from '../../engine';
 import { money, percent } from '../format';
 import { useAction, useGame } from '../store';
+import MasteryPanel from '../components/MasteryPanel';
 
 const SKILLS: { id: SkillId; name: string; blurb: string; effect: (lvl: number) => string }[] = [
   {
@@ -62,6 +63,9 @@ export default function SkillsView() {
 
   return (
     <>
+      {/* What has been proved, above what has been bought. */}
+      <MasteryPanel deals={state.closedDeals} />
+
       <div className="panel">
         <div className="panel-head">
           <h2>Experience</h2>
