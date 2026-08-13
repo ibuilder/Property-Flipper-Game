@@ -15,6 +15,7 @@ import { advanceDays, quitToMenu, saveGame, useAction, useDigest, useGame } from
 import TimeDigestBar from './components/TimeDigestBar';
 import { play, setSoundEnabled, soundEnabled } from './sound';
 import { theme, toggleTheme } from './theme';
+import Coach from './coach/Coach';
 import LogPanel from './LogPanel';
 import MarketView from './views/MarketView';
 import PortfolioView from './views/PortfolioView';
@@ -237,6 +238,10 @@ export default function GameShell() {
           </button>
         </div>
       </header>
+
+      {/* Scout lives at the shell so he survives a tab change, and reads
+          whatever screen is open through the context passed to him. */}
+      <Coach context={{ state }} />
 
       {digest && <TimeDigestBar digest={digest} />}
 

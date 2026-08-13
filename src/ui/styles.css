@@ -2021,3 +2021,117 @@ table.stress-grid td.base {
 .close-x:hover {
   color: var(--text);
 }
+
+/* ── Scout ───────────────────────────────────────────────────────────────
+ *
+ * Fixed to the bottom-left and never modal. A coach that blocks input is an
+ * interruption; a coach you can ignore is advice.
+ */
+.coach {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 60;
+  max-width: 380px;
+  padding: 11px 13px;
+  background: var(--color-bg);
+  box-shadow: var(--shadow-lg);
+}
+
+.coach-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 7px;
+}
+
+/* The slot the commissioned portrait drops into, at its final size. */
+.coach-portrait {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-size: 19px;
+  color: var(--color-accent);
+  border: 1px solid var(--color-divider);
+}
+
+.coach-who {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.coach-who strong {
+  font-family: var(--font-heading);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.coach-role {
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.coach-controls {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+}
+
+.coach-x {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 5px;
+}
+
+.coach-x:hover {
+  color: var(--text);
+}
+
+.coach-line {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  text-wrap: pretty;
+}
+
+/* The arithmetic, so the line can be checked rather than believed. */
+.coach-math {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-accent);
+  margin: 6px 0 0;
+}
+
+/* The one mood allowed to raise its voice, and only in the border. */
+.coach.mood-warning {
+  border-color: var(--warn);
+}
+
+.coach-recall {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 59;
+  box-shadow: var(--shadow-md);
+  background: var(--color-bg);
+}
+
+@media (max-width: 720px) {
+  .coach {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    max-width: none;
+  }
+}

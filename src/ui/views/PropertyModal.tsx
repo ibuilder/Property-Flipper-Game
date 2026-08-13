@@ -16,6 +16,7 @@ import {
 import { currentReserve } from '../../engine/market';
 import { money, percent } from '../format';
 import { useAction, useGame, useVersion } from '../store';
+import { clearDealContext, setDealContext } from '../coach/context';
 import DealAnalyzer from '../components/DealAnalyzer';
 import PropertyFacts from '../components/PropertyFacts';
 import ScopeBuilder from '../components/ScopeBuilder';
@@ -70,6 +71,13 @@ export default function PropertyModal({
         : null,
     [analysis, offer],
   );
+
+  // Publish what this screen is pricing, so Scout can speak to it. Cleared on
+  // close so his deal-specific rules stop applying the moment it is shut.
+  useEffect(() => {
+    setDealContext({ property, analysis, offer: offer > 0 ? offer : null });
+    return clearDealContext;
+  }, [property, analysis, offer]);
 
   // Seed the offer box with the more conservative of the two max-offer figures.
   useEffect(() => {
