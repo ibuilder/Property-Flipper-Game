@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useCountUp } from '../useCountUp';
 
 /**
  * A number that shows its work.
@@ -29,6 +30,8 @@ export type FigureSize = 'stat' | 'row' | 'hero';
 export default function Figure({
   label,
   value,
+  amount,
+  format,
   formula,
   note,
   size = 'stat',
@@ -36,7 +39,15 @@ export default function Figure({
   title,
 }: {
   label: ReactNode;
-  value: ReactNode;
+  /** Pre-formatted, for anything that is not a rolling quantity. */
+  value?: ReactNode;
+  /**
+   * The number itself, when it is one. Given this, the figure rolls to its new
+   * value rather than snapping, which is what connects the control you moved
+   * to the number that moved. `format` turns it back into text every frame.
+   */
+  amount?: number;
+  format?: (n: number) => string;
   /**
    * How the value was arrived at, in the player's own numbers. Shown always,
    * not on demand. Omit only when the figure is its own explanation.
@@ -53,6 +64,11 @@ export default function Figure({
   tone?: 'loss' | 'good' | 'muted';
   title?: string;
 }) {
+  // Unconditional: hooks cannot be called behind an if, and it is a no-op
+  // when there is no amount to roll.
+  const rolled = useCountUp(amount ?? 0);
+  const shown = amount === undefined ? value : (format ?? String)(rolled);
+
   const cls = `figure figure-${size}${tone ? ` figure-${tone}` : ''}`;
 
   if (size === 'row') {
@@ -62,7 +78,7 @@ export default function Figure({
           <span className="figure-label">{label}</span>
           {formula && <span className="figure-formula">{formula}</span>}
         </div>
-        <span className="figure-value">{value}</span>
+        <span className="figure-value">{shown}</span>
       </div>
     );
   }
@@ -70,7 +86,7 @@ export default function Figure({
   return (
     <div className={cls} title={title}>
       <span className="figure-label">{label}</span>
-      <span className="figure-value">{value}</span>
+      <span className="figure-value">{shown}</span>
       {formula && <span className="figure-formula">{formula}</span>}
       {note && <span className="figure-note">{note}</span>}
     </div>

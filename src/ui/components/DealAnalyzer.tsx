@@ -98,7 +98,8 @@ export default function DealAnalyzer({
         <div className="blueprint mao-plate">
           <Figure
             label="Max offer — rule of thumb"
-            value={money(analysis.mao70)}
+            amount={analysis.mao70}
+            format={money}
             formula={`(${money(analysis.arv)} × ${ECON.RULE_OF_THUMB}) − ${money(
               analysis.repairEstimate,
             )}`}
@@ -109,7 +110,8 @@ export default function DealAnalyzer({
           <span className="corner br" />
           <Figure
             label="Max offer — itemised"
-            value={money(analysis.maoDetailed)}
+            amount={analysis.maoDetailed}
+            format={money}
             formula={`every real cost, plus ${percent(0.15, 0)} target profit`}
           />
         </div>
@@ -220,7 +222,8 @@ export default function DealAnalyzer({
             <Figure
               size="hero"
               label="Projected profit"
-              value={money(breakdown.profit)}
+              amount={breakdown.profit}
+              format={money}
               tone={breakdown.profit < 0 ? 'loss' : undefined}
               formula={`sale − purchase − closing − work − carry${
                 breakdown.financing > 0 ? ' − financing' : ''
