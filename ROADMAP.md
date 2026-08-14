@@ -334,7 +334,7 @@ seventy-odd days and real carry.
 Use the engine's own curve, not the prototype's simplified one. Keep the
 exponential shape visible. The data is in `market.ts`.
 
-### C. The guided first fifteen minutes
+### C. The guided first fifteen minutes · **done**
 
 Highest impact on whether a new player continues. It is third because it should
 introduce a game that already has A and B in it.
