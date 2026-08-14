@@ -309,7 +309,7 @@ Written at the end of the redesign push so the next session starts without
 re-deriving anything. Everything here is scoped; none of it is blocked except
 where stated.
 
-### A. The Weekly Plat — market news with consequences
+### A. The Weekly Plat — market news with consequences · **done**
 
 The world is silent between decisions. The digest fixed dead air after a
 *skip*; nothing speaks during ordinary play.
@@ -324,7 +324,7 @@ rate moves. This is presentation over existing data. Effect lines must be
 computed from the event's actual modifiers, never written as prose, or they
 will drift from what the event really does.
 
-### B. The traffic curve, drawn
+### B. The traffic curve, drawn · **done**
 
 Listing price drives days-on-market steeply and the player currently reads a
 number. A 14-bar histogram with the bar at the current multiplier solid makes
@@ -358,10 +358,11 @@ Do not ship this with placeholder blocks.
 
 ### E. Smaller, all cheap
 
-- **Widen the contrast audit.** It sees one seeded market on one screen. Drive
-  it through an owned property, a listed one and the track record. It has
-  already caught a bug on a branch the local run never rendered, so its blind
-  spots are the shape of its coverage.
+- ~~**Widen the contrast audit.**~~ **Done.** Seven scenes — menu, market, the
+  deal modal, an owned property, finance, skills, track record — and a scene it
+  cannot reach is now a hard failure rather than a quiet skip. It immediately
+  found three light-theme failures on screens it had never visited, including
+  toasts at 2.13:1 whose grounds were hardcoded dark and never flipped.
 - **Persist Scout''s cooldowns.** They reset on restart, so a long campaign
   resumed tomorrow can repeat a line. Needs a save version bump; batch it with
   the next one.
