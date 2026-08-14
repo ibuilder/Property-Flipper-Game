@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Property Flipper -- visual system.
  *
  * The game is a spreadsheet with stakes, so the design leans on the vocabulary
@@ -29,7 +29,7 @@
  * against the tokens is correct in both without knowing which is active.
  */
 
-/* ── The Industry tokens, dark (default) ──────────────────────────────── */
+/* â”€â”€ The Industry tokens, dark (default) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root {
   color-scheme: dark;
 
@@ -113,7 +113,7 @@
   --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.55);
 }
 
-/* ── The Industry tokens, light ───────────────────────────────────────── */
+/* â”€â”€ The Industry tokens, light â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme='light'] {
   color-scheme: light;
 
@@ -177,7 +177,7 @@
 }
 
 /*
- * ── Legacy aliases ───────────────────────────────────────────────────────
+ * â”€â”€ Legacy aliases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  *
  * The existing UI is written against these names. Aliasing them onto the
  * Industry tokens is what lets the theme switch work at all today: every
@@ -640,14 +640,14 @@ tbody tr.clickable {
 }
 
 tbody tr.clickable:hover {
-  background: #1f2732;
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
 }
 
 /* Rows are real controls, so they must show focus and respond to the keyboard. */
 tbody tr.clickable:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
-  background: #1f2732;
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
 }
 
 tbody tr.selected {
@@ -680,7 +680,7 @@ td.right {
 }
 
 .btn:hover:not(:disabled) {
-  background: #222b36;
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
   border-color: #46566a;
 }
 
@@ -1177,7 +1177,7 @@ label.field .label {
   color: var(--good);
 }
 
-/* ── Blueprint objects ───────────────────────────────────────────────────
+/* â”€â”€ Blueprint objects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  *
  * Line drawings, not surfaces: transparent ground, one hairline border,
  * square corners, and four `+` registration marks. The corner marks are what
@@ -1225,7 +1225,7 @@ label.field .label {
 .blueprint > .corner.bl { bottom: -6px; left: -6px; }
 .blueprint > .corner.br { bottom: -6px; right: -6px; }
 
-/* ── Figures ─────────────────────────────────────────────────────────────
+/* â”€â”€ Figures â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  *
  * Every number carries its formula. The mono/proportional split is the
  * mechanism: figures and formulas are mono, labels are not, so the eye finds
@@ -1980,7 +1980,7 @@ table.stress-grid td.base {
 
 .level-card:hover {
   border-color: var(--accent);
-  background: #1e2530;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
 }
 
 .level-card h3 {
@@ -2014,10 +2014,10 @@ table.stress-grid td.base {
 
 .verdict.strong {
   background: var(--good-dim);
-  border-color: #1d5638;
+  border-color: var(--good);
 }
 .verdict.fair {
-  background: #16283a;
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
   border-color: #2b5580;
 }
 .verdict.thin {
@@ -2047,7 +2047,7 @@ table.stress-grid td.base {
 }
 
 .scope-item:hover {
-  background: #1f2732;
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
 }
 
 .scope-item.on {
@@ -2158,7 +2158,7 @@ table.stress-grid td.base {
   color: var(--text);
 }
 
-/* ── Scout ───────────────────────────────────────────────────────────────
+/* â”€â”€ Scout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  *
  * Fixed to the bottom-left and never modal. A coach that blocks input is an
  * interruption; a coach you can ignore is advice.
@@ -2272,7 +2272,7 @@ table.stress-grid td.base {
   }
 }
 
-/* ── Mastery ─────────────────────────────────────────────────────────────
+/* â”€â”€ Mastery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  *
  * Nodes name the proof, never a cost. Diamonds rather than checkboxes: a
  * checkbox is a thing you tick off a list, and these are survey marks.
@@ -2413,7 +2413,7 @@ tr.clickable.selected .pill.bad {
   color: var(--color-accent-ink);
 }
 
-/* ── The Weekly Plat ─────────────────────────────────────────────────────
+/* â”€â”€ The Weekly Plat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  *
  * A masthead, not a notification tray. A feed of alerts is something you
  * dismiss; a paper is something you scan. The rule text is small and the
@@ -2507,7 +2507,7 @@ tr.clickable.selected .pill.bad {
   text-wrap: pretty;
 }
 
-/* ── The traffic curve ───────────────────────────────────────────────────
+/* â”€â”€ The traffic curve â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  *
  * Sits under the list-price box, because it is that box's consequence.
  */
@@ -2525,7 +2525,7 @@ tr.clickable.selected .pill.bad {
   text-wrap: pretty;
 }
 
-/* ── The walkthrough ─────────────────────────────────────────────────────
+/* â”€â”€ The walkthrough â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  *
  * A strip above the screen it teaches on, not a modal and not a spotlight.
  * Both of those stop the game to explain the game, and both would fight the
@@ -2598,7 +2598,7 @@ tr.clickable.selected .pill.bad {
   cursor: not-allowed;
 }
 
-/* ── The survey plat ─────────────────────────────────────────────────────
+/* â”€â”€ The survey plat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  *
  * Two layers: geometry, and an untransformed overlay for anything with
  * lettering on it. Nothing here is CSS-transformed, so nothing shears.

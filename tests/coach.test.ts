@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import {
   CONCEPTS,
+  advanceDay,
+  noteCoachLine,
   DEMONSTRATIONS_FOR_MASTERY,
   analyzeDeal,
   conceptProgress,
@@ -12,6 +14,7 @@ import {
   type GameState,
 } from '../src/engine';
 import { RULES, type CoachContext } from '../src/ui/coach/rules';
+import { deserialize, serialize } from '../src/engine/save';
 
 const SCOPE = ['paint_interior', 'flooring_lvp', 'landscaping_curb'];
 
@@ -197,5 +200,43 @@ describe('Scout', () => {
       expect(CONCEPTS.map((c) => c.id), `${r.id} teaches an unknown concept`).toContain(r.teaches);
     }
     expect(teaching.some((r) => r.suppressAfterMastery)).toBe(true);
+  });
+});
+
+describe('the coach log', () => {
+  it('starts empty and records a firing', () => {
+    const state = createGame('sandbox', 909);
+    expect(state.coachLog).toEqual({});
+    noteCoachLine(state, 'offer-over-mao');
+    expect(state.coachLog['offer-over-mao']).toEqual({ day: state.day, count: 1 });
+  });
+
+  it('counts repeats rather than overwriting them', () => {
+    // The lifetime cap reads this count, so losing it would let a rule fire
+    // forever.
+    const state = createGame('sandbox', 909);
+    noteCoachLine(state, 'r');
+    advanceDay(state);
+    noteCoachLine(state, 'r');
+    expect(state.coachLog['r'].count).toBe(2);
+    expect(state.coachLog['r'].day).toBe(state.day);
+  });
+
+  it('survives a save round trip, which is the whole point', () => {
+    // It used to live in component state, so every restart reset the
+    // cooldowns and a resumed campaign repeated yesterday's line.
+    const state = createGame('sandbox', 909);
+    noteCoachLine(state, 'no-inspection');
+    const back = deserialize(JSON.parse(JSON.stringify(serialize(state))));
+    expect(back.coachLog['no-inspection'].count).toBe(1);
+  });
+
+  it('migrates an older save to a silent coach rather than an invented history', () => {
+    const state = createGame('sandbox', 909);
+    noteCoachLine(state, 'x');
+    const file = JSON.parse(JSON.stringify(serialize(state)));
+    file.version = 15;
+    delete file.state.coachLog;
+    expect(deserialize(file).coachLog).toEqual({});
   });
 });

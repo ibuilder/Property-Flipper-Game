@@ -114,7 +114,7 @@ import {
 import { analyzeDeal } from './analyzer';
 import { buildScenarioProperty, type ScenarioDef } from './scenarios';
 
-export const SAVE_VERSION = 15;
+export const SAVE_VERSION = 16;
 
 /** How often the charts' time series is sampled, in days. */
 export const HISTORY_INTERVAL_DAYS = 5;
@@ -244,6 +244,7 @@ export function createGame(
     log: [],
     closedDeals: [],
     watched: [],
+    coachLog: {},
     history: [],
     scenarioId: null,
     scenario: null,
@@ -677,6 +678,25 @@ export function toggleWatch(state: GameState, propertyId: PropertyId): ActionRes
   }
   state.watched.push(propertyId);
   return { ok: true, message: 'Watching. You will be told if it goes.' };
+}
+
+/**
+ * Record that the coach said something.
+ *
+ * Lives in the engine because it writes to the save, and it is the whole of
+ * what the coach is allowed to write -- no game state, no money, nothing that
+ * could change an outcome. Keeping it here rather than letting the component
+ * mutate state directly is what keeps that guarantee checkable.
+ */
+export function noteCoachLine(state: GameState, ruleId: string): ActionResult {
+  const prior = state.coachLog[ruleId];
+  state.coachLog[ruleId] = {
+    day: state.day,
+    count: (prior?.count ?? 0) + 1,
+  };
+  // Silent: this is bookkeeping, and a toast every time the coach speaks would
+  // be a notification about a notification.
+  return { ok: true, message: '' };
 }
 
 export function orderInspection(

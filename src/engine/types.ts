@@ -808,6 +808,16 @@ export interface GameState {
    * else buys it and the whole point is to be told that it is gone.
    */
   watched: PropertyId[];
+  /**
+   * What the coach has already said, and when.
+   *
+   * Keyed by rule id: the day it last fired and how many times it ever has.
+   * Held in the save rather than in component state so cooldowns survive a
+   * restart -- otherwise a long campaign resumed tomorrow repeats the line it
+   * gave yesterday, which is exactly the nagging the cooldowns exist to
+   * prevent.
+   */
+  coachLog: Record<string, { day: number; count: number }>;
   /** Sampled time series for the charts. */
   history: HistoryPoint[];
   /**

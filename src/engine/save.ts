@@ -1,4 +1,4 @@
-import { LEVELS_BY_ID } from './content';
+﻿import { LEVELS_BY_ID } from './content';
 import { SAVE_VERSION } from './game';
 import type { GameState } from './types';
 
@@ -188,6 +188,15 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.watched = s.watched ?? [];
     return s;
   },
+  // v15 predates a persisted coach log. An old save resumes with the coach
+  // having said nothing, so a returning player may hear a line they already
+  // heard once. That is the correct trade: the alternative is inventing a
+  // history, and a coach that stays quiet about something it never actually
+  // said is worse than one that repeats itself once.
+  15: (s: any) => {
+    s.coachLog = s.coachLog ?? {};
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {
@@ -230,4 +239,5 @@ function validate(state: any): void {
   state.closedDeals = state.closedDeals ?? [];
   state.history = state.history ?? [];
   state.watched = state.watched ?? [];
+  state.coachLog = state.coachLog ?? {};
 }

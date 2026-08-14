@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { conceptProgress } from '../../engine';
+import { conceptProgress, noteCoachLine } from '../../engine';
+import { useAction } from '../store';
 import { useDealContext } from './context';
 import { RULES, type CoachContext, type CoachRule } from './rules';
 
@@ -18,17 +19,13 @@ import { RULES, type CoachContext, type CoachRule } from './rules';
  * itself -- an off switch you have to go to Settings to find is not an off
  * switch, it is a dark pattern with a conscience.
  *
- * Firing history lives in component state rather than in the save. That is a
- * deliberate limit: cooldowns reset when the app restarts, so a very long
- * campaign resumed tomorrow may repeat a line it gave yesterday. Persisting it
- * means a save migration for a nag counter, which is not worth a version bump
- * until the rest of the coach's state needs one too.
+ * Firing history lives in the save now (`coachLog`), not in component state.
+ * It used to be local, which meant cooldowns reset on every restart -- a long
+ * campaign resumed the next day would repeat the line it gave yesterday, which
+ * is precisely the nagging the cooldowns exist to prevent. It is the only
+ * thing the coach writes, and it goes through an engine action so that stays
+ * checkable.
  */
-
-interface Fired {
-  day: number;
-  count: number;
-}
 
 export default function Coach({ context: base }: { context: CoachContext }) {
   // Whatever screen is open publishes what it is looking at; the shell only
@@ -47,10 +44,11 @@ export default function Coach({ context: base }: { context: CoachContext }) {
       return false;
     }
   });
-  const [history, setHistory] = useState<Record<string, Fired>>({});
   const [dismissed, setDismissed] = useState<string | null>(null);
+  const act = useAction();
 
   const { state } = context;
+  const history = state.coachLog;
   const progress = useMemo(() => conceptProgress(state.closedDeals), [state.closedDeals.length]);
 
   const rule = useMemo(() => {
@@ -99,17 +97,18 @@ export default function Coach({ context: base }: { context: CoachContext }) {
 
   if (!rule || dismissed === rule.id) return null;
 
-  // Recording the firing here rather than in an effect keeps the cooldown
-  // honest without a render loop: the same rule cannot be selected again until
-  // its cooldown has passed in game-days.
+  /*
+   * Record the firing, once per game-day.
+   *
+   * Deferred to a microtask because this runs during render and the write goes
+   * through the store; committing state mid-render is a loop waiting to
+   * happen. The day check is what keeps it to one write rather than one per
+   * re-render, which matters now the count is persisted and the lifetime cap
+   * reads it.
+   */
   const seen = history[rule.id];
   if (!seen || seen.day !== state.day) {
-    queueMicrotask(() =>
-      setHistory((h) => ({
-        ...h,
-        [rule.id]: { day: state.day, count: (h[rule.id]?.count ?? 0) + 1 },
-      })),
-    );
+    queueMicrotask(() => act((s) => noteCoachLine(s, rule.id)));
   }
 
   let math: string | null = null;
