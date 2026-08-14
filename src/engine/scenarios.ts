@@ -6,6 +6,7 @@ import {
   SELLER_TYPES_BY_ID,
 } from './content';
 import { Rng } from './rng';
+import { TUTORIAL } from './tutorial';
 import type {
   ClosedDeal,
   Defect,
@@ -58,6 +59,9 @@ export interface ScenarioDef {
 // ---------------------------------------------------------------------------
 
 export const SCENARIOS: ScenarioDef[] = [
+  // The first fifteen minutes. Defined in tutorial.ts because the gate and the
+  // tour live with it, and listed first because it is the front door.
+  TUTORIAL,
   {
     id: 'lesson_seventy',
     name: '1. The 70% Rule',

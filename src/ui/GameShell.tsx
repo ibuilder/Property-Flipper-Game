@@ -6,8 +6,12 @@ import {
   advanceDay,
   campaignDayLimit,
   describeActiveEvents,
+  isTutorial,
+  isUnlocked,
+  lockReason,
   netWorth,
   totalDebt,
+  tutorialComplete,
   type ScenarioDef,
 } from '../engine';
 import { gameDate, money, moneyShort, percent } from './format';
@@ -18,6 +22,7 @@ import { theme, toggleTheme } from './theme';
 import Coach from './coach/Coach';
 import LogPanel from './LogPanel';
 import NewsRail from './components/NewsRail';
+import TourCard from './components/TourCard';
 import MarketView from './views/MarketView';
 import PortfolioView from './views/PortfolioView';
 import FinanceView from './views/FinanceView';
@@ -115,6 +120,16 @@ export default function GameShell() {
   );
   const goalPct =
     level.goalNetWorth === Number.MAX_SAFE_INTEGER ? 0 : worth / level.goalNetWorth;
+
+  /*
+   * Fall back rather than trust the tab state.
+   *
+   * The keyboard shortcuts set the tab directly and their effect closes over a
+   * stale `state`, so guarding them individually would be both fiddly and easy
+   * to get wrong later. Resolving the active tab at render covers every route
+   * in -- keyboard, click, or a save loaded straight into a locked screen.
+   */
+  const activeTab: Tab = isUnlocked(state, tab) ? tab : 'market';
 
   return (
     <>
@@ -279,42 +294,62 @@ export default function GameShell() {
       )}
 
       <nav className="tabs">
-        <TabButton id="market" tab={tab} setTab={setTab} label="Market" count={state.market.length} />
+        <TabButton id="market" tab={activeTab} setTab={setTab} label="Market" count={state.market.length} />
         <TabButton
           id="auction"
-          tab={tab}
+          tab={activeTab}
           setTab={setTab}
           label="Auction"
           count={state.auction.lots.length}
           alert={state.auction.lots.filter((l) => l.myMaxBid !== null).length}
           alertNoun="bid"
+          locked={!isUnlocked(state, 'auction')}
+          lockTitle={lockReason('auction')}
         />
         <TabButton
           id="portfolio"
-          tab={tab}
+          tab={activeTab}
           setTab={setTab}
           label="Portfolio"
           count={state.portfolio.length}
           alert={pendingOffers}
         />
-        <TabButton id="finance" tab={tab} setTab={setTab} label="Finance" />
+        <TabButton
+          id="finance"
+          tab={activeTab}
+          setTab={setTab}
+          label="Finance"
+          locked={!isUnlocked(state, 'finance')}
+          lockTitle={lockReason('finance')}
+        />
         <TabButton
           id="skills"
-          tab={tab}
+          tab={activeTab}
           setTab={setTab}
           label="Skills"
           alert={state.experience.unspentPoints}
           alertNoun="point"
+          locked={!isUnlocked(state, 'skills')}
+          lockTitle={lockReason('skills')}
         />
-        <TabButton id="deals" tab={tab} setTab={setTab} label="Track record" count={state.closedDeals.length} />
+        <TabButton
+          id="deals"
+          tab={activeTab}
+          setTab={setTab}
+          label="Track record"
+          count={state.closedDeals.length}
+          locked={!isUnlocked(state, 'deals')}
+          lockTitle={lockReason('deals')}
+        />
       </nav>
 
       <div className="main">
         <div className="content">
-          {tab === 'market' && <MarketView />}
-          {tab === 'auction' && <AuctionView />}
-          {tab === 'portfolio' && <PortfolioView />}
-          {tab === 'finance' && <FinanceView />}
+          {isTutorial(state) && !tutorialComplete(state) && <TourCard tab={activeTab} />}
+          {activeTab === 'market' && <MarketView />}
+          {activeTab === 'auction' && <AuctionView />}
+          {activeTab === 'portfolio' && <PortfolioView />}
+          {activeTab === 'finance' && <FinanceView />}
           {tab === 'skills' && <SkillsView />}
           {tab === 'deals' && <DealsView />}
         </div>
@@ -342,6 +377,8 @@ function TabButton({
   count,
   alert,
   alertNoun = 'offer',
+  locked,
+  lockTitle,
 }: {
   id: Tab;
   tab: Tab;
@@ -351,7 +388,25 @@ function TabButton({
   alert?: number;
   /** What the alert badge is counting. Portfolio has offers; the auction has bids. */
   alertNoun?: string;
+  /** Held back until the first flip is closed. */
+  locked?: boolean;
+  lockTitle?: string;
 }) {
+  if (locked) {
+    /*
+     * Shown, not hidden.
+     *
+     * A tab that appears later feels like the game changed; a tab that is
+     * visibly shut and says why feels like a door. The second one also tells a
+     * new player what the game contains, which is most of what a menu is for.
+     */
+    return (
+      <button className="tab locked" disabled title={lockTitle} aria-disabled="true">
+        {label}
+        <span className="badge">locked</span>
+      </button>
+    );
+  }
   return (
     <button className={`tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
       {label}
