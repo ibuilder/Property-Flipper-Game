@@ -86,14 +86,27 @@ carries a label, `--color-accent-ink` is **small text on the ground**. On the
 dark theme all three are the same value, which is exactly why the distinction
 is invisible until you render the light one.
 
-### Still outstanding
+### Now automated, and clean
 
-A final audit still reports roughly **20 elements in dark and 9 in light**
-below 4.5:1 at under 18px — `.blurb`, `.watch-star`, some `.arrow` and `.pill`
-variants, and assorted paragraphs. They are in older components that predate
-this work. None is a blocker; all are secondary text. The audit script is in
-this session's transcript and should be re-run after they are fixed.
+`npm run audit` walks every rendered text element in both themes, composites
+each semi-transparent layer, and fails the build on anything under its WCAG AA
+bar. It runs in CI on Linux.
 
-**This cannot be a unit test.** It needs a real cascade and real compositing,
-so jsdom will not do it. The right home is a Playwright check in CI, which is
-not set up. Until it is, the token test is the guard and it has known gaps.
+It runs in **Electron, not Playwright**: Electron is already a dependency, CI
+already launches it on three platforms, and it needs no browser download. It
+rides the existing smoke harness, which had already solved launching headlessly
+under xvfb.
+
+Current state: **0 failures in dark, 0 in light**, across ~1,300 elements —
+down from 24 distinct when the audit was first written.
+
+Two things the audit taught about itself while being built:
+
+- **Freeze transitions before switching themes.** Without it the audit measures
+  its own animation: buttons carry a 120ms background transition, so reading
+  computed styles straight after a theme flip returns a value still most of the
+  way to the previous theme. It reported the primary button at 1.78:1 when it
+  was fine. The tell was one selector reporting two different ratios in a run.
+- **A shared alias block is not a theme.** Putting a dark-tuned `--text-dim`
+  in the legacy `:root` sent every secondary label on paper to 1.56:1. The
+  audit caught it on the next run, which is precisely the point.

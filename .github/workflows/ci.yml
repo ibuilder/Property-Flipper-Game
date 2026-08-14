@@ -67,6 +67,15 @@ jobs:
       - name: Smoke test the app
         run: npm run smoke
 
+      # Contrast is checked in the real renderer, not in jsdom, because the
+      # bugs live in the gap between what a token measures against and what it
+      # is actually painted on -- a selected-row tint, a translucent plate, the
+      # modal surface. Runs on Linux only: the cascade does not vary by OS, and
+      # three copies of the same report is noise.
+      - name: Audit contrast in both themes
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run audit
+
       - name: Bundle the web build
         if: matrix.os == 'ubuntu-latest'
         run: npm run bundle:web

@@ -81,7 +81,8 @@
    * not been converted to that discipline yet -- see the legacy aliases below
    * -- so this token exists ahead of the components that will use it.
    */
-  --color-loss: #e8595e;
+  /* Lifted from #e8595e, which read 4.03:1 as 11px pill text on the panel. */
+  --color-loss: #f0787c;
   --color-loss-bg: #38191c;
 
   /*
@@ -94,6 +95,7 @@
    * family, enough contrast to carry text in both themes.
    */
   --color-accent-solid: var(--color-accent);
+  --color-accent-solid-hover: var(--color-accent-700);
   /*
    * The accent as small *text* on the ground.
    *
@@ -154,6 +156,7 @@
 
   /* Three steps down the ramp, so a paper-coloured label clears AA on it. */
   --color-accent-solid: var(--color-accent-700);
+  --color-accent-solid-hover: var(--color-accent-800);
   --color-accent-ink: var(--color-accent-700);
 
   --shadow-sm: 0 1px 2px color-mix(in srgb, #2b2b2d 14%, transparent);
@@ -197,7 +200,12 @@
   --border-strong: color-mix(in srgb, var(--color-text) 30%, transparent);
 
   --text: var(--color-text);
-  --text-dim: var(--color-neutral-700);
+  /*
+   * A touch lighter than `--color-neutral-700`, which is what it was.
+   * Secondary text also lands on the accent-tinted hint and verdict blocks,
+   * and neutral-700 measured 4.05:1 there against 5.65:1 on the plain panel.
+   */
+  --text-dim: #b3bec9;
   /*
    * Not `--color-neutral-600`.
    *
@@ -250,9 +258,11 @@
 /* Light mode needs the semantic trio darkened; the dark-theme values are
    tuned for a dark ground and are illegible on paper. */
 :root[data-theme='light'] {
-  --good: #1a7a52;
+  /* Darkened from the first pass: as 11px pill text on the panel these
+     measured 4.35 and 4.43, just under AA. */
+  --good: #146345;
   --good-dim: #e3f5ec;
-  --warn: #8a6410;
+  --warn: #6f5009;
   --warn-dim: #faf0d8;
   --bg-inset: color-mix(in srgb, var(--color-bg) 92%, #000);
   /*
@@ -261,6 +271,13 @@
    * step darker buys 4.77:1 and is indistinguishable at a glance.
    */
   --text-faint: #676769;
+  /*
+   * Light needs its own, because the shared alias block below carries a
+   * dark-tuned `--text-dim`. Setting a dark grey there and forgetting this
+   * line put every secondary label on paper at 1.56:1 -- caught immediately
+   * by the audit, which is the whole reason it exists.
+   */
+  --text-dim: var(--color-neutral-700);
 }
 
 * {
@@ -528,7 +545,9 @@ th {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-faint);
+  /* 10px uppercase on the table-header ground: faint measured 3.42:1 on
+     paper. Column headings are how the table is read. */
+  color: var(--text-dim);
   font-weight: 600;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
@@ -561,8 +580,11 @@ button.th-sort:hover {
   color: var(--text-dim);
 }
 
+/* The ink step. `--accent` is the identity *line* colour and is not safe as
+   10px text -- this is the third place that mistake was made, which is the
+   argument for the three-role split existing at all. */
 button.th-sort.active {
-  color: var(--accent);
+  color: var(--color-accent-ink);
 }
 
 button.th-sort:focus-visible {
@@ -571,9 +593,18 @@ button.th-sort:focus-visible {
   border-radius: 2px;
 }
 
+/* The sortable header label itself, not just its arrow: 10px on the header
+   ground needs the dim step, not the faint one. */
+button.th-sort {
+  color: var(--text-dim);
+}
+
 button.th-sort .arrow {
   font-size: 8px;
-  opacity: 0.9;
+  /* Was 0.9, which quietly cost contrast on an 8px glyph that was already
+     marginal. At this size it needs everything it can get. */
+  opacity: 1;
+  color: var(--text-dim);
 }
 
 td {
@@ -647,12 +678,17 @@ td.right {
   font-weight: 600;
 }
 
-/* One step along the ramp, per the handoff's hover rule. It was a hardcoded
-   blue that ignored the theme entirely and stayed a dark-mode colour on
-   paper. */
+/*
+ * Hover moves *away* from the label, not toward it.
+ *
+ * It was a hardcoded blue that ignored the theme and stayed a dark-mode colour
+ * on paper -- the audit caught the primary button at 1.78:1 in light. The
+ * direction has to flip per theme: lighter on the dark ground, darker on the
+ * light one, so the background-coloured label keeps its contrast either way.
+ */
 .btn.primary:hover:not(:disabled) {
-  background: var(--color-accent-600);
-  border-color: var(--color-accent-600);
+  background: var(--color-accent-solid-hover);
+  border-color: var(--color-accent-solid-hover);
 }
 
 .btn.danger {
@@ -2007,7 +2043,9 @@ table.stress-grid td.base {
 
 .scope-item .blurb {
   font-size: 12px;
-  color: var(--text-faint);
+  /* The scope rows carry a tinted ground when selected; faint does not
+     survive it. */
+  color: var(--text-dim);
   line-height: 1.4;
 }
 
@@ -2287,7 +2325,7 @@ table.stress-grid td.base {
   padding: 0 6px 0 0;
   font-size: 13px;
   line-height: 1;
-  color: var(--text-faint);
+  color: var(--text-dim);
   cursor: pointer;
 }
 
@@ -2312,4 +2350,10 @@ tr.clickable.selected .dim,
 tr.clickable.selected .faint,
 tr.clickable.selected .num {
   color: var(--color-neutral-800);
+}
+
+/* Outline tags are on that tint as well, and the loss red is the weakest of
+   them against it. */
+tr.clickable.selected .pill.bad {
+  color: var(--color-accent-800);
 }

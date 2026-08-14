@@ -81,6 +81,42 @@ function createWindow(): void {
         );
         if (!mounted) return fail('#root is empty: the renderer loaded but did not mount');
         console.log('smoke: renderer mounted');
+
+        /*
+         * The contrast audit rides on the smoke harness.
+         *
+         * It needs a real cascade and real compositing, which no unit test
+         * gives -- every contrast bug found so far lived in the gap between
+         * what a token measures against and what it is actually painted on.
+         * Electron is already a dependency and CI already launches it on
+         * three platforms, so this costs no new tooling.
+         */
+        if (process.env.PROPERTY_FLIPPER_AUDIT === '1') {
+          const src = await fs.readFile(
+            path.join(app.getAppPath(), 'scripts', 'contrast-audit.js'),
+            'utf8',
+          );
+          // Drive past the menu first: the audit can only see what is
+          // rendered, and the menu is a fraction of the interface.
+          await mainWindow!.webContents.executeJavaScript(`(() => {
+            const start = [...document.querySelectorAll('button')]
+              .find((b) => b.textContent.includes('The First Flip'));
+            if (start) start.click();
+            return true;
+          })()`);
+          await new Promise((r) => setTimeout(r, 300));
+          await mainWindow!.webContents.executeJavaScript(`(() => {
+            const row = document.querySelector('tbody tr');
+            if (row) row.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            return true;
+          })()`);
+          await new Promise((r) => setTimeout(r, 300));
+
+          const report = await mainWindow!.webContents.executeJavaScript(src);
+          console.log(`audit: ${JSON.stringify(report)}`);
+          return app.exit(report.unique.length > 0 ? 2 : 0);
+        }
+
         app.exit(0);
       } catch (err) {
         fail(`could not query the renderer: ${String(err)}`);
