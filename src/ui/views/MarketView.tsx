@@ -19,6 +19,7 @@ import ClickableRow from '../components/ClickableRow';
 import FirstTime from '../components/FirstTime';
 import SortableTh from '../components/SortableTh';
 import NeighborhoodMap from '../graphics/NeighborhoodMap';
+import Board from '../board/Board';
 import House from '../graphics/House';
 
 type SortKey =
@@ -161,6 +162,13 @@ export default function MarketView() {
         </div>
         {mapOpen && (
           <div className="panel-body">
+            {/*
+              The board answers four questions per lot; the old flat map
+              answered one per neighbourhood. Both are kept: the plat is how
+              you read the town, and the region map is still the fastest way
+              to filter the table to one area, which is a different job.
+            */}
+            <Board state={state} onSelect={(p) => setSelected(p.id)} />
             <NeighborhoodMap
               state={state}
               onSelect={(id) => setHood((h) => (h === id ? 'all' : id))}
