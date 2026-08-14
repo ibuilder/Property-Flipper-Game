@@ -2506,3 +2506,21 @@ tr.clickable.selected .pill.bad {
   margin: 0 0 10px;
   text-wrap: pretty;
 }
+
+/* ── The traffic curve ───────────────────────────────────────────────────
+ *
+ * Sits under the list-price box, because it is that box's consequence.
+ */
+.traffic {
+  margin: 10px 0 12px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--color-divider);
+}
+
+.traffic-read {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  margin: 6px 0 0;
+  text-wrap: pretty;
+}

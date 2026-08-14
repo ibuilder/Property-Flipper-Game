@@ -387,19 +387,32 @@ let offerCounter = 0;
  * you a little time, it loses you months. That is the trade-off the sell-side
  * of a flip actually turns on.
  */
-export function rollBuyerOffer(
+/**
+ * The chance a buyer turns up today.
+ *
+ * Extracted from `rollBuyerOffer` so the traffic curve the player is shown is
+ * drawn by the same function that decides whether anyone actually knocks.
+ * Reimplementing this for the chart is the one way a pricing aid can be
+ * actively harmful: it would look authoritative and be wrong.
+ *
+ * The shape worth understanding is `priceFactor`. Below true value, interest
+ * rises gently and saturates -- giving a house away does not make it sell
+ * arbitrarily faster. Above it, interest falls off *exponentially*, so the
+ * cost of optimism is not linear in the price. That asymmetry is the entire
+ * lesson of the sale screen, and it is invisible as a number.
+ */
+export function buyerArrivalRate(
   prop: Property,
   world: WorldState,
   day: number,
   listPrice: Money,
   daysOnMarket: number,
   marketingSkill: number,
-  rng: Rng,
-): BuyerOffer | null {
+): number {
   const hood = NEIGHBORHOODS_BY_ID[prop.neighborhoodId];
   const mods = eventModifiers(world, prop.neighborhoodId);
   const value = trueValue(prop, world, day);
-  if (value <= 0) return null;
+  if (value <= 0) return 0;
 
   const ratio = listPrice / value;
   const priceFactor =
@@ -417,7 +430,77 @@ export function rollBuyerOffer(
     stale *
     (1 + 0.07 * marketingSkill);
 
-  if (!rng.chance(Math.min(0.6, p))) return null;
+  return Math.min(0.6, p);
+}
+
+/** One sample of the traffic curve. */
+export interface TrafficPoint {
+  /** List price as a multiple of true value. */
+  multiple: number;
+  listPrice: Money;
+  /** Chance a buyer arrives on any given day. */
+  chance: number;
+  /**
+   * Days until the first offer, on average.
+   *
+   * Arrivals are a Bernoulli trial per day, so the wait is geometric and its
+   * mean is 1/p. Stated as an average rather than a promise: half of all sales
+   * take longer than this, which is the part players forget.
+   */
+  expectedDays: number;
+}
+
+/**
+ * The traffic curve across a range of list prices.
+ *
+ * Sampled from `buyerArrivalRate`, so it is the real model rather than a
+ * drawing of one. Days-on-market is currently a number the player reads after
+ * the fact; the shape is what tells them that six per cent of optimism is
+ * bought with two months of carry.
+ */
+export function trafficCurve(
+  prop: Property,
+  world: WorldState,
+  day: number,
+  marketingSkill: number,
+  from = 0.9,
+  to = 1.16,
+  steps = 14,
+): TrafficPoint[] {
+  const value = trueValue(prop, world, day);
+  const out: TrafficPoint[] = [];
+  for (let i = 0; i < steps; i++) {
+    const multiple = from + ((to - from) * i) / (steps - 1);
+    const listPrice = Math.round(value * multiple);
+    // Day zero: the staleness penalty has not applied yet, and folding it in
+    // would show every price as slower than it is on the day you list.
+    const chance = buyerArrivalRate(prop, world, day, listPrice, 0, marketingSkill);
+    out.push({
+      multiple,
+      listPrice,
+      chance,
+      expectedDays: chance > 0 ? Math.round(1 / chance) : Infinity,
+    });
+  }
+  return out;
+}
+
+export function rollBuyerOffer(
+  prop: Property,
+  world: WorldState,
+  day: number,
+  listPrice: Money,
+  daysOnMarket: number,
+  marketingSkill: number,
+  rng: Rng,
+): BuyerOffer | null {
+  const hood = NEIGHBORHOODS_BY_ID[prop.neighborhoodId];
+  const mods = eventModifiers(world, prop.neighborhoodId);
+  const value = trueValue(prop, world, day);
+  if (value <= 0) return null;
+
+  const p = buyerArrivalRate(prop, world, day, listPrice, daysOnMarket, marketingSkill);
+  if (!rng.chance(p)) return null;
 
   // Buyers anchor on the list price but will not blow past true value by much.
   const willingness = value * rng.clampedNormal(1.0, 0.035, 2);

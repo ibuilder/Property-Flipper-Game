@@ -25,8 +25,11 @@ import {
   sellingCosts,
   splitProceeds,
   startRenovation,
+  trafficCurve,
+  trueValue,
   type Property,
 } from '../../engine';
+import TrafficCurve from '../graphics/TrafficCurve';
 import { money, percent } from '../format';
 import { useAction, useGame, useVersion } from '../store';
 import DealAnalyzer from '../components/DealAnalyzer';
@@ -79,6 +82,20 @@ export default function OwnedPropertyModal({
     own.purchasePrice + own.closingCosts + own.renovationSpend + own.holdingCostsPaid;
   const suggestedList = property.appraisal.point;
   const effectiveList = listPrice ?? suggestedList;
+
+  /*
+   * The traffic curve, sampled from the engine's own arrival-rate function.
+   *
+   * Plotted against *true* value rather than the player's estimate: the curve
+   * describes what buyers actually do, and buyers do not know what the player
+   * thinks the house is worth. Using the estimate would draw a chart of the
+   * player's own optimism and label it as the market.
+   */
+  const trueVal = trueValue(property, state.world, state.day);
+  const traffic = useMemo(
+    () => trafficCurve(property, state.world, state.day, state.skills.marketing ?? 0),
+    [version, property.id, state.day],
+  );
   const concession = inspectionConcession(property);
   const { commission, closing } = sellingCosts(effectiveList, state.reputation.agents);
   const netAtList = effectiveList - commission - closing - concession - (loan ? loanPayoff(loan) : 0);
@@ -372,6 +389,14 @@ export default function OwnedPropertyModal({
                         onChange={(e) => setListPrice(Number(e.target.value))}
                       />
                     </label>
+
+                    {/* Directly under the price box, because it is the
+                        consequence of the thing above it. Days on market has
+                        always been a number read after the fact; the shape is
+                        what shows that the cost of optimism is exponential. */}
+                    {traffic.length > 0 && (
+                      <TrafficCurve points={traffic} current={effectiveList / Math.max(1, trueVal)} />
+                    )}
                     <div className="kv">
                       <span className="k">Commission ({percent(ECON.COMMISSION_RATE, 0)})</span>
                       <span className="v bad">{money(-commission)}</span>
