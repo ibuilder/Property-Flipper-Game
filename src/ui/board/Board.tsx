@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { NEIGHBORHOODS_BY_ID, type GameState, type Property } from '../../engine';
 import { RAMP } from '../graphics/Charts';
-import { DATA_VIEWS, DATA_VIEWS_BY_ID, type DataViewId } from './dataViews';
+import { DATA_VIEWS, DATA_VIEWS_BY_ID, type DataViewId, type Parcel } from './dataViews';
+import { conditionOf, houseShape } from './houses';
 import { DISTRICTS, STREETS, activeDistricts, buildParcels } from './layout';
 import { GRID, TILE, ZOOM, boardExtent, project, tileSides, tileTop, toPoints } from './projection';
 
@@ -173,6 +174,13 @@ export default function Board({
                     stroke={isHover ? 'var(--color-text)' : 'var(--color-bg)'}
                     strokeWidth={isHover ? 1.5 : 0.6}
                   />
+
+                  {/*
+                    Placeholder houses. Line drawings, no fill, anchored where
+                    the commissioned art will sit -- see docs/design/art-brief.md.
+                    Drawn after the lot top so they stand on it.
+                  */}
+                  {built && <PlaceholderHouse parcel={parcel} extent={extent} />}
                 </g>
               );
             })}
@@ -209,6 +217,67 @@ export default function Board({
 
       <BoardLegend view={view} />
     </div>
+  );
+}
+
+/**
+ * A house on a lot, in placeholder line art.
+ *
+ * Ink only, no fill, so it reads over any step of the data ramp beneath it --
+ * the same problem the labels have, solved the same way. The roof of a
+ * distressed house is drawn broken open, because at this size a gap in the
+ * roofline is the only thing that reads as "wrecked" without detail.
+ */
+function PlaceholderHouse({
+  parcel,
+  extent,
+}: {
+  parcel: Parcel;
+  extent: { cx: number; cy: number };
+}) {
+  const prop = parcel.property!;
+  const shape = houseShape(
+    parcel.gx,
+    parcel.gy,
+    prop.archetypeId,
+    conditionOf(prop),
+    extent.cx,
+    extent.cy - EXTRUDE,
+  );
+
+  return (
+    <g pointerEvents="none">
+      {shape.walls.map((face, i) => (
+        <polygon
+          key={`w${i}`}
+          points={toPoints(face)}
+          fill="var(--color-bg)"
+          fillOpacity="0.55"
+          stroke="var(--color-text)"
+          strokeWidth="0.7"
+        />
+      ))}
+      {shape.roof.map((plane, i) => (
+        <polygon
+          key={`r${i}`}
+          points={toPoints(plane)}
+          fill="var(--color-bg)"
+          fillOpacity={shape.broken ? 0.2 : 0.75}
+          stroke="var(--color-text)"
+          strokeWidth="0.9"
+          strokeDasharray={shape.broken ? '2 2' : undefined}
+        />
+      ))}
+      {shape.scaffold.map((line, i) => (
+        <polyline
+          key={`s${i}`}
+          points={toPoints(line)}
+          fill="none"
+          stroke="var(--color-accent-ink)"
+          strokeWidth="0.7"
+        />
+      ))}
+    </g>
   );
 }
 
