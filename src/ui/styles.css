@@ -244,11 +244,9 @@
   --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Consolas', 'Roboto Mono', monospace;
   --sans: 'Barlow', 'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif;
   /*
-   * Condensed headings, per the handoff. The real Barlow Condensed is not
-   * bundled -- the build is a single self-contained file with no external
-   * fonts, and shipping a webfont is its own decision about bundle size --
-   * so this falls back through the condensed faces that ship with the major
-   * platforms before giving up and using the body face.
+   * Barlow Condensed is now embedded (see fonts.css), so this resolves rather
+   * than falling through. The fallbacks stay for the moment before the face
+   * decodes, and they are chosen to be condensed so the reflow is small.
    */
   --font-heading: 'Barlow Condensed', 'Roboto Condensed', 'Arial Narrow', 'Helvetica Neue Condensed',
     var(--sans);
@@ -294,11 +292,31 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--sans);
+  font-family: var(--font-body);
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
+}
+
+/*
+ * Headings are condensed. This rule did not exist -- the heading token was
+ * defined and then nothing used it, so headings inherited the body face and
+ * the whole drafting-document look was carried by the borders alone.
+ *
+ * Tight tracking because Barlow Condensed is drawn for it; at default spacing
+ * a condensed face reads as merely narrow rather than as deliberate.
+ */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.14;
 }
 
 button {
