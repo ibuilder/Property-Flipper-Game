@@ -8,18 +8,34 @@ Last updated: August 2026.
 
 ## 1. Where it stands today
 
-The v2 rewrite delivered a complete, verified underwriting simulation:
+Rewritten against the actual repository rather than from memory. The previous
+version of this section claimed 45 tests and no charts; both were long stale.
 
-- Offer-versus-reserve buying, noisy ARV estimates with comps, pre-purchase inspections that force
-  seller concessions, line-item scope with change orders and contingency, the full cost stack, and
-  days-on-market selling.
-- A Deal Analyzer showing the 70% rule beside an itemised calculation.
-- Four campaigns, market cycles, seasonality, foreclosure.
-- 45 tests including a 30-seed balance harness that verifies discipline beats recklessness.
-- Ships as a Windows installer, a portable build, and a 308 kB browser demo.
+**Simulation.** Offer-versus-reserve buying, noisy ARV from player-selected
+comps, pre-purchase inspection driving seller concessions, line-item scope with
+change orders and contingency, the full cost stack, days-on-market selling,
+auctions, five financing instruments, BRRRR with refinance caps, crews, XP and
+difficulty, multi-year neighbourhood arcs and event chains.
 
-**What it does not have:** any visual representation of a property, any chart, any sense of place.
-It is a very good spreadsheet.
+**Teaching.** Every figure carries its formula inline. Both maximum offers sit
+side by side showing their arithmetic. A stress field draws where the deal dies
+as a contour. Comps plot against the city rather than in isolation. Post-mortems
+attribute the miss. Players commit a forecast before buying and are scored on
+calibration. Scout, a rules-table coach, speaks once before a mistake and
+retires per concept once it has been demonstrated twice.
+
+**Presentation.** Industry design system, dark-first with a real light theme,
+Barlow embedded and subset, blueprint geometry, one accent with three token
+roles, red reserved for a negative projected profit alone.
+
+**Verification.** 375 tests. A 20-seed balance harness. A contrast audit that
+runs the real renderer in Electron on every push and fails the build under AA.
+A smoke test launching the packaged app on all three platforms.
+
+**What it still does not have:** a sense of *place*. The map is a flat polygon
+diagram; there is no property you can look at, no board you can zoom into, and
+no world that speaks to you between decisions. It is now a very good
+instrument. It is not yet somewhere you want to spend an evening.
 
 ---
 
@@ -284,3 +300,89 @@ what gets built after Phase 1.
 - [15 Best Property Management Simulation Games — Zeevou](https://zeevou.com/blog/property-management-simulation-games/)
 - [Idle vs Incremental vs Tycoon — André Guerrero](https://medium.com/tindalos-games/idle-vs-incremental-vs-tycoon-understanding-the-core-mechanics-f12d62f4b9f7)
 - [Roblox Tycoon Games 2026: Builds, Loops and Economies — Gaming Endsights](https://endsights.com/roblox-tycoon-games)
+
+---
+
+## 7. Remaining work, in order
+
+Written at the end of the redesign push so the next session starts without
+re-deriving anything. Everything here is scoped; none of it is blocked except
+where stated.
+
+### A. The Weekly Plat — market news with consequences
+
+The world is silent between decisions. The digest fixed dead air after a
+*skip*; nothing speaks during ordinary play.
+
+A right rail: newspaper masthead, then items with a kicker, a headline, and —
+the part that matters — **an effect line naming what it does to your board**
+("Your carry cost per day: unchanged. Your exit window: shorter."). The news
+beat is a teaching device, not flavour.
+
+The engine already generates market events (`events.ts`), arcs (`arcs.ts`) and
+rate moves. This is presentation over existing data. Effect lines must be
+computed from the event's actual modifiers, never written as prose, or they
+will drift from what the event really does.
+
+### B. The traffic curve, drawn
+
+Listing price drives days-on-market steeply and the player currently reads a
+number. A 14-bar histogram with the bar at the current multiplier solid makes
+the cliff visible: traffic falls off above about 102% of ARV, and that is
+seventy-odd days and real carry.
+
+Use the engine's own curve, not the prototype's simplified one. Keep the
+exponential shape visible. The data is in `market.ts`.
+
+### C. The guided first fifteen minutes
+
+Highest impact on whether a new player continues. It is third because it should
+introduce a game that already has A and B in it.
+
+One authored deal, one house, no market. Town board, financing, auctions and
+rentals stay locked until the tutorial deal closes — win or lose. The
+minute-by-minute table is in `docs/design/redesign-3.0-handoff.md`.
+`scenarios.ts` can already author a deal; the gate and the seven-step tour are
+new.
+
+### D. The isometric board
+
+Largest, and the only item with a real dependency: **it needs commissioned art
+to not be a downgrade from the map that exists now.** The full spec —
+projection maths, tile size, the four data views, three zoom levels, pin
+anatomy — is in the handoff. Put the projection in one module and have both the
+ground and the overlay read from it; labels live in an untransformed layer or
+the lettering shears and the whole aesthetic collapses.
+
+Do not ship this with placeholder blocks.
+
+### E. Smaller, all cheap
+
+- **Widen the contrast audit.** It sees one seeded market on one screen. Drive
+  it through an owned property, a listed one and the track record. It has
+  already caught a bug on a branch the local run never rendered, so its blind
+  spots are the shape of its coverage.
+- **Persist Scout''s cooldowns.** They reset on restart, so a long campaign
+  resumed tomorrow can repeat a line. Needs a save version bump; batch it with
+  the next one.
+- **Retire the legacy colour aliases.** `--good/--warn/--bad` still bypass the
+  one-ramp discipline. File by file, not in one change.
+- **Permits and the inspector queue.** The only unbuilt *system* from the
+  handoff. It will move balance — re-baseline deliberately.
+
+### Still yours
+
+Signing certificates, the itch HTML embed (project kind is stuck on
+Downloadable), the cover image, and human playtesting. And the open balance
+question from `docs/playthrough-findings.md`: **liquidity never binds** in this
+game — measured, zero occasions across eight campaigns — which is a design
+decision rather than a bug, but real flipping is substantially about running
+out of money and this currently is not.
+
+### A note on the market research above
+
+Sections 2–6 predate this push and were **not** re-researched when section 7
+was written: there was not enough context budget left in that session to do it
+properly, and stale research presented as fresh is worse than none. The genre
+analysis still reads as sound; the competitive claims are worth re-checking
+before they are used to justify anything.
