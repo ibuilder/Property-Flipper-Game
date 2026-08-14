@@ -197,6 +197,46 @@ rather than payment upfront, or a lender who will not fund the next deal until
 the last one closes — would change the difficulty of every scenario, so it is
 not something to slip in alongside a graphics change. Flagged, not actioned.
 
+### Two attempts at making it bind, both measured inert
+
+Rather than leave the question open indefinitely, a lender-required cash
+reserve was built on Brutal only — the setting already designed to take slack
+away, and the one place a change could land without moving the balance the
+harness measures. It withheld a share of the balance from new commitments, so
+`makeOffer` and `startRenovation` checked cash-minus-reserve rather than cash.
+Two bases were tried:
+
+| reserve basis | campaigns blocked | largest reserve reached |
+| --- | --- | --- |
+| six months of forward carry | **0** | $29,405 |
+| 25% of capital deployed in unsold holdings | **0** | $33,879 |
+
+Neither refused a single action. Changing the bot to over-extend deliberately
+produced identical numbers. The measurement that explains why:
+
+| setting | median headroom over the cheapest deposit on the board |
+| --- | --- |
+| standard | **31.9x** |
+| brutal, with a 25% reserve applied | **18.6x** |
+
+A reserve is the wrong instrument here, and no size of one is the right size.
+It rations a surplus: even after withholding a quarter of deployed capital on
+the harshest setting, the player holds eighteen times what the cheapest deal
+asks. The binding constraint in this game is **deal availability, not cash** —
+roughly 4 listings in 400 clear the 70% rule, so the player spends the campaign
+waiting for something worth buying with a balance that was never in question.
+Anything that rations cash is throttling the resource that is not scarce.
+
+Both attempts were reverted rather than shipped. An inert mechanic is worse
+than an absent one: it costs a difficulty slot, it implies a pressure the model
+does not contain, and it reads as working right up until somebody measures it.
+
+What would actually bind is a change to the ratio itself — materially lower
+starting cash, or renovation paid in draws against progress instead of upfront
+— and both move Standard, every scenario's difficulty, and the harness
+baselines together. That remains the user's call, and is the form the next
+attempt should take. It should not take the form of another reserve.
+
 ## The projection at purchase is a ceiling, not a centre
 
 Building the forecast feature required knowing how good the engine's own

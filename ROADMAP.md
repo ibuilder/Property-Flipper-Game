@@ -382,6 +382,18 @@ game — measured, zero occasions across eight campaigns — which is a design
 decision rather than a bug, but real flipping is substantially about running
 out of money and this currently is not.
 
+A lender-required cash reserve was built on Brutal to close that question
+without waiting, and measured inert on two different bases: zero blocked
+actions either time, and 18.6x median headroom over the cheapest deposit even
+with a quarter of deployed capital withheld. Reverted rather than shipped, with
+the numbers written up. The finding is that the scarce resource is **deals, not
+cash** — about 4 listings in 400 clear the 70% rule — so rationing cash
+throttles the wrong thing. Making liquidity bind means changing the ratio
+itself (materially lower starting cash, or renovation paid in draws against
+progress rather than upfront), which moves Standard and every scenario's
+difficulty together. That is the decision still waiting on you; another reserve
+is not worth trying.
+
 ### A note on the market research above
 
 Sections 2–6 predate this push and were **not** re-researched when section 7
