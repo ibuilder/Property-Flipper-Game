@@ -184,7 +184,23 @@ export function estimateArv(
 ): Money {
   const asIs = trueValue(prop, world, day);
   if (asIs <= 0) return prop.appraisal.point;
-  const lift = afterRepairValue(prop, world, day, plannedScope) / asIs;
+
+  /*
+   * Work already done is not work still to do.
+   *
+   * `asIs` already contains the value of anything finished, so leaving a
+   * completed item in the planned scope applies its lift a second time. Caught
+   * while writing a playthrough probe: passing the finished scope after a
+   * renovation reported the house 13% above its true value on average, and
+   * over-estimated on eight seeds out of eight, which looked exactly like a
+   * bias in the model rather than a mistake in the caller.
+   *
+   * The UI happens to pass the remaining scope and was always correct. Filtering
+   * here makes that the property of the function rather than a convention the
+   * next caller has to know about.
+   */
+  const remaining = plannedScope.filter((id) => !prop.completedWork.includes(id));
+  const lift = afterRepairValue(prop, world, day, remaining) / asIs;
   return Math.round(prop.appraisal.point * lift);
 }
 

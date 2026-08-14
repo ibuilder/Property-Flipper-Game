@@ -1099,8 +1099,8 @@ export function acceptOffer(
       split.partnerProfit > 0 ? 'info' : 'warn',
       `Partner settled on ${prop.address}: $${split.toPartner.toLocaleString()} out` +
         (split.partnerProfit > 0
-          ? ` â€” their capital plus ${(own.partner.profitShare * 100).toFixed(0)}% of the profit.`
-          : ' â€” capital returned, no profit to share.'),
+          ? ` — their capital plus ${(own.partner.profitShare * 100).toFixed(0)}% of the profit.`
+          : ' — capital returned, no profit to share.'),
     );
   }
 
@@ -1225,7 +1225,7 @@ function buildPostMortem(
     amount: scopeMiss,
     note:
       scopeMiss < 0
-        ? `Spent $${Math.abs(scopeMiss).toLocaleString()} more than budgeted â€” a wider scope, or change orders.`
+        ? `Spent $${Math.abs(scopeMiss).toLocaleString()} more than budgeted — a wider scope, or change orders.`
         : `Came in $${scopeMiss.toLocaleString()} under budget.`,
   });
 

@@ -28,7 +28,7 @@ import {
 } from '../src/engine';
 import { currentReserve } from '../src/engine/market';
 import { SELLER_TYPES_BY_ID } from '../src/engine/content';
-import { compFit, defaultCompSelection } from '../src/engine/valuation';
+import { compFit, defaultCompSelection, estimateArv } from '../src/engine/valuation';
 import { LEVELS_BY_ID } from '../src/engine/content';
 
 const SEED = 12345;
@@ -688,3 +688,38 @@ describe('net worth', () => {
 });
 
 
+
+describe('the ARV estimate', () => {
+  it('does not count work twice if a caller passes a finished scope', () => {
+    // `asIs` already contains anything completed, so leaving a done item in
+    // the planned scope used to apply its lift again. Measured on eight seeds
+    // it read 13% high and over-estimated every single time, which looks like
+    // a bias in the model and is really a mistake in the caller -- so the
+    // function refuses it rather than trusting a convention.
+    const state = createGame('the_grind', 909);
+    const target = state.market.find((p) => p.listing)!;
+    expect(makeOffer(state, target.id, Math.round(target.listing!.askPrice * 1.15), true).ok).toBe(
+      true,
+    );
+    const prop = state.portfolio[0];
+    const scope = ['paint_interior', 'flooring_lvp', 'roof_replace'];
+    startRenovation(state, prop.id, scope, 0.15);
+    let guard = 0;
+    while (prop.ownership?.renovation && guard++ < 300) advanceDay(state);
+    expect(prop.completedWork.length).toBeGreaterThan(0);
+
+    const withFinished = estimateArv(prop, state.world, state.day, scope);
+    const withNothing = estimateArv(prop, state.world, state.day, []);
+    expect(withFinished).toBe(withNothing);
+  });
+
+  it('still counts work that has not been done', () => {
+    // The guard must not swallow the real case: pricing a scope the player is
+    // considering is what this function exists for.
+    const state = createGame('the_grind', 909);
+    const prop = state.market.find((p) => p.listing)!;
+    const bare = estimateArv(prop, state.world, state.day, []);
+    const planned = estimateArv(prop, state.world, state.day, ['kitchen_refresh']);
+    expect(planned).toBeGreaterThan(bare);
+  });
+});
