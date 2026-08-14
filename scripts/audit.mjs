@@ -75,13 +75,22 @@ child.on('exit', (code) => {
   }
 
   console.log(
-    `audit: ${report.checked} elements, ` +
+    `audit: ${report.scenes.length} scenes (${report.scenes.join(', ')}), ` +
       `${report.darkFailures} dark and ${report.lightFailures} light below AA ` +
       `(${report.unique.length} distinct)`,
   );
 
+  // A scene the audit could not reach is a scene it is not defending. Silently
+  // auditing a smaller sample is how it passed while a real bug shipped.
+  if (report.missed.length > 0) {
+    console.error(`audit: FAILED to reach ${report.missed.join(', ')} — coverage is incomplete.`);
+    process.exit(2);
+  }
+
   if (report.unique.length === 0) {
-    console.log('audit: every piece of text on screen meets AA in both themes.');
+    console.log(
+      `audit: every piece of text meets AA in both themes, across ${report.scenes.length} scenes.`,
+    );
     process.exit(0);
   }
 
@@ -90,7 +99,7 @@ child.on('exit', (code) => {
     const times = f.count > 1 ? ` ×${f.count}` : '';
     console.log(
       `  ${String(f.ratio).padStart(5)}:1  (needs ${f.bar})  ${f.theme.padEnd(5)} ` +
-        `${f.size}px  ${f.selector}${times}\n         "${f.text}"`,
+        `${String(f.scene).padEnd(12)} ${f.size}px  ${f.selector}${times}\n         "${f.text}"`,
     );
   }
   console.log('');

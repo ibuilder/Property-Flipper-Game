@@ -831,8 +831,10 @@ label.field .label {
 .pill.bad {
   color: var(--bad);
 }
+/* The ink step. Fourth place `--accent` was used as small text; it is the
+   identity line colour and is not safe below 18px on paper. */
 .pill.info {
-  color: var(--accent);
+  color: var(--color-accent-ink);
 }
 .pill.mute {
   color: var(--text-faint);
@@ -1913,15 +1915,25 @@ table.stress-grid td.base {
   max-width: 620px;
 }
 
+/*
+ * Toast grounds follow the theme.
+ *
+ * These were hardcoded dark greens and reds, so on paper the light theme's
+ * dark green text sat on a dark green plate: 2.13:1, measured. The `-dim`
+ * tokens already flip per theme, which is the whole reason they exist.
+ *
+ * Found only once the audit walked as far as owning a property, because that
+ * is the first time a toast appears.
+ */
 .toast.ok {
-  background: #13291e;
-  border-color: #1d5638;
+  background: var(--good-dim);
+  border-color: var(--good);
   color: var(--good);
 }
 
 .toast.error {
-  background: #2a1418;
-  border-color: #5c2429;
+  background: var(--bad-dim);
+  border-color: var(--bad);
   color: var(--bad);
 }
 

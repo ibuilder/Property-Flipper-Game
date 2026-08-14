@@ -96,22 +96,9 @@ function createWindow(): void {
             path.join(app.getAppPath(), 'scripts', 'contrast-audit.js'),
             'utf8',
           );
-          // Drive past the menu first: the audit can only see what is
-          // rendered, and the menu is a fraction of the interface.
-          await mainWindow!.webContents.executeJavaScript(`(() => {
-            const start = [...document.querySelectorAll('button')]
-              .find((b) => b.textContent.includes('The First Flip'));
-            if (start) start.click();
-            return true;
-          })()`);
-          await new Promise((r) => setTimeout(r, 300));
-          await mainWindow!.webContents.executeJavaScript(`(() => {
-            const row = document.querySelector('tbody tr');
-            if (row) row.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            return true;
-          })()`);
-          await new Promise((r) => setTimeout(r, 300));
-
+          // The audit drives itself through its own scene list; this process
+          // only launches it. Keeping the navigation next to the measurement
+          // means the two cannot drift, and it stays out of app code.
           const report = await mainWindow!.webContents.executeJavaScript(src);
           console.log(`audit: ${JSON.stringify(report)}`);
           return app.exit(report.unique.length > 0 ? 2 : 0);
