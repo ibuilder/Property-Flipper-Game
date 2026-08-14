@@ -480,3 +480,57 @@ const BUYER_NAMES = [
   'The Lindqvist family',
   'A young family',
 ];
+
+/**
+ * The one line that says why this house is for sale.
+ *
+ * Every listing in the market table looked the same: an address, a size, a
+ * price. The engine has known the seller's situation since seller archetypes
+ * were added -- an estate settling a property nobody wanted, a landlord done
+ * with tenants, an owner with a start date in another city -- and none of it
+ * reached the screen. That is the whole difference between a spreadsheet row
+ * and something you want to open, and it is not decoration: motivation *is*
+ * the deal, because it is what decides whether the reserve moves.
+ *
+ * `actionable` is the honest part. It is true only when there is a real reason
+ * to act now -- a seller who will take less, or a listing that has sat long
+ * enough for the reserve to have eroded. If everything glowed, nothing would.
+ */
+export interface ListingSituation {
+  /** Short kicker, e.g. "Tired landlord · 63 days". */
+  text: string;
+  /** Whether there is a reason to move on it now. */
+  actionable: boolean;
+  /** The longer read, for a tooltip. */
+  detail: string;
+}
+
+export function listingSituation(prop: Property): ListingSituation | null {
+  const listing = prop.listing;
+  if (!listing) return null;
+
+  const seller = SELLER_TYPES_BY_ID[prop.sellerType];
+  const days = listing.daysOnMarket;
+  const motivated = listing.sellerMotivation > 0.66;
+  // Long enough that the reserve has decayed meaningfully, whoever is selling.
+  const stale = days >= 45;
+
+  const parts: string[] = [];
+  if (seller) parts.push(seller.name);
+  if (days >= 21) parts.push(`${days} days`);
+
+  const reasons: string[] = [];
+  if (motivated) reasons.push('they want out');
+  if (stale) reasons.push('the price has been coming down');
+  if (seller && seller.reserveBias < 1) reasons.push('this kind of seller takes less than they ask');
+
+  return {
+    text: parts.join(' · ') || 'On the market',
+    actionable: motivated || stale,
+    detail: seller
+      ? `${seller.blurb}${reasons.length ? ` ${cap(reasons.join(', '))}.` : ''}`
+      : 'A straightforward sale.',
+  };
+}
+
+const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);

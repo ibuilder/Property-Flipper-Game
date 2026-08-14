@@ -2375,3 +2375,24 @@ tr.clickable.selected .num {
 tr.clickable.selected .pill.bad {
   color: var(--color-accent-800);
 }
+
+/*
+ * Why a house is for sale, under its address.
+ *
+ * Small and quiet by default. It only takes the accent when there is an
+ * actual reason to move -- a motivated seller, or a listing stale enough that
+ * the reserve has eroded. If every row glowed, none of them would mean
+ * anything, which is the same argument as the one red.
+ */
+.situation {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.situation.live {
+  color: var(--color-accent-ink);
+}

@@ -8,6 +8,7 @@ import {
   estimateArv,
   minimumCashToBuy,
   type GameState,
+  listingSituation,
   toggleWatch,
   type Property,
 } from '../../engine';
@@ -301,6 +302,7 @@ function MarketRow({
   const state = useGame()!;
   const act = useAction();
   const watched = state.watched.includes(prop.id);
+  const situation = listingSituation(prop);
   const cond = conditionLabel(prop.condition);
   const ask = prop.listing?.askPrice ?? 0;
   const est = prop.appraisal.point;
@@ -341,6 +343,14 @@ function MarketRow({
           {watched ? '★' : '☆'}
         </button>
         {prop.address}
+        {/* Why it is for sale. The engine has known this since seller
+            archetypes were added and it never reached the screen -- and it is
+            the thing that decides whether the reserve moves. */}
+        {situation && (
+          <div className={`situation${situation.actionable ? ' live' : ''}`} title={situation.detail}>
+            {situation.text}
+          </div>
+        )}
       </td>
       <td className="dim">{NEIGHBORHOODS_BY_ID[prop.neighborhoodId]?.name}</td>
       <td className="dim">{ARCHETYPES_BY_ID[prop.archetypeId]?.name}</td>
