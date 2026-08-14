@@ -706,6 +706,27 @@ export interface ActiveEvent {
   startedDay: number;
 }
 
+/**
+ * One item in the market news feed.
+ *
+ * `effects` is the load-bearing field and it is always *derived* from the
+ * thing's own modifiers, never authored. An item that cannot say what it does
+ * to the player's board carries an empty list rather than a reassuring
+ * sentence.
+ */
+export interface NewsItem {
+  id: string;
+  /** Where it applies: a neighbourhood name, or the market at large. */
+  kicker: string;
+  headline: string;
+  body: string;
+  /** What it does to your board, computed. */
+  effects: string[];
+  daysRemaining: number;
+  /** The day it began, so the feed can sort newest first. */
+  day: number;
+}
+
 export interface WorldState {
   /** Market-wide value index. 1.0 is the level the campaign started at. */
   marketIndex: number;

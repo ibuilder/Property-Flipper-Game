@@ -17,6 +17,7 @@ import { play, setSoundEnabled, soundEnabled } from './sound';
 import { theme, toggleTheme } from './theme';
 import Coach from './coach/Coach';
 import LogPanel from './LogPanel';
+import NewsRail from './components/NewsRail';
 import MarketView from './views/MarketView';
 import PortfolioView from './views/PortfolioView';
 import FinanceView from './views/FinanceView';
@@ -318,6 +319,10 @@ export default function GameShell() {
           {tab === 'deals' && <DealsView />}
         </div>
         <aside className="sidebar">
+          {/* News above the log deliberately. The log is what happened to you;
+              this is what is happening to the market, and it is the one that
+              should change what you do next. */}
+          <NewsRail state={state} />
           <LogPanel />
         </aside>
       </div>

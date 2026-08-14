@@ -20,6 +20,7 @@ export * from './runway';
 export * from './trends';
 export * from './forecast';
 export * from './mastery';
+export * from './news';
 export * from './explain';
 export * from './mistakes';
 export * from './reputation';

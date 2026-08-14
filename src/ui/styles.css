@@ -2412,3 +2412,97 @@ tr.clickable.selected .pill.bad {
 .situation.live {
   color: var(--color-accent-ink);
 }
+
+/* ── The Weekly Plat ─────────────────────────────────────────────────────
+ *
+ * A masthead, not a notification tray. A feed of alerts is something you
+ * dismiss; a paper is something you scan. The rule text is small and the
+ * effect line is the one that carries the accent, because the effect is the
+ * only part that should change what you do next.
+ */
+.plat {
+  border: 1px solid var(--color-divider);
+  padding: 12px 13px 4px;
+  margin-bottom: 14px;
+}
+
+.plat-masthead {
+  border-bottom: 2px solid var(--color-text);
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+}
+
+.plat-title {
+  font-family: var(--font-heading);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+
+.plat-dateline {
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 3px;
+}
+
+.plat-item {
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.plat-item:last-child {
+  border-bottom: none;
+}
+
+.plat-kicker {
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-accent-ink);
+  font-weight: 600;
+}
+
+.plat-headline {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.15;
+  margin: 2px 0 4px;
+}
+
+.plat-body {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  margin: 0 0 6px;
+  text-wrap: pretty;
+}
+
+/* What it does to your board. The whole point of the feed. */
+.plat-effect {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-accent-ink);
+  margin: 0 0 3px;
+}
+
+.plat-meta {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-top: 4px;
+}
+
+.plat-quiet {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  margin: 0 0 10px;
+  text-wrap: pretty;
+}
