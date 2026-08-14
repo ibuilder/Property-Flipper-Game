@@ -94,6 +94,17 @@
    * family, enough contrast to carry text in both themes.
    */
   --color-accent-solid: var(--color-accent);
+  /*
+   * The accent as small *text* on the ground.
+   *
+   * Third role for the same hue, and it needs its own token for the same
+   * reason the fill did. Measured in a real browser: on the dark ground the
+   * accent is 8.48:1 and carries an 11px formula line comfortably; on the
+   * light ground it is 3.71:1, which is under AA for anything below 18px --
+   * and the formula lines under every figure are 11px. They are the whole
+   * point of Figure, so they cannot be the least legible thing on the screen.
+   */
+  --color-accent-ink: var(--color-accent);
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.45);
   --shadow-md: 0 3px 10px rgb(0 0 0 / 0.5);
@@ -143,6 +154,7 @@
 
   /* Three steps down the ramp, so a paper-coloured label clears AA on it. */
   --color-accent-solid: var(--color-accent-700);
+  --color-accent-ink: var(--color-accent-700);
 
   --shadow-sm: 0 1px 2px color-mix(in srgb, #2b2b2d 14%, transparent);
   --shadow-md: 0 3px 10px color-mix(in srgb, #2b2b2d 16%, transparent);
@@ -186,7 +198,17 @@
 
   --text: var(--color-text);
   --text-dim: var(--color-neutral-700);
-  --text-faint: var(--color-neutral-600);
+  /*
+   * Not `--color-neutral-600`.
+   *
+   * Panels are transparent, so faint text sits on `--color-surface` rather
+   * than on `--color-bg` -- and in the dark theme the surface is the *lighter*
+   * of the two, which makes it the harder ground, not the easier one.
+   * Measured on a real rendered label, neutral-600 came out at 3.88:1 against
+   * the surface while looking fine at 4.66:1 against the background. Half a
+   * step lighter clears 4.5 on both.
+   */
+  --text-faint: #8d9aa8;
 
   --accent: var(--color-accent);
   --accent-dim: var(--color-accent-200);
@@ -233,6 +255,12 @@
   --warn: #8a6410;
   --warn-dim: #faf0d8;
   --bg-inset: color-mix(in srgb, var(--color-bg) 92%, #000);
+  /*
+   * Not `--color-neutral-600`, which is what the handoff specifies for micro
+   * labels and measures 3.82:1 on paper -- under AA for text this size. Half a
+   * step darker buys 4.77:1 and is indistinguishable at a glance.
+   */
+  --text-faint: #676769;
 }
 
 * {
@@ -370,8 +398,10 @@ button {
 }
 
 .tab.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+  /* The ink step, not the line step: this is 13px text. --accent is the
+     identity colour and is only 3.42:1 on paper. */
+  color: var(--color-accent-ink);
+  border-bottom-color: var(--color-accent);
 }
 
 .tab .badge {
@@ -380,7 +410,8 @@ button {
   padding: 0 6px;
   border-radius: 9px;
   background: var(--accent-dim);
-  color: var(--accent);
+  /* 11px on a tinted ground: the ink step, or it reads at 3.39:1 on paper. */
+  color: var(--color-accent-ink);
   font-size: 11px;
   font-family: var(--mono);
 }
@@ -616,13 +647,16 @@ td.right {
   font-weight: 600;
 }
 
+/* One step along the ramp, per the handoff's hover rule. It was a hardcoded
+   blue that ignored the theme entirely and stayed a dark-mode colour on
+   paper. */
 .btn.primary:hover:not(:disabled) {
-  background: #6bb0ff;
-  border-color: #6bb0ff;
+  background: var(--color-accent-600);
+  border-color: var(--color-accent-600);
 }
 
 .btn.danger {
-  border-color: #5c2429;
+  border-color: var(--color-loss);
   color: var(--bad);
 }
 
@@ -1152,7 +1186,9 @@ label.field .label {
   font-size: 9.5px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--color-neutral-600);
+  /* The semantic token, not the raw ramp step: --text-faint is tuned to clear
+     AA on the *surface* as well as the background, and neutral-600 is not. */
+  color: var(--text-faint);
   line-height: 1.3;
 }
 
@@ -1168,7 +1204,7 @@ label.field .label {
   font-family: var(--mono);
   font-size: 11px;
   line-height: 1.4;
-  color: var(--color-accent);
+  color: var(--color-accent-ink);
   overflow-wrap: anywhere;
 }
 
@@ -1247,6 +1283,16 @@ label.field .label {
  * -- the default `stretch` gives the column full height, and a sticky element
  * inside a full-height container never has anywhere to stick to.
  */
+/*
+ * No column override here on purpose.
+ *
+ * A `.deal-grid` rule setting its own track sizes sat here and did nothing:
+ * `.grid-2` is defined later in this file and wins on source order at equal
+ * specificity. The even split `.grid-2` gives is the right answer anyway --
+ * measured, 503px each inside the modal, and below 980px the columns stack --
+ * so the rule is gone rather than promoted. Dead CSS that reads as deliberate
+ * is worse than none.
+ */
 .deal-analyser {
   position: sticky;
   top: 0;
@@ -1261,7 +1307,7 @@ label.field .label {
   font-size: 9.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--color-accent);
+  color: var(--color-accent-ink);
 }
 
 /* Pinning needs somewhere to scroll. Below this the columns stack, and a
@@ -1293,7 +1339,20 @@ label.field .label {
 }
 
 .mao-plate.primary .figure-label {
-  color: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
+/*
+ * Labels step up on a tinted plate.
+ *
+ * `--text-faint` is tuned for the panel and the surface. The accent-tinted
+ * plates are a third ground, and a 9.5px label on one measured 4.25:1 dark and
+ * 3.08:1 light. A token cannot know what it will be drawn on top of; only an
+ * audit of the rendered page finds this.
+ */
+.mao-plate .figure-label,
+.verdict-plate .figure-label {
+  color: var(--text-dim);
 }
 
 .verdict-plate {
@@ -1640,9 +1699,18 @@ table.stress-grid td.base {
   font-size: 12px;
 }
 
+/*
+ * `minmax(0, 1fr)`, not `1fr`.
+ *
+ * A bare `1fr` is `minmax(auto, 1fr)`, so a column cannot shrink below its
+ * content's min-content width. One wide table or a long unbroken figure on the
+ * left and the split silently stops being even -- measured on the deal screen
+ * it was rendering 754px against 252px. Grid does not warn about this and it
+ * is invisible until someone measures the actual column widths.
+ */
 .grid-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -2109,7 +2177,7 @@ table.stress-grid td.base {
   font-family: var(--mono);
   font-size: 11px;
   line-height: 1.45;
-  color: var(--color-accent);
+  color: var(--color-accent-ink);
   margin: 6px 0 0;
 }
 
@@ -2201,7 +2269,7 @@ table.stress-grid td.base {
 .mastery-count {
   font-family: var(--mono);
   font-size: 11px;
-  color: var(--color-accent);
+  color: var(--color-accent-ink);
   margin-top: 5px;
 }
 
@@ -2229,4 +2297,19 @@ table.stress-grid td.base {
 
 .watch-star.on {
   color: var(--color-accent);
+}
+
+/*
+ * Secondary text steps up on a selected row.
+ *
+ * The selection highlight is an opaque accent tint, so it is a different
+ * ground from the panel and a dimmed colour tuned for the panel does not
+ * survive it -- measured at 4.05:1 on a 13px cell, which is under AA. Found by
+ * auditing every small-text element actually on screen rather than by checking
+ * tokens, because a token cannot know what it will be drawn on top of.
+ */
+tr.clickable.selected .dim,
+tr.clickable.selected .faint,
+tr.clickable.selected .num {
+  color: var(--color-neutral-800);
 }

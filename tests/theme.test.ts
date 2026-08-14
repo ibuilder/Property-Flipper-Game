@@ -202,15 +202,57 @@ describe('the theme tokens', () => {
     }
   });
 
-  it('keeps dimmed and faint text above the large-text floor', () => {
-    // These carry labels and captions, not body copy, so 3:1 is the bar --
-    // but below that they are decoration pretending to be information.
+  it('meets AA for every token that carries small text, on both grounds', () => {
+    // Two corrections live in this test, both found by measuring a real
+    // rendered element rather than a token.
+    //
+    // The bar was 3:1, on the reasoning that these carry labels rather than
+    // body copy. That is wrong: AA's 3:1 allowance is for 18px, or 14px bold,
+    // and these carry 9.5px micro labels and 11px formula lines.
+    //
+    // And it measured against `--color-bg` alone. Panels are transparent, so
+    // most text actually sits on `--color-surface` -- which in the dark theme
+    // is the *lighter* of the two and therefore the harder ground. A label
+    // reading 4.66:1 against the background was 3.88:1 where it was really
+    // drawn. Both grounds, worst case.
     for (const [name, tokens] of THEMES) {
-      const bg = colour(tokens, '--color-bg');
-      for (const token of ['--text-dim', '--text-faint']) {
-        const c = contrast(colour(tokens, token), bg);
-        expect(c, `${name} ${token} on bg is ${c.toFixed(2)}:1`).toBeGreaterThanOrEqual(3);
+      const grounds: [string, Rgb][] = [
+        ['bg', colour(tokens, '--color-bg')],
+        ['surface', colour(tokens, '--color-surface')],
+      ];
+      for (const token of ['--text-dim', '--text-faint', '--color-accent-ink']) {
+        for (const [where, ground] of grounds) {
+          const c = contrast(colour(tokens, token), ground);
+          expect(c, `${name} ${token} on ${where} is ${c.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+        }
       }
+    }
+  });
+
+  it('sends micro labels through the semantic token, not a raw ramp step', () => {
+    // `.figure-label` painted itself `--color-neutral-600` directly, so it
+    // never picked up the tuning done on --text-faint and failed AA in both
+    // themes at 9.5px.
+    const i = CSS.indexOf('\n.figure-label {');
+    expect(i).toBeGreaterThan(-1);
+    const body = CSS.slice(i, CSS.indexOf('}', i));
+    expect(body).not.toMatch(/color:\s*var\(--color-neutral-\d00\)/);
+    expect(body).toMatch(/color:\s*var\(--text-faint\)/);
+  });
+
+  it('sends accent-coloured small text through the ink token, not the line one', () => {
+    // --color-accent is the identity colour and is allowed to be a line that
+    // does not carry text. Anything setting it as a *colour* on small text has
+    // to use the ink step or it is illegible on paper.
+    for (const sel of ['.figure-formula', '.coach-math', '.mastery-count', '.live-kicker']) {
+      const i = CSS.indexOf(`
+${sel} {`);
+      expect(i, `no rule for ${sel}`).toBeGreaterThan(-1);
+      const body = CSS.slice(i, CSS.indexOf('}', i));
+      expect(body, `${sel} paints small text with the line accent`).not.toMatch(
+        /color:\s*var\(--color-accent\)/,
+      );
+      expect(body).toMatch(/color:\s*var\(--color-accent-ink\)/);
     }
   });
 

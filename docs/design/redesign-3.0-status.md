@@ -59,3 +59,41 @@ Much of what the handoff schedules for "Systems" already existed before it was
 written: crew, rivals, difficulty, seasons, neighbourhood arcs, auctions and
 BRRRR are all in the engine. Its 3-week estimate for that phase is wrong in
 our favour; the real remaining work is presentation.
+
+## Contrast: what a real-browser audit found
+
+The token test in `tests/theme.test.ts` is necessary and not sufficient. It
+checks tokens against grounds; it cannot know what a token will actually be
+*drawn on*. Running the app and auditing every rendered text element — walking
+up the tree and compositing every semi-transparent layer, the way the eye does
+— found a class of failure the token test structurally cannot see.
+
+Fixed in this pass, all measured rather than guessed:
+
+| What | Was | Why the token test missed it |
+| --- | --- | --- |
+| `--color-accent` on 11px formula lines (light) | 3.71:1 | Checked at the 3:1 large-text bar. These are 11px. |
+| `--text-faint` on the *surface* (dark) | 3.88:1 | Measured against `--color-bg`; panels are transparent, and in dark the surface is the **lighter**, harder ground. |
+| `.figure-label` | 3.53–3.88:1 | Painted `--color-neutral-600` directly, bypassing the tuned token. |
+| `.dim` on a selected row | 4.05:1 | The selection tint is a third ground no token knows about. |
+| Labels on accent-tinted plates | 3.08–4.25:1 | Same: a fourth ground. |
+| `.tab.active`, `.tab .badge` | 3.39–3.42:1 | Used the identity accent as small text. |
+| `.btn.primary:hover` | hardcoded `#6bb0ff` | The "no hardcoded colour" test only scanned `.tsx`, not the stylesheet. |
+
+Three token roles for one hue came out of this and are worth keeping straight:
+`--color-accent` is the **line**, `--color-accent-solid` is the **fill** that
+carries a label, `--color-accent-ink` is **small text on the ground**. On the
+dark theme all three are the same value, which is exactly why the distinction
+is invisible until you render the light one.
+
+### Still outstanding
+
+A final audit still reports roughly **20 elements in dark and 9 in light**
+below 4.5:1 at under 18px — `.blurb`, `.watch-star`, some `.arrow` and `.pill`
+variants, and assorted paragraphs. They are in older components that predate
+this work. None is a blocker; all are secondary text. The audit script is in
+this session's transcript and should be re-run after they are fixed.
+
+**This cannot be a unit test.** It needs a real cascade and real compositing,
+so jsdom will not do it. The right home is a Playwright check in CI, which is
+not set up. Until it is, the token test is the guard and it has known gaps.
