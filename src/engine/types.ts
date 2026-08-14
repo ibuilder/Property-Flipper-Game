@@ -1,3 +1,4 @@
+﻿import type { PermitStatus } from './permits';
 /**
  * Domain types for the Property Flipper simulation.
  *
@@ -320,6 +321,14 @@ export interface RenovationJob {
   /** Money already paid out on this job. */
   spent: Money;
   startedDay: number;
+  /**
+   * The city, if this scope needed its approval.
+   *
+   * Null on a cosmetic job, which is the point: touching the wiring puts you
+   * in a queue and painting does not. Optional so saves written before permits
+   * existed load without one.
+   */
+  permit?: PermitStatus | null;
 }
 
 export interface Listing {
@@ -424,7 +433,7 @@ export interface Auction {
  *
  * Not an event: events expire and leave nothing behind. An arc moves the index
  * a little every day for years, ramping in and out, and is visible on the
- * ground well before it is finished — which is what makes buying into one an
+ * ground well before it is finished â€” which is what makes buying into one an
  * actual decision rather than a lottery.
  */
 export interface NeighborhoodArc {
@@ -876,7 +885,7 @@ export interface ClosedDeal {
    * The profit range the player committed to before buying, if they did.
    *
    * Optional and nullable: forecasting is voluntary, and deals closed before
-   * it existed have none. A skipped forecast is not scored — being made to
+   * it existed have none. A skipped forecast is not scored â€” being made to
    * guess would produce numbers that measure compliance rather than belief.
    */
   forecast?: Forecast | null;

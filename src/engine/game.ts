@@ -55,6 +55,7 @@ import {
   scheduleDays,
 } from './renovation';
 import { makeForecast } from './forecast';
+import { newPermit, permitIssued } from './permits';
 import {
   createAuction,
   createAuctionLot,
@@ -809,8 +810,27 @@ export function startRenovation(
   applyCash(state, -quote.totalCost, 'renovation', `Scope of work on ${prop.address}`, prop.id);
   applyCash(state, -contingency, 'renovation', `Contingency reserve on ${prop.address}`, prop.id);
 
-  prop.ownership.renovation = createJob(quote.lines, quote.totalDays, contingency, state.day);
+  // Drawn once, now, so the player can be told the number and plan against
+  // it. A queue you only discover by waiting is weather, not a decision.
+  const permit = withRng(state, (rng) =>
+    newPermit(quote.lines, state.world, rng, prop.neighborhoodId),
+  );
+  prop.ownership.renovation = createJob(
+    quote.lines,
+    quote.totalDays,
+    contingency,
+    state.day,
+    permit.required ? permit : null,
+  );
   prop.ownership.renovationSpend += quote.totalCost;
+
+  if (permit.required) {
+    log(
+      state,
+      'warn',
+      `${prop.address} needs a permit (${permit.reasons.join(', ')}). ${permit.queueDays} days in the queue before anyone can start, and the carry runs throughout.`,
+    );
+  }
 
   log(
     state,
@@ -825,6 +845,22 @@ function advanceRenovation(state: GameState, prop: Property, rng: Rng): void {
   const own = prop.ownership;
   if (!own?.renovation) return;
   const job = own.renovation;
+
+  /*
+   * Nothing happens while the permit is out.
+   *
+   * The day still passes and the carry is still paid -- that is the whole
+   * point of the queue, and softening it would remove the only cost it has.
+   * Work simply does not progress, so the schedule stretches by exactly the
+   * days the office took.
+   */
+  if (job.permit && !permitIssued(job.permit)) {
+    job.permit.daysWaited += 1;
+    if (permitIssued(job.permit)) {
+      log(state, 'good', `Permit issued on ${prop.address} after ${job.permit.queueDays} days.`);
+    }
+    return;
+  }
 
   job.daysElapsed += 1;
 

@@ -163,9 +163,19 @@ describe('the house changes while the work is happening', () => {
     startRenovation(state, prop.id, ['roof_replace', 'kitchen_refresh'], 0.1);
 
     const before = prop.appraisal.point;
-    for (let i = 0; i < 3; i++) advanceDay(state);
+    /*
+     * Sit out the permit first.
+     *
+     * `roof_replace` is systems work, so the city has to look at it before
+     * anyone starts and no days are worked while it does. Advancing three days
+     * used to be enough to see progress and now is not, which is the permit
+     * queue doing exactly its job -- so the test waits it out rather than
+     * quietly switching to a cosmetic scope that would dodge the point.
+     */
     const job = prop.ownership!.renovation;
     if (!job) return;
+    const queue = job.permit?.queueDays ?? 0;
+    for (let i = 0; i < queue + 3; i++) advanceDay(state);
 
     expect(jobProgress(job)).toBeGreaterThan(0);
     // completedWork is what valuation reads, and it is still empty.

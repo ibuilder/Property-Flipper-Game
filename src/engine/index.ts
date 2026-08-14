@@ -1,4 +1,4 @@
-export * from './types';
+﻿export * from './types';
 export * from './content';
 export * from './rng';
 export * from './valuation';
@@ -22,6 +22,7 @@ export * from './forecast';
 export * from './mastery';
 export * from './news';
 export * from './tutorial';
+export * from './permits';
 export * from './explain';
 export * from './mistakes';
 export * from './reputation';

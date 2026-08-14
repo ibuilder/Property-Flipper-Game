@@ -1,7 +1,8 @@
-import { DEFECTS_BY_ID, SCOPE_BY_ID } from './content';
+﻿import { DEFECTS_BY_ID, SCOPE_BY_ID } from './content';
 import { eventModifiers } from './events';
 import { defectRepairCost, defectRepairDays } from './valuation';
 import { changeOrderReduction, renovationDiscount } from './reputation';
+import type { PermitStatus } from './permits';
 import type {
   Money,
   Property,
@@ -153,6 +154,7 @@ export function createJob(
   totalDays: number,
   contingency: Money,
   startedDay: number,
+  permit: PermitStatus | null = null,
 ): RenovationJob {
   return {
     lines,
@@ -162,6 +164,7 @@ export function createJob(
     contingencyBudgeted: contingency,
     spent: lines.reduce((s, l) => s + l.quotedCost, 0),
     startedDay,
+    permit,
   };
 }
 

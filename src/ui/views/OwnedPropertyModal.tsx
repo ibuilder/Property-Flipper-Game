@@ -12,6 +12,8 @@ import {
   inspectionConcession,
   isOccupied,
   jobDaysRemaining,
+  describePermit,
+  permitIssued,
   returnProfile,
   jobProgress,
   listForSale,
@@ -512,6 +514,16 @@ function RenovationPanel({ property }: { property: Property }) {
         </span>
       </div>
       <div className="panel-body">
+        {/* Above the progress bar, because while the permit is out the bar is
+            not moving and the player deserves to know why rather than assume
+            the game is stuck. */}
+        {job.permit && !permitIssued(job.permit) && (
+          <div className="verdict thin" style={{ marginTop: 0, marginBottom: 12 }}>
+            <strong>Waiting on the city</strong>
+            {describePermit(job.permit)}
+          </div>
+        )}
+
         <div className="bar" style={{ marginBottom: 14 }}>
           <span style={{ width: `${pct * 100}%` }} />
         </div>
