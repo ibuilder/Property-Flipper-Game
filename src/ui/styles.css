@@ -2388,7 +2388,11 @@ tr.clickable.selected .pill.bad {
   font-size: 10.5px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  /* Dim, not faint: at 10.5px on the row ground faint measures 3.46:1. Caught
+     by the audit in CI rather than locally, because the seeded market here
+     happened to show only the actionable variant, which uses the accent ink.
+     A colour bug on a branch the local run never rendered. */
+  color: var(--text-dim);
   font-weight: 500;
   margin-top: 2px;
 }
