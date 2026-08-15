@@ -122,7 +122,21 @@ without one. Placing them by eye would put a street lamp in a different spot at
 every zoom. What is needed is one number per piece: where the lot origin sits
 inside its 64 × 64 artboard.
 
-### 2d. Scout — **6 portraits + 3 sprites**
+**Still true after the second delivery.** A coloured furniture set arrived on
+96px artboards alongside the line set on 64px ones, and neither carries an
+anchor, so both remain unplaced. This is the cheapest outstanding item on the
+whole commission and the only one blocking art that is already drawn twice.
+
+### 2d. Scout — **6 portraits + 3 sprites** — **portraits delivered, sprites outstanding**
+
+All six moods arrived and are wired: the coach card now shows the mood the rule
+that fired asked for. Four extra faces came with them — appraiser, lender,
+rival, inspector — which were not asked for and are welcome; they are carried
+but not yet placed, since none of those characters currently speaks in their own
+voice anywhere in the interface.
+
+**Still outstanding: the 3 isometric board sprites** (idle, walking, digging,
+two frames each).
 
 Scout is the coaching character: a working dog in a hard hat who has been on
 more sites than the player has. **Not a mascot.** He is the tradesman who has
@@ -136,7 +150,7 @@ actually appear.
 
 Three isometric sprites for the board, 2 frames each: idle, walking, digging.
 
-### 2e. Icons — **22**
+### 2e. Icons — **22** — **delivered**
 
 Lucide-compatible line icons at 1.5 stroke weight: ruler, hammer, hard-hat,
 file-text, trending-up, trending-down, gavel, key, users, badge-check, clock,
@@ -144,10 +158,36 @@ banknote, percent, alert-triangle, home, wrench, clipboard-check, calendar,
 map-pin, scale, search, layers. If Lucide already has a good one, say so and we
 will use it rather than pay for a redraw.
 
-### 2f. Newspaper mastheads — **7**
+All 22 delivered, single-path, and recoloured to `currentColor` on the way in,
+so they take whatever they are placed inside. Six are on the main tabs. The
+other sixteen are compiled and available; they are not yet placed, because an
+icon put somewhere it is not needed is worse than no icon.
+
+### 2f. Newspaper mastheads — **7** — **delivered, 2 unusable**
 
 One for *The Weekly Plat* (the in-game paper) plus six headline plates for
 market events. Condensed serif or slab, engraved feel.
+
+The masthead is in. Two things had to be changed on the way in and are worth
+knowing for the next set:
+
+- Everything arrived as ink on a full-bleed sheet of `#f4efe2`. A printed page
+  wants that; a panel that has to work in a dark theme does not, and it would
+  have sat there as a lit rectangle. The sheet is dropped at ingest and the ink
+  mapped to the theme's text colour. **Deliver these on transparent.**
+- The masthead's kicker is set in the same wood-type, which has no digits or
+  punctuation drawn, so it renders full of holes. It is dropped. The rail prints
+  a live dateline underneath anyway, so nothing was lost — but it is why the
+  charset matters.
+
+**Two of the six plates name events this game does not have.** `zoning_shift`
+and `mill_rezoned` have no counterpart; the nearest are `school_rezoning` and
+`revitalization`, and a plate reading MILL REZONED over a story about a school
+catchment is the picture contradicting the text, so both are unused. The other
+four — boom, slump, rates_cut, rates_spike — map cleanly and are live.
+
+If more plates are drawn, these are the market events that have none:
+`lumber_spike`, `labor_shortage`, `permit_backlog`, `employer_exit`.
 
 ---
 
@@ -192,14 +232,24 @@ the most value soonest, and each stage is usable on its own:
 
 1. ~~**7 house archetypes**~~ — **delivered**, though against the wrong id list.
 2. ~~**Condition states**~~ — **delivered**, all 28, and wired.
-3. **The 3 missing archetypes** — `colonial`, `condo`, `townhouse`, base plus
-   four overlays each, 15 drawings. This is now the top of the list: until they
-   land, three of the seven house types the game generates are wearing another
-   type's roof.
-4. **Anchors for the 14 delivered furniture pieces** — no drawing needed, just
-   the lot origin for each. Small, and it unblocks work already paid for.
-5. **Scout's 6 portraits** — the coach is written and running; he has no face.
-6. Icons, then mastheads.
+3. ~~**Scout's portraits**~~ — **delivered**, all six moods, wired.
+4. ~~**Icons**~~ — **delivered**, all 22.
+5. ~~**Mastheads**~~ — **delivered**, 5 of 7 usable.
+6. ~~**A full coloured house set**~~ — **delivered** and not asked for. Both
+   cuts are compiled and the board has a line/colour switch.
+
+**What is still wanted, in order:**
+
+1. **The 3 missing archetypes** — `colonial`, `condo`, `townhouse`, base plus
+   four overlays each, in **both** the line and coloured sets. Until they land,
+   three of the seven house types the game generates wear another type's roof.
+   Everything else on this list is polish; this one is a correctness problem.
+2. **Anchors for the 14 furniture pieces** — no drawing, just the lot origin
+   inside each artboard. Small, and it unblocks work already done twice.
+3. **The 3 board sprites** — idle, walking, digging, two frames each.
+4. **4 more headline plates** — `lumber_spike`, `labor_shortage`,
+   `permit_backlog`, `employer_exit` — plus digits and punctuation for the
+   wood-type, without which no plate can carry a rate or a date.
 
 Please quote per stage.
 

@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ART = path.join(ROOT, 'art');
 const OUT = path.join(ROOT, 'src', 'ui', 'board', 'art.generated.ts');
+const OUT_UI = path.join(ROOT, 'src', 'ui', 'art.generated.ts');
 
 /** Constraints from the brief that a delivery must not violate. */
 const FORBIDDEN = [
@@ -213,4 +214,282 @@ console.log(
   `art-ingest: ${ids.length} archetypes x 5 states, ` +
     `${Object.keys(furniture).length} furniture, ${pathCount} paths -> ` +
     `${path.relative(ROOT, OUT).replace(/\\/g, '/')}`,
+);
+
+// ---------------------------------------------------------------------------
+// The rest of the delivery: everything that is not board geometry.
+//
+// These are kept as markup rather than parsed into path arrays. The houses are
+// pulled apart because the board has to re-ink them per theme and place them
+// against a projection; Scout, the mastheads and the coloured houses are
+// finished pictures with their own baked palette, and taking them apart would
+// buy nothing but a chance to get them wrong.
+// ---------------------------------------------------------------------------
+
+/** Inner markup of an SVG, with the wrapper and its own dimensions removed. */
+function readMarkup(file, { recolour = false } = {}) {
+  const raw = fs.readFileSync(file, 'utf8');
+  const rel = path.relative(ART, file).replace(/\\/g, '/');
+  for (const [re, what] of FORBIDDEN) {
+    if (re.test(raw)) throw new Error(`${rel}: contains a ${what}, which the brief forbids`);
+  }
+  const box = raw.match(/viewBox="([^"]+)"/);
+  if (!box) throw new Error(`${rel}: no viewBox`);
+  const [, , w, h] = box[1].split(/\s+/).map(Number);
+
+  let body = raw
+    .replace(/^[\s\S]*?<svg\b[^>]*>/, '')
+    .replace(/<\/svg>\s*$/, '')
+    .trim();
+  // Root-level presentation attributes do not survive unwrapping, so anything
+  // the paths inherited has to be pushed back down onto them.
+  const rootStroke = raw.match(/<svg\b[^>]*\bstroke="([^"]+)"/);
+  const rootWidth = raw.match(/<svg\b[^>]*\bstroke-width="([^"]+)"/);
+  if (rootStroke && !/<(path|g)\b[^>]*\bstroke=/.test(body)) {
+    const w2 = rootWidth ? ` stroke-width="${rootWidth[1]}"` : '';
+    body = `<g fill="none" stroke="${rootStroke[1]}"${w2} stroke-linecap="round" stroke-linejoin="round">${body}</g>`;
+  }
+  if (recolour) body = body.replace(/#000000/gi, 'currentColor');
+  return { w, h, body };
+}
+
+const dir = (name) => path.join(ART, name);
+const svgsIn = (name) =>
+  fs.existsSync(dir(name))
+    ? fs
+        .readdirSync(dir(name))
+        .filter((f) => f.endsWith('.svg'))
+        .sort()
+    : [];
+
+// Icons: single-path, one colour, drawn on a 24px grid. Recoloured to
+// currentColor so they take whatever they are placed inside.
+const icons = {};
+for (const f of svgsIn('icons')) {
+  const raw = fs.readFileSync(path.join(dir('icons'), f), 'utf8');
+  const ds = [...raw.matchAll(/\bd="([^"]+)"/g)].map((m) => m[1]);
+  if (!ds.length) throw new Error(`art/icons/${f}: no path data`);
+  icons[f.replace(/^icon-|\.svg$/g, '')] = ds;
+}
+
+// Scout's moods and the four other faces, as finished pictures.
+const scout = {};
+const npc = {};
+for (const f of svgsIn('scout')) {
+  const { body } = readMarkup(path.join(dir('scout'), f));
+  if (f.startsWith('avatar-')) npc[f.replace(/^avatar-|\.svg$/g, '')] = body;
+  else scout[f.replace(/^scout-|\.svg$/g, '')] = body;
+}
+
+/*
+ * Mastheads and headline plates, un-papered.
+ *
+ * These are delivered as ink on a full-bleed sheet of `#f4efe2`. That is right
+ * for a printed page and wrong for a panel that has to work in both themes: the
+ * sheet would sit in the dark theme as a lit rectangle. The letterforms are
+ * outlined paths, so dropping the sheet and mapping the ink to `currentColor`
+ * gives a masthead that takes the theme's text colour and keeps every serif.
+ */
+const press = {};
+for (const f of svgsIn('press')) {
+  const { w, h, body } = readMarkup(path.join(dir('press'), f));
+  const unpapered = body
+    .replace(/<rect\b[^>]*\bfill="#f4efe2"[^>]*>(?:<\/rect>)?/gi, '')
+    /*
+     * Drop the kicker.
+     *
+     * The masthead's strapline is set in the same wood-type, which has no
+     * digits or punctuation drawn yet, so it renders with holes in it. It is
+     * also the one line here that is static, and the rail already prints a
+     * live dateline underneath -- town, week number and date -- so nothing is
+     * lost by removing it and a broken-looking line is avoided. It is the only
+     * accent-coloured group in the set, which is what makes this findable.
+     */
+    .replace(/<g\b[^>]*>(?:(?!<\/g>)[\s\S])*?fill="#5980a6"[\s\S]*?<\/g>/gi, '')
+    .replace(/#1d1f20/gi, 'currentColor');
+  if (/#f4efe2|#5980a6/i.test(unpapered)) {
+    throw new Error(`art/press/${f}: paper or kicker colour survived the un-papering`);
+  }
+  press[f.replace(/\.svg$/, '')] = { w, h, body: unpapered };
+}
+
+/*
+ * The coloured houses, in two cuts.
+ *
+ * Each one is delivered standing on its own kerbed plinth: an opaque lot
+ * diamond, its two extruded side faces, a lawn and a contact shadow, all drawn
+ * before the building. That is right for a picture of a house and fatal on the
+ * board, where it would paint over the lot colour that the four data views
+ * exist to show -- the board would stop answering four questions and start
+ * answering none.
+ *
+ * The ground is a clean prefix in all thirty-five files, so it can be taken off
+ * deterministically rather than by eye. `HOUSE_COLOR` keeps it for anywhere a
+ * house is the subject; `HOUSE_COLOR_BARE` drops it so the building can stand
+ * on a lot the board has coloured itself.
+ */
+const GROUND_FILLS = new Set(['#cdc4b1', '#b0a693', '#9e9584', '#8b9d63', 'rgba(60,50,40,0.10)']);
+
+/** Half-width of the lot diamond in the coloured set's own coordinates. */
+let colourHalfWidth = null;
+
+function stripGround(body, rel) {
+  const parts = body.match(/<path\b[^>]*?(?:\/>|>\s*<\/path>)/g) ?? [];
+  let cut = 0;
+  for (const p of parts) {
+    const fill = p.match(/fill="([^"]+)"/);
+    if (!fill || !GROUND_FILLS.has(fill[1])) break;
+    // The plinth top is the lot itself, and gives the set's art unit.
+    const d = p.match(/\bd="M0 0 L([\d.]+) -([\d.]+) L([\d.]+) 0/);
+    if (d) {
+      const half = Number(d[1]);
+      if (colourHalfWidth === null) colourHalfWidth = half;
+      else if (Math.abs(colourHalfWidth - half) > 0.01) {
+        throw new Error(
+          `art/${rel}: lot diamond is ${half} wide but another file says ` +
+            `${colourHalfWidth}. The coloured set must share one lot size or ` +
+            `houses cannot be placed on a common grid.`,
+        );
+      }
+    }
+    cut++;
+  }
+  if (!cut) throw new Error(`art/${rel}: expected the plinth to be drawn first, found none`);
+  let out = body;
+  for (let i = 0; i < cut; i++) out = out.replace(parts[i], '');
+  return out.trim();
+}
+
+const colour = {};
+const colourBare = {};
+let colourTransforms = {};
+const cdir = dir('houses-color');
+if (fs.existsSync(cdir)) {
+  const tf = path.join(cdir, '_transforms.json');
+  if (!fs.existsSync(tf)) {
+    throw new Error(
+      `art/houses-color/_transforms.json is missing. Without it the coloured ` +
+        `set cannot be scaled to a common size: each artboard is fitted to its ` +
+        `own drawing, so a bungalow and a victorian would render the same height.`,
+    );
+  }
+  colourTransforms = JSON.parse(fs.readFileSync(tf, 'utf8'));
+  for (const id of Object.keys(colourTransforms)) {
+    colour[id] = {};
+    colourBare[id] = {};
+    for (const [key, name] of [
+      ['base', `house-${id}.svg`],
+      ...STATES.map((s) => [s, `house-${id}-${s}.svg`]),
+    ]) {
+      const file = path.join(cdir, name);
+      if (!fs.existsSync(file)) throw new Error(`art/houses-color/${name} is missing`);
+      const { body } = readMarkup(file);
+      colour[id][key] = body;
+      // Only the base stands on ground; the overlays are drawn over it and add
+      // no plinth of their own, so there is nothing in them to take off.
+      colourBare[id][key] = key === 'base' ? stripGround(body, `houses-color/${name}`) : body;
+    }
+  }
+}
+
+const ui = [];
+ui.push(`// GENERATED by scripts/art-ingest.mjs from art/. Do not edit by hand.`);
+ui.push(``);
+ui.push(
+  `/**\n` +
+    ` * Icon path data, on a 24px grid at 1.5 stroke.\n` +
+    ` *\n` +
+    ` * Delivered under Lucide-compatible names, so any one of these can be\n` +
+    ` * swapped for the Lucide original without touching a call site.\n` +
+    ` */`,
+);
+ui.push(`export const ICON_BOX = 24;`);
+ui.push(`export const ICONS: Record<string, string[]> = {`);
+for (const [k, v] of Object.entries(icons)) ui.push(`  ${JSON.stringify(k)}: ${j(v)},`);
+ui.push(`};`);
+ui.push(``);
+ui.push(`export type IconName = keyof typeof ICONS & string;`);
+ui.push(``);
+ui.push(
+  `/**\n` +
+    ` * Scout, one drawing per mood, and the four faces he is not.\n` +
+    ` *\n` +
+    ` * Baked palette rather than theme tokens: he is a character, and a\n` +
+    ` * character who changes colour with the interface stops being one.\n` +
+    ` */`,
+);
+ui.push(`export const SCOUT_BOX = 320;`);
+ui.push(`export const SCOUT: Record<string, string> = {`);
+for (const [k, v] of Object.entries(scout)) ui.push(`  ${JSON.stringify(k)}: ${j(v)},`);
+ui.push(`};`);
+ui.push(``);
+ui.push(`export const NPC: Record<string, string> = {`);
+for (const [k, v] of Object.entries(npc)) ui.push(`  ${JSON.stringify(k)}: ${j(v)},`);
+ui.push(`};`);
+ui.push(``);
+ui.push(`export interface PressPlate {`);
+ui.push(`  w: number;`);
+ui.push(`  h: number;`);
+ui.push(`  body: string;`);
+ui.push(`}`);
+ui.push(``);
+ui.push(`export const PRESS: Record<string, PressPlate> = {`);
+for (const [k, v] of Object.entries(press)) {
+  ui.push(`  ${JSON.stringify(k)}: { w: ${v.w}, h: ${v.h}, body: ${j(v.body)} },`);
+}
+ui.push(`};`);
+ui.push(``);
+ui.push(
+  `/**\n` +
+    ` * The coloured houses.\n` +
+    ` *\n` +
+    ` * Not used on the board: each one paints its own kerbed plinth and lawn,\n` +
+    ` * which would cover the very lot colour the four data views exist to show.\n` +
+    ` * They are for anywhere a single house is the subject and there is no ramp\n` +
+    ` * underneath it.\n` +
+    ` *\n` +
+    ` * \`k\` differs per archetype because each artboard is fitted to its own\n` +
+    ` * drawing. Dividing it out is what keeps a bungalow smaller than a mill\n` +
+    ` * loft instead of rendering both at the same height.\n` +
+    ` */`,
+);
+ui.push(`export const COLOR_BOX = 256;`);
+ui.push(
+  `export const COLOR_TRANSFORM: Record<string, { k: number; tx: number; ty: number }> = ${JSON.stringify(colourTransforms, null, 2)};`,
+);
+ui.push(``);
+ui.push(
+  `/**\n` +
+    ` * Grid units per lot edge in the coloured set's own coordinate space.\n` +
+    ` *\n` +
+    ` * Read off the plinth diamond rather than assumed, and asserted identical\n` +
+    ` * across all thirty-five files at ingest.\n` +
+    ` */`,
+);
+ui.push(`export const COLOR_UNIT = ${colourHalfWidth === null ? 'null' : +(colourHalfWidth / 0.7071).toFixed(4)};`);
+ui.push(``);
+ui.push(`export const HOUSE_COLOR: Record<string, Record<string, string>> = {`);
+for (const [id, states] of Object.entries(colour)) {
+  ui.push(`  ${id}: {`);
+  for (const [k, v] of Object.entries(states)) ui.push(`    ${k}: ${j(v)},`);
+  ui.push(`  },`);
+}
+ui.push(`};`);
+ui.push(``);
+ui.push(`/** The same houses with the plinth, lawn and shadow removed. */`);
+ui.push(`export const HOUSE_COLOR_BARE: Record<string, Record<string, string>> = {`);
+for (const [id, states] of Object.entries(colourBare)) {
+  ui.push(`  ${id}: {`);
+  for (const [k, v] of Object.entries(states)) ui.push(`    ${k}: ${j(v)},`);
+  ui.push(`  },`);
+}
+ui.push(`};`);
+ui.push(``);
+
+fs.writeFileSync(OUT_UI, ui.join('\n'), 'utf8');
+console.log(
+  `art-ingest: ${Object.keys(icons).length} icons, ${Object.keys(scout).length} Scout moods, ` +
+    `${Object.keys(npc).length} faces, ${Object.keys(press).length} press, ` +
+    `${Object.keys(colour).length} coloured archetypes -> ` +
+    `${path.relative(ROOT, OUT_UI).replace(/\\/g, '/')}`,
 );

@@ -1,5 +1,6 @@
 import { marketNews, quietWeek, type GameState } from '../../engine';
 import { gameDate } from '../format';
+import { Press, hasPress } from './Art';
 
 /**
  * The Weekly Plat.
@@ -23,7 +24,9 @@ export default function NewsRail({ state }: { state: GameState }) {
   return (
     <aside className="plat" aria-label="Market news">
       <div className="plat-masthead">
-        <div className="plat-title">The Weekly Plat</div>
+        <div className="plat-title">
+          <Press name="masthead-the_weekly_plat" title="The Weekly Plat" />
+        </div>
         <div className="plat-dateline">
           Kesslerville &middot; Week {week} &middot; {gameDate(state.day)}
         </div>
@@ -31,10 +34,23 @@ export default function NewsRail({ state }: { state: GameState }) {
 
       {quiet && <p className="plat-quiet">{quiet}</p>}
 
-      {items.map((item) => (
+      {items.map((item) => {
+        const plate = plateFor(item.id);
+        return (
         <article key={item.id} className="plat-item">
           <div className="plat-kicker">{item.kicker}</div>
-          <h3 className="plat-headline">{item.headline}</h3>
+          {plate ? (
+            /*
+             * Set in wood-type when there is a plate for this event. The
+             * engine's own headline goes on as the accessible name, so the
+             * text is never only available as a picture.
+             */
+            <h3 className="plat-headline plat-headline-set">
+              <Press name={plate} title={item.headline} />
+            </h3>
+          ) : (
+            <h3 className="plat-headline">{item.headline}</h3>
+          )}
           <p className="plat-body">{item.body}</p>
 
           {/* The reason this exists. Derived, so it cannot drift from the
@@ -49,7 +65,34 @@ export default function NewsRail({ state }: { state: GameState }) {
             <div className="plat-meta">{item.daysRemaining} days left</div>
           )}
         </article>
-      ))}
+        );
+      })}
     </aside>
   );
+}
+
+/**
+ * Which headline plate, if any, belongs to a news item.
+ *
+ * Six plates were drawn and only four are claimed here. `zoning_shift` and
+ * `mill_rezoned` name events this game does not have -- the nearest are
+ * `school_rezoning` and `revitalization`, and a plate reading MILL REZONED
+ * above a story about a school catchment would be the picture contradicting
+ * the text. They stay unused until either the plate or the event is renamed.
+ *
+ * Keyed off the definition id inside the item id, which is built as
+ * `event:<defId>:<startedDay>`.
+ */
+const PLATES: Record<string, string> = {
+  housing_boom: 'plate-boom',
+  correction: 'plate-slump',
+  rate_cut: 'plate-rates_cut',
+  rate_hike: 'plate-rates_spike',
+};
+
+function plateFor(itemId: string): string | null {
+  const [kind, defId] = itemId.split(':');
+  if (kind !== 'event') return null;
+  const name = PLATES[defId];
+  return name && hasPress(name) ? name : null;
 }

@@ -394,9 +394,10 @@ integration and are written up in `docs/design/art-brief.md`:
 
 Signing certificates, the itch HTML embed (project kind is stuck on
 Downloadable), the cover image, and human playtesting. Plus the outstanding
-art, now a short and specific list: `colonial`, `condo` and `townhouse` (base
-plus four overlays each), and a lot-origin coordinate for each of the fourteen
-furniture pieces that already arrived. And the open balance
+art, now a short and specific list: `colonial`, `condo` and `townhouse` in both
+the line and coloured sets, a lot-origin coordinate for each of the fourteen
+furniture pieces that have now arrived twice, Scout's three board sprites, and
+four more headline plates with digits drawn. And the open balance
 question from `docs/playthrough-findings.md`: **liquidity never binds** in this
 game — measured, zero occasions across eight campaigns — which is a design
 decision rather than a bug, but real flipping is substantially about running

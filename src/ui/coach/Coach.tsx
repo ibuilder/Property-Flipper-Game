@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { conceptProgress, noteCoachLine } from '../../engine';
+import { ScoutPortrait } from '../components/Art';
 import { useAction } from '../store';
 import { useDealContext } from './context';
 import { RULES, type CoachContext, type CoachRule } from './rules';
@@ -124,7 +125,7 @@ export default function Coach({ context: base }: { context: CoachContext }) {
       <span className="corner br" />
       <div className="coach-head">
         <span className="coach-portrait" aria-hidden="true">
-          {MOOD_MARK[rule.mood]}
+          <ScoutPortrait mood={rule.mood} size={34} />
         </span>
         <div className="coach-who">
           <strong>Scout</strong>
@@ -145,17 +146,3 @@ export default function Coach({ context: base }: { context: CoachContext }) {
   );
 }
 
-/**
- * A mark per mood, standing in for the commissioned portraits.
- *
- * The handoff specifies six 320px duotone busts. These are the slots, sized
- * and positioned so the art drops in without the layout moving.
- */
-const MOOD_MARK: Record<string, string> = {
-  briefing: '◔',
-  explaining: '◑',
-  pointing: '◗',
-  warning: '◕',
-  approving: '●',
-  disappointed: '◌',
-};

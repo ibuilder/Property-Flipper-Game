@@ -5,6 +5,7 @@ import {
   type ArtPath,
   type HouseState,
 } from './art.generated';
+import { COLOR_TRANSFORM, COLOR_UNIT, HOUSE_COLOR_BARE } from '../art.generated';
 import { TILE, project } from './projection';
 
 /**
@@ -142,5 +143,41 @@ export function houseDrawing(
     paths,
     transform: `translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${ART_SCALE.toFixed(4)})`,
     strokeWidth: (w: number) => (w * INK) / ART_SCALE,
+  };
+}
+
+/**
+ * The same placement, for the coloured set.
+ *
+ * Two differences, both of which would show immediately if they were wrong.
+ * The coloured art is drawn on a larger grid of its own -- `COLOR_UNIT` rather
+ * than `ART_UNIT` -- and each file carries a per-archetype `k` that fits its
+ * drawing to its artboard. Dividing `k` out is what keeps a bungalow smaller
+ * than a mill loft instead of rendering every house the same height, which is
+ * what using the artboards as delivered would do.
+ *
+ * The origin of the art is the lot's west corner, matching the line set, so
+ * both styles stand on exactly the same ground.
+ */
+export function colorHouseDrawing(
+  gx: number,
+  gy: number,
+  archetypeId: string,
+  state: HouseState | null,
+  cx = 0,
+  cy = 0,
+): { body: string; transform: string } | null {
+  const id = artIdFor(archetypeId);
+  const art = HOUSE_COLOR_BARE[id];
+  const t = COLOR_TRANSFORM[id];
+  if (!art || !t || !COLOR_UNIT) return null;
+
+  const s = TILE / COLOR_UNIT / t.k;
+  const o = project(gx, gy, cx, cy);
+  return {
+    body: art.base + (state && art[state] ? art[state] : ''),
+    transform:
+      `translate(${(o.x - s * t.tx).toFixed(2)} ${(o.y - s * t.ty).toFixed(2)})` +
+      ` scale(${s.toFixed(5)})`,
   };
 }

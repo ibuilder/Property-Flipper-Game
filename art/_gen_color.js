@@ -299,3 +299,205 @@ function bounds(o){
   o.forEach(sp=>sp.pts.forEach(p=>{mnx=Math.min(mnx,p[0]);mxx=Math.max(mxx,p[0]);mny=Math.min(mny,p[1]);mxy=Math.max(mxy,p[1]);}));
   return [mnx,mny,mxx,mxy];
 }
+
+// ---- condition states (coloured overlays, same transform as the base) ----
+const ANCH={
+ bungalow:{lawn:[0.09,0.25,0.74,0.96]}, ranch:{lawn:[0.10,0.40,0.58,0.96]},
+ duplex:{lawn:[0.10,0.30,0.62,0.96]},  mill_loft:{lawn:[0.07,0.22,0.58,0.94]},
+ victorian:{lawn:[0.06,0.21,0.58,0.96]}, split_level:{lawn:[0.05,0.15,0.40,0.96]},
+ new_build:{lawn:[0.07,0.25,0.42,0.66]}
+};
+function cube(o,x0,y0,x1,y1,z0,z1,col){
+  fp(o,[P(x0,y0,z1),P(x1,y0,z1),P(x1,y1,z1),P(x0,y1,z1)],sh(col,1.14),sh(col,0.58),0.7);
+  fp(o,[P(x0,y0,z0),P(x0,y1,z0),P(x0,y1,z1),P(x0,y0,z1)],sh(col,1.0),sh(col,0.58),0.7);
+  fp(o,[P(x0,y1,z0),P(x1,y1,z0),P(x1,y1,z1),P(x0,y1,z1)],sh(col,0.8),sh(col,0.52),0.7);
+}
+function glassOver(s,o,w,col,edge){
+  const F=w.face==='L'?PL:PR, i=0.16, iv=w.h*0.13;
+  fp(o,[F(s,w.u+w.w*i,w.v+iv),F(s,w.u+w.w*(1-i),w.v+iv),F(s,w.u+w.w*(1-i),w.v+w.h-iv),F(s,w.u+w.w*i,w.v+w.h-iv)],col,edge,0.6);
+}
+function weeds(o,gx,gy,n,spread,col){
+  for(let i=0;i<n;i++){
+    const bx=gx+(Math.random()-0.5)*spread, by=gy+(Math.random()-0.5)*spread;
+    const b=P(bx,by,0), t=P(bx,by,4+Math.random()*5);
+    fp(o,[[b[0]-1.1,b[1]],[t[0]+(Math.random()-0.5)*3,t[1]],[b[0]+1.1,b[1]]],col||'#8a8d4e',sh(col||'#8a8d4e',0.72),0.5);
+  }
+}
+const CSTATES={
+ distressed(s,o){
+  const L=ANCH[s.id].lawn;
+  // dead lawn patches
+  for(let i=0;i<8;i++){ const x=0.10+Math.random()*0.80, y=0.10+Math.random()*0.80, c=P(x,y,0);
+    fp(o,[[c[0]-7,c[1]],[c[0],c[1]-4],[c[0]+7,c[1]],[c[0],c[1]+4]],'#9c9464','none'); }
+  (s.windows||[]).forEach(w=>{
+    glassOver(s,o,w,'#3b4247',sh('#3b4247',0.8));
+    const F=w.face==='L'?PL:PR;
+    [0.30,0.62].forEach(t=>fp(o,[F(s,w.u-0.008,w.v+w.h*t),F(s,w.u+w.w+0.008,w.v+w.h*(t+0.06)),
+      F(s,w.u+w.w+0.008,w.v+w.h*(t+0.20)),F(s,w.u-0.008,w.v+w.h*(t+0.14))],'#9a7b55',sh('#9a7b55',0.68),0.6));
+  });
+  (s.doors||[]).forEach(w=>{const F=w.face==='L'?PL:PR;
+    fp(o,[F(s,w.u-0.01,w.v+w.h*0.32),F(s,w.u+w.w+0.01,w.v+w.h*0.42),
+          F(s,w.u+w.w+0.01,w.v+w.h*0.60),F(s,w.u-0.01,w.v+w.h*0.50)],'#9a7b55',sh('#9a7b55',0.68),0.6);});
+  // holes in the roofline
+  const ov=s.ov??0.05, a0=s.x0-ov, xm=(s.x0+s.x1)/2, zr=s.h+(s.rh||0);
+  if(s.roof==='gable'||s.roof==='hip'){
+    [[0.30,0.24],[0.62,0.58],[0.44,0.80]].forEach(([t,u])=>{
+      const q=(tt,uu)=>P(a0+tt*(xm-a0), s.y0+uu*(s.y1-s.y0), s.h+tt*s.rh);
+      fp(o,[q(t,u),q(t+0.15,u+0.05),q(t+0.11,u+0.17),q(t-0.03,u+0.13)],'#2a2b2c',sh('#2a2b2c',1.6),0.6);});
+  }
+  weeds(o,(L[0]+L[1])/2,(L[2]+L[3])/2,10,0.16);
+  weeds(o,s.x0-0.03,0.30,7,0.22,'#7d8a4a');
+  weeds(o,(s.x0+s.x1)/2,s.y1+0.03,7,0.20,'#7d8a4a');
+  // fallen gutter
+  const gp=P(s.x0,0.30,s.h), gq=P(s.x0-0.03,0.36,s.h-9);
+  fp(o,[gp,[gp[0]+2,gp[1]+1],[gq[0]+2,gq[1]+1],gq],'#8e8b80','#6a6862',0.6);
+ },
+ occupied(s,o){
+  (s.windows||[]).forEach(w=>{
+    glassOver(s,o,w,C.glass,C.frame);
+    const F=w.face==='L'?PL:PR, i=0.18;
+    fp(o,[F(s,w.u+w.w*i,w.v+w.h*0.10),F(s,w.u+w.w*(i+0.16),w.v+w.h*0.10),
+          F(s,w.u+w.w*(i+0.16),w.v+w.h*0.90),F(s,w.u+w.w*i,w.v+w.h*0.90)],'#e8ddc6',sh('#e8ddc6',0.72),0.5);
+    fp(o,[F(s,w.u+w.w*(1-i-0.16),w.v+w.h*0.10),F(s,w.u+w.w*(1-i),w.v+w.h*0.10),
+          F(s,w.u+w.w*(1-i),w.v+w.h*0.90),F(s,w.u+w.w*(1-i-0.16),w.v+w.h*0.90)],'#e8ddc6',sh('#e8ddc6',0.72),0.5);
+  });
+  const L=ANCH[s.id].lawn, cx0=L[0], cx1=Math.min(L[1],L[0]+0.17), cy0=L[2], cy1=Math.min(L[3],L[2]+0.30);
+  cube(o,cx0,cy0,cx1,cy1,2,8,'#8a4f46');
+  cube(o,cx0+0.02,cy0+0.07,cx1-0.02,cy1-0.07,8,13,'#a8635a');
+  glassOverBox(o,cx0+0.02,cy0+0.09,cy1-0.09,9,12);
+  [cy0+0.05,cy1-0.05].forEach(y=>{const b=P(cx0,y,1.6);
+    fp(o,[[b[0]-2,b[1]],[b[0]+2,b[1]],[b[0]+2,b[1]+2],[b[0]-2,b[1]+2]],'#2f3134','none');});
+  // wheelie bin and a bike by the door
+  cube(o,cx1+0.02,cy1-0.10,cx1+0.10,cy1-0.02,0,9,'#4a5a4c');
+  const bp=P(s.x0-0.02,0.26,0);
+  fp(o,[[bp[0]-5,bp[1]-4],[bp[0]+5,bp[1]-6],[bp[0]+5,bp[1]-3],[bp[0]-5,bp[1]-1]],'#3f5766','#2a3b47',0.5);
+ },
+ working(s,o){
+  // scaffold on the clear right facade
+  const gy=s.y1+0.035, x0=s.x0, x1=s.x1, top=s.h+7, tube='#a9a48f';
+  const us=[0.02,0.5,0.98];
+  us.forEach(u=>{const gx=x0+u*(x1-x0);
+    fp(o,[P(gx,gy,0),P(gx,gy,top)],'none',sh(tube,0.8),0);
+    const a=P(gx,gy,0), b=P(gx,gy,top);
+    fp(o,[[a[0]-0.9,a[1]],[a[0]+0.9,a[1]],[b[0]+0.9,b[1]],[b[0]-0.9,b[1]]],tube,sh(tube,0.7),0.5);});
+  const lifts=[]; for(let z=top; z>3; z-=Math.max(11,top/4)) lifts.push(z);
+  lifts.forEach(z=>{const a=P(x0,gy,z), b=P(x1,gy,z);
+    fp(o,[[a[0],a[1]-0.9],[b[0],b[1]-0.9],[b[0],b[1]+0.9],[a[0],a[1]+0.9]],tube,sh(tube,0.7),0.5);});
+  for(let i=0;i<lifts.length-1;i++){
+    const m=i%2?[0.02,0.5]:[0.5,0.98];
+    const a=P(x0+m[0]*(x1-x0),gy,lifts[i+1]), b=P(x0+m[1]*(x1-x0),gy,lifts[i]);
+    fp(o,[[a[0],a[1]-1],[b[0],b[1]-1],[b[0],b[1]+1],[a[0],a[1]+1]],sh(tube,0.92),'none',0);
+  }
+  // a plank platform on the top lift
+  const pa=P(x0,gy-0.02,lifts[0]-1), pb=P(x0+0.55*(x1-x0),gy-0.02,lifts[0]-1);
+  fp(o,[[pa[0],pa[1]-1.6],[pb[0],pb[1]-1.6],[pb[0],pb[1]+1.6],[pa[0],pa[1]+1.6]],'#b99a6e',sh('#b99a6e',0.7),0.6);
+  const L=ANCH[s.id].lawn;
+  const sx0=L[0], sx1=Math.min(L[1],L[0]+0.15), sy0=L[2], sy1=Math.min(L[3],L[2]+0.24);
+  // skip
+  fp(o,[P(sx0,sy0,0),P(sx0,sy1,0),P(sx0,sy1,9),P(sx0,sy0,11)],sh('#b06a2e',1.02),sh('#b06a2e',0.6),0.7);
+  fp(o,[P(sx0,sy1,0),P(sx1,sy1,0),P(sx1,sy1,9),P(sx0,sy1,9)],sh('#b06a2e',0.82),sh('#b06a2e',0.55),0.7);
+  fp(o,[P(sx0,sy0,11),P(sx1,sy0,12.5),P(sx1,sy1,9),P(sx0,sy1,9)],sh('#8a5222',0.9),sh('#b06a2e',0.55),0.7);
+  for(let i=0;i<5;i++){const bx=sx0+0.02+Math.random()*0.08, by=sy0+0.03+Math.random()*(sy1-sy0-0.06);
+    const c=P(bx,by,10+Math.random()*4);
+    fp(o,[[c[0]-3,c[1]],[c[0],c[1]-2],[c[0]+3,c[1]],[c[0],c[1]+2]],['#9a8b74','#7d6a52','#a89a84'][i%3],'none');}
+  // material stack + permit board
+  const mx=Math.min(L[1],L[0]+0.13);
+  for(let i=0;i<3;i++) cube(o,L[0]+0.01,sy1+0.03,mx,Math.min(L[3],sy1+0.16),i*3,i*3+2.4,'#b99a6e');
+  const bxp=L[1]+0.01, by0=L[2]-0.16, by1=L[2]-0.02;
+  const p0=P(bxp,(by0+by1)/2,0), p1=P(bxp,(by0+by1)/2,10);
+  fp(o,[[p0[0]-1.2,p0[1]],[p0[0]+1.2,p0[1]],[p1[0]+1.2,p1[1]],[p1[0]-1.2,p1[1]]],'#8a7458','none');
+  fp(o,[P(bxp,by0,9),P(bxp,by1,9),P(bxp,by1,17),P(bxp,by0,17)],'#e4dcc6',sh('#e4dcc6',0.68),0.7);
+  [11,13,15].forEach(z=>fp(o,[P(bxp,by0+0.015,z),P(bxp,by1-0.03,z),P(bxp,by1-0.03,z+0.9),P(bxp,by0+0.015,z+0.9)],'#8d8778','none'));
+  (s.windows||[]).filter((_,i)=>i%4===0).forEach(w=>glassOver(s,o,w,'#c9cfd2',sh('#c9cfd2',0.75)));
+ },
+ finished(s,o){
+  (s.windows||[]).forEach(w=>glassOver(s,o,w,C.glass,C.frame));
+  const L=ANCH[s.id].lawn, bxp=(L[0]+L[1])/2, by0=L[2]+0.02, by1=Math.min(L[3],L[2]+0.20);
+  const p0=P(bxp,(by0+by1)/2,0), p1=P(bxp,(by0+by1)/2,12);
+  fp(o,[[p0[0]-1.4,p0[1]],[p0[0]+1.4,p0[1]],[p1[0]+1.4,p1[1]],[p1[0]-1.4,p1[1]]],'#8a7458','none');
+  fp(o,[P(bxp,by0,11),P(bxp,by1,11),P(bxp,by1,21),P(bxp,by0,21)],'#f2ece0',sh('#f2ece0',0.66),0.8);
+  fp(o,[P(bxp,by0+0.02,13),P(bxp,by1-0.02,13),P(bxp,by1-0.02,18.5),P(bxp,by0+0.02,18.5)],'#b3453a','none');
+  fp(o,[P(bxp,by0+0.035,14.4),P(bxp,by1-0.06,14.4),P(bxp,by1-0.06,17),P(bxp,by0+0.035,17)],'#f7f2e6','none');
+  for(let i=0;i<6;i++) bush(o,s.x0-0.035,0.10+i*0.15,6,4,i%2?C.leaf:C.leaf2);
+  for(let i=0;i<4;i++) bush(o,(s.x0+s.x1)/2-0.12+i*0.11,s.y1+0.04,5.5,3.6,C.leaf);
+  flowers(o,s.x0-0.035,0.44,10,0.30);
+  flowers(o,bxp,by1+0.10,8,0.14);
+  const t0=P(L[0]+0.02,L[3]-0.06,0), t1=P(L[1]-0.02,L[3]-0.06,0);
+  fp(o,[[t0[0],t0[1]-3],[t1[0],t1[1]-3],[t1[0],t1[1]+3],[t0[0],t0[1]+3]],sh(C.path,1.02),C.pathLine,0.6);
+ }
+};
+function glassOverBox(o,gx,y0,y1,z0,z1){
+  fp(o,[P(gx,y0,z0),P(gx,y1,z0),P(gx,y1,z1),P(gx,y0,z1)],'#7fa0b4',sh('#7fa0b4',0.72),0.5);
+}
+function drawState(id,st){
+  const s=Object.assign({id},H[id]), o=mk();
+  CSTATES[st](s,o); return o;
+}
+
+const CF={};
+CF.tree_oak=o=>tree(o,0.5,0.5,17,13,'#7f9a5c');
+CF.tree_pine=o=>{ const b=P(0.5,0.5,0), t=P(0.5,0.5,10);
+  fp(o,[[b[0]-2,b[1]],[b[0]+2,b[1]],[t[0]+1.6,t[1]],[t[0]-1.6,t[1]]],'#6b5340','#4c3b2c',0.7);
+  [[10,12,6],[19,9.5,4.8],[27,6.5,3.4]].forEach(([z,rx,ry],i)=>{const c=P(0.5,0.5,z);
+    fp(o,[[c[0]-rx,c[1]],[c[0],c[1]+ry],[c[0]+rx,c[1]],[c[0],c[1]-ry-8]],
+      i%2?'#4f6b3c':'#5c7a45',sh('#4f6b3c',0.7),0.7);});};
+CF.tree_slim=o=>{ const b=P(0.5,0.5,0), t=P(0.5,0.5,14);
+  fp(o,[[b[0]-1.8,b[1]],[b[0]+1.8,b[1]],[t[0]+1.4,t[1]],[t[0]-1.4,t[1]]],'#6b5340','#4c3b2c',0.7);
+  const c=P(0.5,0.5,30), pts=[];
+  for(let i=0;i<11;i++){const a=Math.PI*2*i/11; pts.push([c[0]+8*Math.cos(a), c[1]+15*Math.sin(a)]);}
+  fp(o,pts,'#6f8a52','#54693d',0.7);};
+CF.driveway=o=>{ fp(o,[P(.06,.10,0),P(.06,.90,0),P(.94,.90,0),P(.94,.10,0)],C.path,C.pathLine,0.8);
+  [0.34,0.66].forEach(t=>ln(o,[P(.06,.10+t*.80,0),P(.94,.10+t*.80,0)],C.pathLine,0.6));
+  ln(o,[P(.50,.10,0),P(.50,.90,0)],C.pathLine,0.6);};
+CF.fence=o=>{ const y0=.05,y1=.95, col='#b39a72';
+  for(let i=0;i<=5;i++){const y=y0+(y1-y0)*i/5, a=P(.5,y,0), b=P(.5,y,13);
+    fp(o,[[a[0]-1.5,a[1]],[a[0]+1.5,a[1]],[b[0]+1.5,b[1]-2],[b[0],b[1]-4],[b[0]-1.5,b[1]-2]],col,sh(col,0.68),0.6);}
+  [10,4.5].forEach(z=>{const a=P(.5,y0,z), b=P(.5,y1,z);
+    fp(o,[[a[0],a[1]-1.4],[b[0],b[1]-1.4],[b[0],b[1]+1.4],[a[0],a[1]+1.4]],sh(col,1.04),sh(col,0.7),0.5);});};
+CF.hedge=o=>{ const y0=.05,y1=.95;
+  fp(o,[P(.34,y0,10),P(.66,y0,10),P(.66,y1,10),P(.34,y1,10)],'#5f7a43','#44582f',0.7);
+  fp(o,[P(.34,y0,0),P(.34,y1,0),P(.34,y1,10),P(.34,y0,10)],'#6f8a52','#44582f',0.7);
+  fp(o,[P(.34,y1,0),P(.66,y1,0),P(.66,y1,10),P(.34,y1,10)],'#54693d','#3b4d29',0.7);
+  for(let i=0;i<6;i++) bush(o,.34+Math.random()*0.3,y0+(y1-y0)*(i+0.5)/6,5,11,'#6f8a52');};
+CF.pool=o=>{ fp(o,[P(.06,.14,0),P(.06,.86,0),P(.94,.86,0),P(.94,.14,0)],C.path,C.pathLine,0.8);
+  fp(o,[P(.16,.24,0),P(.16,.76,0),P(.84,.76,0),P(.84,.24,0)],'#6fa3b8','#4b7d92',0.7);
+  [0.3,0.5,0.7].forEach(t=>ln(o,[P(.24,.24+t*.52,0),P(.62,.24+t*.52,0)],'#a3ccdb',0.7));
+  const a=P(.16,.34,0), b=P(.16,.44,6);
+  fp(o,[[a[0]-1,a[1]],[a[0]+1,a[1]],[b[0]+1,b[1]],[b[0]-1,b[1]]],'#cfcabb','none');};
+CF.skip=o=>{ const x0=.24,x1=.76,y0=.16,y1=.84, col='#b06a2e';
+  fp(o,[P(x0,y0,0),P(x0,y1,0),P(x0,y1,10),P(x0,y0,12)],sh(col,1.04),sh(col,0.6),0.7);
+  fp(o,[P(x0,y1,0),P(x1,y1,0),P(x1,y1,10),P(x0,y1,10)],sh(col,0.82),sh(col,0.55),0.7);
+  fp(o,[P(x0,y0,12),P(x1,y0,13.5),P(x1,y1,10),P(x0,y1,10)],'#7d5a3c','#5c422b',0.7);
+  for(let i=0;i<6;i++){const c=P(x0+0.04+Math.random()*0.4,y0+0.06+Math.random()*0.6,11+Math.random()*4);
+    fp(o,[[c[0]-3.4,c[1]],[c[0],c[1]-2.2],[c[0]+3.4,c[1]],[c[0],c[1]+2.2]],['#9a8b74','#7d6a52','#a89a84'][i%3],'none');}};
+function cboard(o,panel,lines,ph,pz0,pz1){
+  const xm=.5, y0=.20,y1=.80;
+  const p0=P(xm,(y0+y1)/2,0), p1=P(xm,(y0+y1)/2,ph);
+  fp(o,[[p0[0]-1.6,p0[1]],[p0[0]+1.6,p0[1]],[p1[0]+1.6,p1[1]],[p1[0]-1.6,p1[1]]],'#8a7458','#63523c',0.6);
+  fp(o,[P(xm,y0,pz0),P(xm,y1,pz0),P(xm,y1,pz1),P(xm,y0,pz1)],panel,sh(panel,0.66),0.8);
+  lines.forEach(([z,w,col])=>fp(o,[P(xm,y0+0.04,z),P(xm,y0+0.04+w,z),P(xm,y0+0.04+w,z+1.4),P(xm,y0+0.04,z+1.4)],col,'none'));
+}
+CF.permit_board=o=>cboard(o,'#e4dcc6',[[14,0.48,'#8d8778'],[17,0.52,'#8d8778'],[20,0.36,'#8d8778']],14,11,24);
+CF.sold_sign=o=>{ cboard(o,'#f2ece0',[[15,0.5,'#b3453a'],[19,0.42,'#b3453a']],16,12,26);
+  const xm=.5; fp(o,[P(xm,.20,12),P(xm,.80,26),P(xm,.80,23),P(xm,.20,9)],'#b3453a','none');};
+CF.for_sale_sign=o=>cboard(o,'#f2ece0',[[15,0.5,'#3f6187'],[18.6,0.44,'#3f6187'],[22,0.3,'#8d8778']],16,12,26);
+CF.rival_hoarding=o=>{ const xm=.5;
+  [.18,.82].forEach(y=>{const a=P(xm,y,0), b=P(xm,y,14);
+    fp(o,[[a[0]-1.6,a[1]],[a[0]+1.6,a[1]],[b[0]+1.6,b[1]],[b[0]-1.6,b[1]]],'#8a7458','#63523c',0.6);});
+  fp(o,[P(xm,.06,13),P(xm,.94,13),P(xm,.94,34),P(xm,.06,34)],'#dcd3bd',sh('#dcd3bd',0.66),0.8);
+  fp(o,[P(xm,.10,28),P(xm,.62,28),P(xm,.62,32),P(xm,.10,32)],'#5980a6','none');
+  [22,18.5].forEach(z=>fp(o,[P(xm,.10,z),P(xm,.72,z),P(xm,.72,z+1.6),P(xm,.10,z+1.6)],'#8d8778','none'));};
+CF.parked_car=o=>{ const x0=.16,x1=.62,y0=.10,y1=.90, col='#8a4f46';
+  cube(o,x0,y0,x1,y1,2.4,8,col);
+  cube(o,x0+0.05,y0+0.20,x1-0.05,y1-0.20,8,13.5,sh(col,1.16));
+  fp(o,[P(x0+0.05,y0+0.24,9),P(x0+0.05,y1-0.24,9),P(x0+0.05,y1-0.24,12.8),P(x0+0.05,y0+0.24,12.8)],'#7fa0b4',sh('#7fa0b4',0.72),0.5);
+  [y0+0.14,y1-0.14].forEach(y=>{const b=P(x0,y,1.8);
+    fp(o,[[b[0]-2.2,b[1]-1],[b[0]+2.2,b[1]-1],[b[0]+2.2,b[1]+1.6],[b[0]-2.2,b[1]+1.6]],'#2f3134','none');
+    const c=P(x1,y,1.8);
+    fp(o,[[c[0]-2.2,c[1]-1],[c[0]+2.2,c[1]-1],[c[0]+2.2,c[1]+1.6],[c[0]-2.2,c[1]+1.6]],'#2f3134','none');});};
+CF.street_lamp=o=>{ const g=.5, a=P(g,g,0), b=P(g,g,54);
+  fp(o,[[a[0]-2,a[1]],[a[0]+2,a[1]],[b[0]+1.4,b[1]],[b[0]-1.4,b[1]]],'#5b6068','#3e434a',0.7);
+  const c=P(g,g+0.26,56);
+  fp(o,[[b[0]-1.3,b[1]],[b[0]+1.3,b[1]-1],[c[0]+1.3,c[1]-1],[c[0]-1.3,c[1]]],'#5b6068','#3e434a',0.7);
+  fp(o,[[c[0]-4,c[1]],[c[0],c[1]-3],[c[0]+4,c[1]],[c[0]+2.6,c[1]+5.4],[c[0]-2.6,c[1]+5.4]],'#f6c97c','#cfa557',0.7);
+  const d=P(g,g,0); fp(o,[[d[0]-5,d[1]],[d[0],d[1]-3],[d[0]+5,d[1]],[d[0],d[1]+3]],'#6b6f74','#4a4e53',0.6);};

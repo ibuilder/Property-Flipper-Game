@@ -1,28 +1,46 @@
 # Property Flipper — art delivery
 
-Stage 1 (7 house archetypes) and stage 2 (28 condition-state overlays). 35 SVGs in `houses/`.
+Two complete sets. Pick one before extending either.
 
-## Naming
-`house-<id>.svg` — base drawing
-`house-<id>-<state>.svg` — overlay, states: distressed, occupied, working, finished
+## art/houses/ — monochrome line set (original brief)
+7 archetypes + 28 condition overlays. Pure #000000 stroke on transparent, two weights
+(2px contour / 1px interior), 128x128 artboard, recoloured at runtime. Source: `_gen.js`.
+Known deviation: strokes are live stroke attributes, not outlined paths.
 
-ids: bungalow, ranch, duplex, mill_loft, victorian, split_level, new_build
+## art/houses-color/ — coloured set (reference-matched)
+7 archetypes + 28 condition overlays. 256x256 artboard. Flat-shaded: one base colour per material
+with four derived values (roof-left x1.14, roof-right x0.86, left wall x1.08, right wall x0.80),
+warm lit windows, fascia bands, chimneys, kerbed plinth with lawn, path and planting.
+Colour is baked, so runtime recolour and the two themes do not apply to this set.
+Source: `_gen_color.js`.
 
-## Conformance with the brief
-- True isometric, x = 0.7071(gx+gy), y = 0.3748(gy-gx); viewed from the south-east, two wall faces.
-- 128 x 128 artboard, explicit viewBox, origin top-left, house centred.
-- Footprint inside the 36px lot diamond; only eaves overhang.
-- Two weights: 2px outer contour, 1px interior detail.
-- Pure #000000 stroke on transparent. No fills, gradients, shadows, texture, baked material colour.
-- No <image>, no fonts, no text, no external references, no id attributes.
-- Overlays share the base drawing's origin and transform exactly, so state swaps do not move the building.
+## art/houses-dusk/ · art/houses-autumn/
+7 each. Colour remaps of the coloured bases, not redraws — dusk drops every value to 52% and pushes
+it blue while the glass brightens; autumn rusts the greens. Winter follows the same pattern.
 
-## Known deviation, flagged not hidden
-Strokes are live `stroke` attributes, not outlined paths. This keeps the line weight correct at every
-scale and makes runtime recolour a single attribute swap. Outlining to filled paths is a mechanical
-conversion if the pipeline requires it.
+## art/furniture-color/ (14) · art/furniture/ (14 line)
+Trees x3, driveway, fence, hedge, pool, skip, permit board, sold sign, for-sale sign,
+rival hoarding, parked car, street lamp. 96px artboards, same projection and scale.
 
-## Source
-`_gen.js` is the source file: each archetype is a parametric solid (footprint, wall height, roof type,
-window schedule) and every overlay is a function of that solid. Change a pitch or a footprint there and
-all five files for that archetype regenerate consistently.
+## art/scout/ — 6 moods + 4 NPC cast
+One parametric bust rig. Mood is carried by brow height and angle, eyelid, mouth curve, ear droop
+and head tilt; nothing else moves. 320x320. Cast: appraiser, lender, rival, inspector.
+Not yet delivered: the 3 isometric board sprites (idle / walking / digging, 2 frames each).
+
+## art/icons/ — 22
+24px grid, 1.5 stroke, round caps and joins, single colour. All 22 use Lucide-compatible names;
+swap any for the Lucide original rather than carrying your own.
+
+## art/press/ — 1 masthead + 6 headline plates
+Condensed wood-type drawn as outlined paths, no font dependency. Uppercase A-Z only —
+digits and punctuation glyphs are not drawn yet, which is why the masthead kicker has gaps.
+
+## Format
+SVG throughout. Paths only, explicit viewBox, origin top-left, no <image>, no fonts, no external
+references, no id attributes on internal elements. Overlays share their base's transform exactly,
+so a state swap never moves the building.
+
+## Screens built on the set
+- `Board Screen.dc.html` — 3x3 block, click a lot, underwriting panel, Scout coaching, state machine
+- `Style Guide.dc.html` — construction rules, palette, full asset index
+- `Coloured Houses.dc.html` · `Property Flipper Art.dc.html` · `Colour Test.dc.html` — delivery boards

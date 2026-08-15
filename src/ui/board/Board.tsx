@@ -2,7 +2,7 @@
 import { NEIGHBORHOODS_BY_ID, type GameState, type Property } from '../../engine';
 import { RAMP } from '../graphics/Charts';
 import { DATA_VIEWS, DATA_VIEWS_BY_ID, type DataViewId, type Parcel } from './dataViews';
-import { houseDrawing, houseState } from './art';
+import { colorHouseDrawing, houseDrawing, houseState } from './art';
 import { DISTRICTS, STREETS, activeDistricts, buildParcels } from './layout';
 import { GRID, TILE, ZOOM, boardExtent, project, tileSides, tileTop, toPoints } from './projection';
 
@@ -43,6 +43,22 @@ export default function Board({
   });
   const [zoom, setZoom] = useState<keyof typeof ZOOM>('town');
   const [hover, setHover] = useState<string | null>(null);
+  /*
+   * Line or colour.
+   *
+   * Both sets are complete, and they are genuinely different pictures rather
+   * than two finishes of one: the line set takes the theme and stays out of the
+   * way of the data ramp, and the coloured set is a warmer, more literal town
+   * that reads better at a glance and worse over a colour scale. There is no
+   * right answer to impose, so it is the player's, and it persists.
+   */
+  const [style, setStyle] = useState<'line' | 'colour'>(() => {
+    try {
+      return localStorage.getItem('flipper:boardArt') === 'colour' ? 'colour' : 'line';
+    } catch {
+      return 'line';
+    }
+  });
 
   const parcels = useMemo(
     () => buildParcels(state),
@@ -63,6 +79,15 @@ export default function Board({
     }
   };
 
+  const chooseStyle = (next: 'line' | 'colour') => {
+    setStyle(next);
+    try {
+      localStorage.setItem('flipper:boardArt', next);
+    } catch {
+      /* the choice simply will not persist */
+    }
+  };
+
   return (
     <div className="board">
       <div className="board-head">
@@ -76,6 +101,18 @@ export default function Board({
               aria-pressed={v.id === view}
             >
               {v.label}
+            </button>
+          ))}
+        </div>
+        <div className="seg" role="group" aria-label="House art">
+          {(['line', 'colour'] as const).map((s) => (
+            <button
+              key={s}
+              className={`seg-opt${s === style ? ' on' : ''}`}
+              onClick={() => chooseStyle(s)}
+              aria-pressed={s === style}
+            >
+              {s}
             </button>
           ))}
         </div>
@@ -176,7 +213,7 @@ export default function Board({
                   />
 
                   {/* Drawn after the lot top so they stand on it. */}
-                  {built && <House parcel={parcel} extent={extent} />}
+                  {built && <House parcel={parcel} extent={extent} style={style} />}
                 </g>
               );
             })}
@@ -229,9 +266,38 @@ export default function Board({
  * boarded windows -- and holding it apart from the building is what lets the
  * player read the state of a lot at town zoom without reading the house.
  */
-function House({ parcel, extent }: { parcel: Parcel; extent: { cx: number; cy: number } }) {
+function House({
+  parcel,
+  extent,
+  style,
+}: {
+  parcel: Parcel;
+  extent: { cx: number; cy: number };
+  style: 'line' | 'colour';
+}) {
   const prop = parcel.property!;
   const state = houseState(prop);
+
+  if (style === 'colour') {
+    const c = colorHouseDrawing(
+      parcel.gx,
+      parcel.gy,
+      prop.archetypeId,
+      state,
+      extent.cx,
+      extent.cy,
+    );
+    if (c) {
+      return (
+        <g
+          pointerEvents="none"
+          transform={c.transform}
+          dangerouslySetInnerHTML={{ __html: c.body }}
+        />
+      );
+    }
+  }
+
   /*
    * `extent.cy`, not `extent.cy - EXTRUDE`. A built lot is drawn as a plateau:
    * the top face sits at `cy` and the extrusion hangs *below* it. Subtracting

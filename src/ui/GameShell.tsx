@@ -32,6 +32,7 @@ import OutcomeModal from './views/OutcomeModal';
 import SaveModal from './views/SaveModal';
 import HelpModal from './views/HelpModal';
 import AuctionView from './views/AuctionView';
+import { Icon } from './components/Art';
 
 type Tab = 'market' | 'auction' | 'portfolio' | 'finance' | 'skills' | 'deals';
 
@@ -369,6 +370,22 @@ export default function GameShell() {
   );
 }
 
+/**
+ * One icon per tab, from the delivered set.
+ *
+ * Named for what the tab is rather than what it does, because these sit beside
+ * the word rather than replacing it -- the icon is there to make the row
+ * scannable once you know it, not to be guessed cold.
+ */
+const TAB_ICON: Record<Tab, string> = {
+  market: 'search',
+  auction: 'gavel',
+  portfolio: 'home',
+  finance: 'banknote',
+  skills: 'badge-check',
+  deals: 'file-text',
+};
+
 function TabButton({
   id,
   tab,
@@ -402,6 +419,7 @@ function TabButton({
      */
     return (
       <button className="tab locked" disabled title={lockTitle} aria-disabled="true">
+        <Icon name={TAB_ICON[id]} />
         {label}
         <span className="badge">locked</span>
       </button>
@@ -409,6 +427,7 @@ function TabButton({
   }
   return (
     <button className={`tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
+      <Icon name={TAB_ICON[id]} />
       {label}
       {alert ? (
         <span className="badge alert">

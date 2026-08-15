@@ -426,6 +426,22 @@ button {
   padding: 10px 14px;
   font-size: 13px;
   font-weight: 500;
+  /* The icon sits on the text baseline row, not above it: this is a row of
+     labels that happen to be marked, not a row of buttons. */
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* Slightly under the cap height so the mark never outweighs the word. */
+.tab svg {
+  width: 15px;
+  height: 15px;
+  opacity: 0.85;
+}
+
+.tab.active svg {
+  opacity: 1;
 }
 
 .tab:hover {
@@ -2182,15 +2198,28 @@ table.stress-grid td.base {
 }
 
 /* The slot the commissioned portrait drops into, at its final size. */
+/*
+ * Scout's face.
+ *
+ * He is drawn as a bust that fills his artboard, so the frame crops rather than
+ * pads: `overflow: hidden` with the drawing slightly oversized puts the head in
+ * the box at the size the head should be, instead of a small figure floating in
+ * a square. Baked palette, so no colour token here.
+ */
 .coach-portrait {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   flex: none;
-  display: grid;
-  place-items: center;
-  font-size: 19px;
-  color: var(--color-accent);
+  display: block;
+  overflow: hidden;
   border: 1px solid var(--color-divider);
+  background: var(--color-bg);
+}
+
+.coach-portrait svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .coach-who {
@@ -2432,12 +2461,21 @@ tr.clickable.selected .pill.bad {
   margin-bottom: 10px;
 }
 
+/*
+ * The masthead is drawn wood-type, not set text.
+ *
+ * It carries its own rules above and below the wordmark, so the sheet is
+ * capped rather than sized: left to fill a wide rail it would tower over the
+ * stories underneath it, which is the opposite of what a masthead does.
+ */
 .plat-title {
-  font-family: var(--font-heading);
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 1.05;
-  letter-spacing: -0.01em;
+  max-width: 260px;
+  color: var(--color-text);
+}
+
+.plat-title svg {
+  width: 100%;
+  height: auto;
 }
 
 .plat-dateline {
@@ -2472,6 +2510,23 @@ tr.clickable.selected .pill.bad {
   font-weight: 600;
   line-height: 1.15;
   margin: 2px 0 4px;
+}
+
+/*
+ * A headline that has a drawn plate.
+ *
+ * Capped narrower than the masthead so a story never shouts louder than the
+ * paper it is printed in, and inked in the text colour like any other heading.
+ */
+.plat-headline-set {
+  max-width: 230px;
+  color: var(--color-text);
+  margin: 4px 0 6px;
+}
+
+.plat-headline-set svg {
+  width: 100%;
+  height: auto;
 }
 
 .plat-body {
