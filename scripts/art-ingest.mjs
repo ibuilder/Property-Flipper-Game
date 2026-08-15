@@ -333,8 +333,36 @@ const GROUND_FILLS = new Set(['#cdc4b1', '#b0a693', '#9e9584', '#8b9d63', 'rgba(
 /** Half-width of the lot diamond in the coloured set's own coordinates. */
 let colourHalfWidth = null;
 
+/** The `<path>` elements of a body, in document order. */
+function pathsOf(body) {
+  return body.match(/<path\b[^>]*?(?:\/>|>\s*<\/path>)/g) ?? [];
+}
+
+/**
+ * Remove a known number of leading paths.
+ *
+ * Used for the seasonal remaps, where the ground cannot be found by colour --
+ * dusk repaints the plinth itself, so `#cdc4b1` is not there to look for. The
+ * geometry and path order are shared with the coloured base, so the count found
+ * there is the right count here, and the count is checked against a matching
+ * total so a redraw cannot silently shift it.
+ */
+function stripLeading(body, cut, rel, expectTotal) {
+  const parts = pathsOf(body);
+  if (parts.length !== expectTotal) {
+    throw new Error(
+      `art/${rel}: has ${parts.length} paths but the coloured base has ` +
+        `${expectTotal}. The seasonal sets are remaps of that base and must ` +
+        `keep its path order, or the plinth cannot be found by position.`,
+    );
+  }
+  let out = body;
+  for (let i = 0; i < cut; i++) out = out.replace(parts[i], '');
+  return out.trim();
+}
+
 function stripGround(body, rel) {
-  const parts = body.match(/<path\b[^>]*?(?:\/>|>\s*<\/path>)/g) ?? [];
+  const parts = pathsOf(body);
   let cut = 0;
   for (const p of parts) {
     const fill = p.match(/fill="([^"]+)"/);
@@ -357,8 +385,15 @@ function stripGround(body, rel) {
   if (!cut) throw new Error(`art/${rel}: expected the plinth to be drawn first, found none`);
   let out = body;
   for (let i = 0; i < cut; i++) out = out.replace(parts[i], '');
+  groundCut[rel.split('/').pop().replace(/^house-|\.svg$/g, '')] = {
+    cut,
+    total: parts.length,
+  };
   return out.trim();
 }
+
+/** How many leading paths were the ground, per archetype, and the path total. */
+const groundCut = {};
 
 const colour = {};
 const colourBare = {};
@@ -388,6 +423,129 @@ if (fs.existsSync(cdir)) {
       // Only the base stands on ground; the overlays are drawn over it and add
       // no plinth of their own, so there is nothing in them to take off.
       colourBare[id][key] = key === 'base' ? stripGround(body, `houses-color/${name}`) : body;
+    }
+  }
+}
+
+/*
+ * Coloured lot furniture, which needs no anchor because it never lost one.
+ *
+ * The line furniture is centred on its own bounding box inside a 64px board,
+ * which throws away where each piece actually stood -- a fence belongs on a
+ * boundary and a driveway at the kerb, and once both are centred they are the
+ * same drawing as far as placement goes. That set stays unplaced until an
+ * anchor list arrives.
+ *
+ * The coloured set was delivered in raw world coordinates instead. Every piece
+ * shares the houses' origin: horizontal centres land on 38.2, which is the lot
+ * diamond's half width, and anything that stands on the ground has its base on
+ * y = 0, the lot's centre line. Flat pieces straddle it. So these drop straight
+ * onto the board with the same transform the coloured houses use, minus the
+ * per-file fitting, and the offsets that make a street lamp sit off to one side
+ * are preserved rather than averaged away.
+ */
+const furnitureColour = {};
+for (const f of svgsIn('furniture-color')) {
+  const { body } = readMarkup(path.join(dir('furniture-color'), f));
+  /*
+   * Each piece carries its own artboard fitting, the way the coloured houses
+   * do -- except theirs is in `_transforms.json` and these have it inline. It
+   * has to be read and divided back out at placement, or the fitting is
+   * applied twice and every piece renders at artboard size on the lot.
+   */
+  const m = body.match(/^<g transform="translate\((-?[\d.]+) (-?[\d.]+)\) scale\(([\d.]+)\)">/);
+  if (!m) {
+    throw new Error(
+      `art/furniture-color/${f}: expected a wrapping fit transform. Without it ` +
+        `the piece cannot be scaled back to the board's grid.`,
+    );
+  }
+  furnitureColour[f.replace(/^lot-|\.svg$/g, '')] = {
+    tx: Number(m[1]),
+    ty: Number(m[2]),
+    k: Number(m[3]),
+    body,
+  };
+}
+
+/*
+ * The seasonal remaps.
+ *
+ * Delivered as seven bases each and nothing else, which on its own cannot drive
+ * a board that shows houses being renovated, let and listed. They are close to
+ * pure colour transforms of the coloured base -- same path count, same order,
+ * thirteen of a hundred and two paths genuinely redrawn for the planting -- and
+ * the colour substitution they apply is completely consistent: 166 colours, no
+ * conflicts, checked here rather than assumed.
+ *
+ * So the bases are used exactly as delivered, redrawn planting and all, and the
+ * *overlays* are carried into season by applying the same substitution. That
+ * gives a complete set without asking for 56 more drawings, and the one thing
+ * it could get wrong -- a colour meaning two different things -- is the thing
+ * the conflict check rules out.
+ *
+ * Transforms are read from each file rather than borrowed from the coloured
+ * set's `_transforms.json`: `split_level` disagrees with it by 1.6 units, which
+ * would have put that house off its lot in both seasons.
+ */
+const SEASONS = ['autumn', 'dusk'];
+const seasonal = {};
+const seasonMap = { autumn: new Map(), dusk: new Map() };
+
+for (const season of SEASONS) {
+  const sdir = dir(`houses-${season}`);
+  if (!fs.existsSync(sdir)) continue;
+  seasonal[season] = {};
+
+  for (const id of Object.keys(colourTransforms)) {
+    const file = path.join(sdir, `house-${id}.svg`);
+    if (!fs.existsSync(file)) continue;
+    const rel = `houses-${season}/house-${id}.svg`;
+    const { body } = readMarkup(file);
+
+    const m = body.match(/^<g transform="translate\((-?[\d.]+) (-?[\d.]+)\) scale\(([\d.]+)\)">/);
+    if (!m) throw new Error(`art/${rel}: no fit transform`);
+
+    // Colour substitution, derived from this file against the coloured base.
+    const baseFile = path.join(cdir, `house-${id}.svg`);
+    const from = [...readMarkup(baseFile).body.matchAll(/(?:fill|stroke)="(#[0-9a-fA-F]{6})"/g)];
+    const to = [...body.matchAll(/(?:fill|stroke)="(#[0-9a-fA-F]{6})"/g)];
+    if (from.length !== to.length) {
+      throw new Error(`art/${rel}: ${to.length} colours against ${from.length} in the base`);
+    }
+    const map = new Map();
+    for (let i = 0; i < from.length; i++) {
+      const a = from[i][1].toLowerCase();
+      const b = to[i][1];
+      if (map.has(a) && map.get(a) !== b) {
+        throw new Error(
+          `art/${rel}: ${a} becomes both ${map.get(a)} and ${b}. The remap has to ` +
+            `be a function of colour alone or the overlays cannot follow it.`,
+        );
+      }
+      map.set(a, b);
+    }
+
+    const { cut, total } = groundCut[id];
+    seasonal[season][id] = {
+      k: Number(m[3]),
+      tx: Number(m[1]),
+      ty: Number(m[2]),
+      base: stripLeading(body, cut, rel, total),
+    };
+
+    /*
+     * The overlays are *not* baked per season. They are the same drawing with
+     * substituted colours, and storing 56 recoloured copies cost 660KB of
+     * bundle for a picture the player can already see. The substitution is
+     * stored instead and applied where it is needed.
+     */
+    for (const [a, b] of map) {
+      const prev = seasonMap[season].get(a);
+      if (prev && prev !== b) {
+        throw new Error(`art/${rel}: ${a} maps to both ${prev} and ${b} across archetypes`);
+      }
+      seasonMap[season].set(a, b);
     }
   }
 }
@@ -473,6 +631,82 @@ for (const [id, states] of Object.entries(colour)) {
   ui.push(`  ${id}: {`);
   for (const [k, v] of Object.entries(states)) ui.push(`    ${k}: ${j(v)},`);
   ui.push(`  },`);
+}
+ui.push(`};`);
+ui.push(``);
+ui.push(
+  `/**\n` +
+    ` * Lot furniture in the coloured set's world coordinates.\n` +
+    ` *\n` +
+    ` * Shares the coloured houses' origin and unit, so it is placed with the\n` +
+    ` * same transform and no per-piece fitting. The line furniture is not here:\n` +
+    ` * it is centred on its own bounding box, which discards where each piece\n` +
+    ` * stood, and cannot be placed until an anchor list arrives.\n` +
+    ` */`,
+);
+ui.push(`export interface ColorPiece {`);
+ui.push(`  k: number;`);
+ui.push(`  tx: number;`);
+ui.push(`  ty: number;`);
+ui.push(`  body: string;`);
+ui.push(`}`);
+ui.push(``);
+ui.push(`export const FURNITURE_COLOR: Record<string, ColorPiece> = {`);
+for (const [k, v] of Object.entries(furnitureColour)) {
+  ui.push(
+    `  ${JSON.stringify(k)}: { k: ${v.k}, tx: ${v.tx}, ty: ${v.ty}, body: ${j(v.body)} },`,
+  );
+}
+ui.push(`};`);
+ui.push(``);
+ui.push(
+  `/**\n` +
+    ` * Seasonal remaps, plinth removed, with overlays carried across by the\n` +
+    ` * same colour substitution the bases use. Each carries its own fit, which\n` +
+    ` * is not always the one in the coloured set's transforms file.\n` +
+    ` */`,
+);
+ui.push(`export interface SeasonalHouse {`);
+ui.push(`  k: number;`);
+ui.push(`  tx: number;`);
+ui.push(`  ty: number;`);
+ui.push(`  base: string;`);
+ui.push(`}`);
+ui.push(``);
+ui.push(
+  `export const HOUSE_SEASON: Record<string, Record<string, SeasonalHouse>> = {`,
+);
+for (const [season, byId] of Object.entries(seasonal)) {
+  ui.push(`  ${season}: {`);
+  for (const [id, v] of Object.entries(byId)) {
+    ui.push(`    ${id}: {`);
+    ui.push(`      k: ${v.k}, tx: ${v.tx}, ty: ${v.ty},`);
+    ui.push(`      base: ${j(v.base)},`);
+    ui.push(`    },`);
+  }
+  ui.push(`  },`);
+}
+ui.push(`};`);
+ui.push(``);
+ui.push(
+  `/**
+` +
+    ` * Colour substitution per season, applied to the overlays at draw time.
+` +
+    ` *
+` +
+    ` * Storing recoloured copies of all 28 overlays for each season cost 660KB
+` +
+    ` * of bundle to say what this table says in a few hundred bytes. Asserted
+` +
+    ` * conflict-free at ingest, which is the only way it could be wrong.
+` +
+    ` */`,
+);
+ui.push(`export const SEASON_MAP: Record<string, Record<string, string>> = {`);
+for (const [season, m] of Object.entries(seasonMap)) {
+  if (!m.size) continue;
+  ui.push(`  ${season}: ${JSON.stringify(Object.fromEntries(m))},`);
 }
 ui.push(`};`);
 ui.push(``);

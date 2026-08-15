@@ -15,6 +15,7 @@ import { money, moneyShort, percent } from '../format';
 import { useAction, useGame } from '../store';
 import ConfirmButton from '../components/ConfirmButton';
 import FirstTime from '../components/FirstTime';
+import { Face } from '../components/Art';
 import House from '../graphics/House';
 
 /**
@@ -172,7 +173,12 @@ function LotCard({ lot, prop }: { lot: AuctionLot; prop: Property }) {
           </div>
         )}
         <div className="kv">
-          <span className="k">Interest in the room</span>
+          <span className="k">
+            {/* Whose interest. The rival is the only other bidder you ever
+                see, and this is the one line that reports him. */}
+            <Face who="rival" size={22} />
+            Interest in the room
+          </span>
           <span className={`pill ${heat}`}>{heatText}</span>
         </div>
         <div className="kv total">

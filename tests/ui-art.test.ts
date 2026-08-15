@@ -6,6 +6,9 @@ import {
   COLOR_UNIT,
   HOUSE_COLOR,
   HOUSE_COLOR_BARE,
+  HOUSE_SEASON,
+  SEASON_MAP,
+  FURNITURE_COLOR,
   ICONS,
   ICON_BOX,
   NPC,
@@ -13,7 +16,7 @@ import {
   SCOUT,
   SCOUT_BOX,
 } from '../src/ui/art.generated';
-import { artIdFor } from '../src/ui/board/art';
+import { artIdFor, boardSeason, lotFurniture } from '../src/ui/board/art';
 import { RULES } from '../src/ui/coach/rules';
 
 /**
@@ -102,6 +105,93 @@ describe('the interface art', () => {
     // too, or the board's colour style has holes the line style does not.
     for (const a of ARCHETYPES) {
       expect(HOUSE_COLOR[artIdFor(a.id)], `${a.id} has no coloured drawing`).toBeDefined();
+    }
+  });
+
+  it('places lot furniture on the lot, not inside the house', () => {
+    // Every piece is drawn standing at its own lot's centre, which is exactly
+    // where the building is. Without an offset a for-sale board is planted in
+    // the living room and hidden by the roof.
+    const listing = lotFurniture(3, 4, { ownership: null });
+    expect(listing.map((p) => p.name)).toContain('for_sale_sign');
+    for (const p of [...listing, ...lotFurniture(2, 2, null)]) {
+      expect(p.u, `${p.name} u`).toBeGreaterThan(0);
+      expect(p.u, `${p.name} u`).toBeLessThan(1);
+      expect(p.v, `${p.name} v`).toBeGreaterThan(0);
+      expect(p.v, `${p.name} v`).toBeLessThan(1);
+    }
+    // The sign belongs toward the front, which is the only part of the lot the
+    // house does not stand on.
+    const sign = listing.find((p) => p.name === 'for_sale_sign')!;
+    expect(sign.u + sign.v).toBeGreaterThan(1.4);
+
+    // A permit that is still queued is the one fact the board cannot otherwise
+    // show; an issued one must not leave a board standing in the drive.
+    const queued = lotFurniture(1, 1, {
+      ownership: { renovation: { permit: { required: true, daysWaited: 2, queueDays: 10 } } },
+    });
+    expect(queued.map((p) => p.name)).toContain('permit_board');
+    const issued = lotFurniture(1, 1, {
+      ownership: { renovation: { permit: { required: true, daysWaited: 10, queueDays: 10 } } },
+    });
+    expect(issued.map((p) => p.name)).not.toContain('permit_board');
+  });
+
+  it('keeps empty-lot dressing stable across redraws', () => {
+    // Derived from the coordinates alone. A tree that changes species when the
+    // day advances reads as a rendering bug, not as weather.
+    for (const [gx, gy] of [
+      [0, 0],
+      [3, 7],
+      [11, 2],
+      [16, 16],
+    ]) {
+      expect(lotFurniture(gx, gy, null)).toEqual(lotFurniture(gx, gy, null));
+    }
+    const across = Array.from({ length: 17 }, (_, i) => lotFurniture(i, 5, null).length);
+    // Some lots planted, some bare, or it is either a forest or a car park.
+    expect(across.some((n) => n > 0)).toBe(true);
+    expect(across.some((n) => n === 0)).toBe(true);
+  });
+
+  it('divides out each furniture piece own artboard fitting', () => {
+    // These arrived wrapped in a fit-to-artboard transform, like the coloured
+    // houses but inline. Ingesting it without dividing it back out rendered
+    // every piece at artboard size on the lot -- a tree taller than a house.
+    for (const [name, piece] of Object.entries(FURNITURE_COLOR)) {
+      expect(piece.k, `${name} scale`).toBeGreaterThan(0);
+      expect(piece.body, name).toMatch(/^<g transform="translate\(/);
+      expect(Number.isFinite(piece.tx) && Number.isFinite(piece.ty), name).toBe(true);
+    }
+    expect(Object.keys(FURNITURE_COLOR)).toHaveLength(14);
+  });
+
+  it('dresses the board for the season the rest of the game is in', () => {
+    // Read from the same seasonOf the property facade uses, so the two pictures
+    // of one house cannot disagree about the time of year.
+    const seen = new Set<string | null>();
+    for (let day = 0; day < 366; day += 7) seen.add(boardSeason(day));
+    expect(seen.has('autumn'), 'autumn never comes').toBe(true);
+    expect(seen.has('dusk'), 'winter never comes').toBe(true);
+    expect(seen.has(null), 'spring and summer must use the set as drawn').toBe(true);
+
+    for (const season of ['autumn', 'dusk']) {
+      const set = HOUSE_SEASON[season];
+      expect(set, `${season} has no drawings`).toBeDefined();
+      for (const id of Object.keys(HOUSE_COLOR_BARE)) {
+        expect(set[id], `${season}/${id}`).toBeDefined();
+        expect(set[id].k, `${season}/${id} scale`).toBeGreaterThan(0);
+        // A remap that came back identical would mean the season is drawn but
+        // not applied, which looks exactly like it working.
+        expect(set[id].base, `${season}/${id} is identical to the base set`).not.toBe(
+          HOUSE_COLOR_BARE[id].base,
+        );
+        // And the plinth has to be off these too, or a seasonal lot covers the
+        // data ramp that a spring one does not.
+        expect(set[id].base).not.toContain('#cdc4b1');
+      }
+      const map = SEASON_MAP[season];
+      expect(Object.keys(map).length, `${season} colour map`).toBeGreaterThan(20);
     }
   });
 

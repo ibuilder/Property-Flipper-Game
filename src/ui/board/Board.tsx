@@ -2,7 +2,14 @@
 import { NEIGHBORHOODS_BY_ID, type GameState, type Property } from '../../engine';
 import { RAMP } from '../graphics/Charts';
 import { DATA_VIEWS, DATA_VIEWS_BY_ID, type DataViewId, type Parcel } from './dataViews';
-import { colorHouseDrawing, houseDrawing, houseState } from './art';
+import {
+  boardSeason,
+  colorHouseDrawing,
+  furnitureDrawing,
+  houseDrawing,
+  houseState,
+  lotFurniture,
+} from './art';
 import { DISTRICTS, STREETS, activeDistricts, buildParcels } from './layout';
 import { GRID, TILE, ZOOM, boardExtent, project, tileSides, tileTop, toPoints } from './projection';
 
@@ -212,8 +219,24 @@ export default function Board({
                     strokeWidth={isHover ? 1.5 : 0.6}
                   />
 
+                  {/*
+                    Furniture before the house, so a sign in the drive is
+                    overlapped by the building rather than pasted over it. Only
+                    in colour: the line furniture arrived centred on its own
+                    bounding box, so where each piece stood is not recoverable.
+                  */}
+                  {style === 'colour' && (
+                    <Furniture parcel={parcel} extent={extent} />
+                  )}
                   {/* Drawn after the lot top so they stand on it. */}
-                  {built && <House parcel={parcel} extent={extent} style={style} />}
+                  {built && (
+                    <House
+                      parcel={parcel}
+                      extent={extent}
+                      style={style}
+                      season={boardSeason(state.day)}
+                    />
+                  )}
                 </g>
               );
             })}
@@ -253,6 +276,26 @@ export default function Board({
   );
 }
 
+/** Whatever stands on the lot besides the house. */
+function Furniture({
+  parcel,
+  extent,
+}: {
+  parcel: Parcel;
+  extent: { cx: number; cy: number };
+}) {
+  const pieces = lotFurniture(parcel.gx, parcel.gy, parcel.property);
+  const f = furnitureDrawing(parcel.gx, parcel.gy, pieces, extent.cx, extent.cy);
+  if (!f) return null;
+  return (
+    <g
+      className="lot-furniture"
+      pointerEvents="none"
+      dangerouslySetInnerHTML={{ __html: f.body }}
+    />
+  );
+}
+
 /**
  * A house on a lot.
  *
@@ -270,10 +313,12 @@ function House({
   parcel,
   extent,
   style,
+  season,
 }: {
   parcel: Parcel;
   extent: { cx: number; cy: number };
   style: 'line' | 'colour';
+  season: string | null;
 }) {
   const prop = parcel.property!;
   const state = houseState(prop);
@@ -286,10 +331,12 @@ function House({
       state,
       extent.cx,
       extent.cy,
+      season,
     );
     if (c) {
       return (
         <g
+          className="lot-house"
           pointerEvents="none"
           transform={c.transform}
           dangerouslySetInnerHTML={{ __html: c.body }}
@@ -309,7 +356,7 @@ function House({
   const baseCount = houseDrawing(parcel.gx, parcel.gy, prop.archetypeId, null).paths.length;
 
   return (
-    <g pointerEvents="none" transform={d.transform} fill="none" strokeLinejoin="round">
+    <g className="lot-house" pointerEvents="none" transform={d.transform} fill="none" strokeLinejoin="round">
       {d.paths.map((p, i) => (
         <path
           key={i}

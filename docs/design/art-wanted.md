@@ -61,16 +61,26 @@ what does not work is the current state, where the two lists disagree.
 
 ---
 
-## 2. Furniture anchors — no drawing, 28 numbers
+## 2. Furniture anchors — 14 numbers, and only for the line set
 
-Fourteen pieces have now arrived twice — a line set on 64 × 64 and a coloured
-set on 96 × 96 — and neither carries an anchor. Both sets are compiled into the
-game and **neither can be placed**, because "where on the lot does this stand"
-is not recoverable from the file.
+**Correction to an earlier version of this list, which asked for 28.** The
+coloured furniture turned out not to need anything: it was delivered in world
+coordinates, sharing the houses' origin and unit, with each piece's own fit
+wrapped around it. It is placed and on the board.
 
-Needed: for each of the 28 files, the pixel coordinate inside its artboard where
-the lot origin sits. That is all. This is the cheapest outstanding item on the
-whole commission.
+The line set is the one that cannot be placed. Every piece is centred on its own
+bounding box inside its 64 × 64 artboard, and centring is exactly what destroys
+the information needed — a fence belongs on a boundary and a driveway at the
+kerb, and once both are centred they are the same drawing as far as placement
+goes.
+
+Needed: for each of the 14 line files, the pixel coordinate inside its artboard
+where the lot origin sits. No redraw.
+
+**Better still**, if it is no more work: deliver the line furniture the way the
+coloured furniture came — in world coordinates on the shared grid, with the
+per-piece fit as a wrapping transform. Then there is nothing to send separately
+and nothing to keep in sync.
 
 Pieces: `tree_oak`, `tree_pine`, `tree_slim`, `driveway`, `fence`, `hedge`,
 `pool`, `skip`, `permit_board`, `sold_sign`, `for_sale_sign`, `rival_hoarding`,
@@ -123,13 +133,17 @@ plate. Both are unused until this is settled.
 
 ## 5. Lower priority, only if you want to
 
-- **A winter house set**, 7 base drawings, to complete the seasonal remaps
-  alongside `houses-autumn` and `houses-dusk`.
-- **Condition overlays for the autumn and dusk remaps**, 28 each. Without them
-  those sets are base-only and cannot drive the board, which shows houses being
-  renovated, let and listed. Not needed if the remaps are only ever decorative —
-  and if they are pure colour transforms of the base, we can derive the overlays
-  here rather than have them drawn.
+- **A winter house set**, 7 base drawings. Winter currently borrows the dusk
+  remap, which is an evening light rather than a season — cold and blue at about
+  half value, so it passes for a winter afternoon far better than high-summer
+  green does, but it is a stand-in.
+- ~~**Condition overlays for the autumn and dusk remaps**~~ — **not needed.**
+  The remaps turned out to be near-perfect colour substitutions of the base:
+  same path count and order, thirteen of a hundred and two paths genuinely
+  redrawn for the planting, and a colour mapping that is completely consistent
+  across all seven archetypes. So the bases are used exactly as drawn and the
+  overlays are carried into season by applying the same substitution. Both
+  seasons are on the board now with all four condition states.
 - **A cover image**, 630 × 500, for the itch.io page. Not isometric; this one is
   a poster.
 

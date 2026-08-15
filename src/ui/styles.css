@@ -547,8 +547,26 @@ button {
   border-bottom: 1px solid var(--border);
 }
 
+/*
+ * A face on a panel head names whose report you are reading -- the inspector's,
+ * the appraiser's, the lender's. It has to group with the heading rather than
+ * be spread away from it by the head's space-between, so the heading takes the
+ * slack instead.
+ */
+.panel-head > svg:first-child {
+  flex: none;
+  margin-right: -4px;
+}
+
+/* Inline in a key-value row, where a face labels the line rather than a panel. */
+.kv .k > svg {
+  vertical-align: -0.35em;
+  margin-right: 5px;
+}
+
 .panel-head h2 {
-  margin: 0;
+  /* Right margin takes the head's slack, so the face stays beside the words. */
+  margin: 0 auto 0 0;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.01em;

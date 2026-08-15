@@ -9,6 +9,7 @@ import {
 } from '../../engine';
 import { conditionLabel, money, percent } from '../format';
 import House from '../graphics/House';
+import { Face } from './Art';
 import CompPicker from './CompPicker';
 import { useGame } from '../store';
 
@@ -80,6 +81,7 @@ export default function PropertyFacts({ property }: { property: Property }) {
 
       <div className="panel">
         <div className="panel-head">
+          <Face who="appraiser" size={26} />
           <h2>Valuation &mdash; pick your comps</h2>
           <span className="pill mute">{band.confidence}</span>
         </div>
@@ -90,6 +92,7 @@ export default function PropertyFacts({ property }: { property: Property }) {
 
       <div className="panel">
         <div className="panel-head">
+          <Face who="inspector" size={26} />
           <h2>Condition report</h2>
           {property.inspection !== 'none' && (
             <span className="pill info">{property.inspection} inspection</span>

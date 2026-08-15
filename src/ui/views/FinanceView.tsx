@@ -9,6 +9,7 @@ import {
 } from '../../engine';
 import { money, percent } from '../format';
 import { useAction, useGame, useVersion } from '../store';
+import { Face } from '../components/Art';
 import MarketCharts from './MarketCharts';
 import CampaignTimeline from '../graphics/CampaignTimeline';
 
@@ -87,6 +88,7 @@ export default function FinanceView() {
 
         <div className="panel">
           <div className="panel-head">
+            <Face who="lender" size={26} />
             <h2>Debt</h2>
             <span className="dim" style={{ fontSize: 12 }}>
               hard money at {percent(state.world.interestRate + ECON.LOAN_SPREAD, 2)} today
