@@ -1,6 +1,7 @@
 import { ARCS, NEIGHBORHOODS_BY_ID, arcIsVisible, type GameState } from '../../engine';
 import { money, moneyShort, percent } from '../format';
 import { ChartData, LineChart, SERIES, Sparkline } from '../graphics/Charts';
+import { Icon } from '../components/Art';
 
 /**
  * The time-series panels.
@@ -16,7 +17,8 @@ export default function MarketCharts({ state }: { state: GameState }) {
     return (
       <div className="panel">
         <div className="panel-head">
-          <h2>Trends</h2>
+          <Icon name="trending-up" />
+            <h2>Trends</h2>
         </div>
         <div className="empty">
           Nothing plotted yet. History is sampled every few days — advance the clock.

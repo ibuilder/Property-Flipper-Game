@@ -23,6 +23,7 @@ import ScopeBuilder from '../components/ScopeBuilder';
 import Modal from '../components/Modal';
 import ConfirmButton from '../components/ConfirmButton';
 import FirstTime from '../components/FirstTime';
+import { Icon } from '../components/Art';
 
 /** The buy-side workflow: inspect, scope, analyze, offer. */
 export default function PropertyModal({
@@ -150,7 +151,8 @@ export default function PropertyModal({
 
               <div className="panel">
                 <div className="panel-head">
-                  <h2>Due diligence</h2>
+                  <Icon name="clipboard-check" />
+            <h2>Due diligence</h2>
                 </div>
                 <div className="panel-body">
                   <p className="dim" style={{ marginTop: 0, fontSize: 13 }}>
@@ -190,7 +192,8 @@ export default function PropertyModal({
 
               <div className="panel">
                 <div className="panel-head">
-                  <h2>Planned scope of work</h2>
+                  <Icon name="hammer" />
+            <h2>Planned scope of work</h2>
                   <span className="dim num" style={{ fontSize: 12 }}>
                     {money(scopeQuote.totalCost)} &middot; {scopeQuote.totalDays}d
                   </span>
@@ -209,7 +212,8 @@ export default function PropertyModal({
             <div className="deal-analyser">
               <div className="panel">
                 <div className="panel-head">
-                  <h2>Deal analyzer</h2>
+                  <Icon name="scale" />
+            <h2>Deal analyzer</h2>
                   <span className="live-kicker">live · every number shows its work</span>
                 </div>
                 <div className="panel-body">
@@ -225,6 +229,7 @@ export default function PropertyModal({
 
               <div className="panel">
                 <div className="panel-head">
+                  <Icon name="key" />
                   <h2>Make an offer</h2>
                 </div>
                 <div className="panel-body">

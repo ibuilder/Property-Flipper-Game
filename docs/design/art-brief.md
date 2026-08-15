@@ -159,9 +159,23 @@ map-pin, scale, search, layers. If Lucide already has a good one, say so and we
 will use it rather than pay for a redraw.
 
 All 22 delivered, single-path, and recoloured to `currentColor` on the way in,
-so they take whatever they are placed inside. Six are on the main tabs. The
-other sixteen are compiled and available; they are not yet placed, because an
-icon put somewhere it is not needed is worse than no icon.
+so they take whatever they are placed inside. Six mark the main tabs and twelve
+more mark the panel heads whose subject the set actually names — the town, the
+listings, the property, due diligence, the scope of work, the deal analyzer, the
+offer, the activity log, position, where the money went, the ledger, trends, the
+crew, reputation, work in progress and the campaign.
+
+Four are still unplaced: `alert-triangle`, `clock`, `percent` and `ruler`. They
+have no home yet because the places they belong are inline and repeated rather
+than headings, and a mark is only worth adding where it makes a list scannable.
+
+**One gap worth knowing about.** The obvious repeated taxonomy in this game is
+the scope categories — `cosmetic`, `kitchen`, `bath`, `systems`, `exterior`,
+`structural`, `addition`, `staging` — which appear as group headings over a long
+checklist and would genuinely benefit from marks. Six of the eight have a good
+match in the delivered set. **`kitchen` and `bath` have none**, and marking six
+of eight looks broken rather than partial, so none of them are marked. Two more
+icons would unlock that whole list.
 
 ### 2f. Newspaper mastheads — **7** — **delivered, 2 unusable**
 

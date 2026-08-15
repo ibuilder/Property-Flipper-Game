@@ -5,7 +5,8 @@ been delivered; nothing already drawn needs redrawing.
 
 Ordered by what unblocks the game soonest. Item 1 is a correctness problem —
 the game currently shows the wrong house for three of its seven house types.
-Item 2 is a number, not a drawing, and unblocks 28 files that are already drawn.
+Item 2 is a list of numbers rather than a drawing, and unblocks 14 files that
+are already drawn.
 
 **Universal rules** (unchanged from the main brief, repeated because they are
 the ones that have bitten):
@@ -128,6 +129,21 @@ delivered. These are the market events with no plate:
 drawn words suit; if the plates literally read MILL REZONED then they need
 redrawing, because a plate contradicting the story under it is worse than no
 plate. Both are unused until this is settled.
+
+---
+
+## 4d. Two icons that would unlock a whole list
+
+The renovation scope is grouped under eight category headings — `cosmetic`,
+`kitchen`, `bath`, `systems`, `exterior`, `structural`, `addition`, `staging` —
+over a long checklist that is the most-scanned list in the game. Marks would
+help it a lot. Six of the eight have a good match in the 22 delivered icons;
+**`kitchen` and `bath` have none**, and marking six of eight reads as broken
+rather than partial, so none of them are marked.
+
+Two icons, same 24px grid and 1.5 stroke as the rest: a `kitchen` (range or
+cabinet run) and a `bath` (tub or basin). Smallest item on this list by effort,
+and it is the difference between that checklist being marked and not.
 
 ---
 

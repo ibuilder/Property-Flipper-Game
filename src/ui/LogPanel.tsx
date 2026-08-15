@@ -1,4 +1,5 @@
 import { useGame } from './store';
+import { Icon } from './components/Art';
 
 const TONE_CLASS: Record<string, string> = {
   good: 'good',
@@ -16,7 +17,8 @@ export default function LogPanel() {
   return (
     <>
       <div className="panel-head" style={{ borderBottom: '1px solid var(--border)' }}>
-        <h2>Activity</h2>
+        <Icon name="clock" />
+            <h2>Activity</h2>
         <span className="faint" style={{ fontSize: 11 }}>
           newest first
         </span>

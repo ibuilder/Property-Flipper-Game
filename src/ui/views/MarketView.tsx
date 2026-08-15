@@ -21,6 +21,7 @@ import SortableTh from '../components/SortableTh';
 import NeighborhoodMap from '../graphics/NeighborhoodMap';
 import Board from '../board/Board';
 import House from '../graphics/House';
+import { Icon } from '../components/Art';
 
 type SortKey =
   | 'address'
@@ -155,7 +156,8 @@ export default function MarketView() {
     <>
       <div className="panel">
         <div className="panel-head">
-          <h2>The town</h2>
+          <Icon name="map-pin" />
+            <h2>The town</h2>
           <button className="btn small" onClick={() => setMapOpen((v) => !v)}>
             {mapOpen ? 'Hide map' : 'Show map'}
           </button>
@@ -179,7 +181,8 @@ export default function MarketView() {
 
       <div className="panel">
         <div className="panel-head">
-          <h2>Listings</h2>
+          <Icon name="search" />
+            <h2>Listings</h2>
           <div className="btn-row">
             <select
               value={hood}

@@ -42,6 +42,7 @@ import Modal from '../components/Modal';
 import ConfirmButton from '../components/ConfirmButton';
 import FirstTime from '../components/FirstTime';
 import RentalPanel from './RentalPanel';
+import { Icon } from '../components/Art';
 
 /** Manage an owned property: renovate, then list and negotiate the exit. */
 export default function OwnedPropertyModal({
@@ -508,7 +509,8 @@ function RenovationPanel({ property }: { property: Property }) {
   return (
     <div className="panel">
       <div className="panel-head">
-        <h2>Work in progress</h2>
+        <Icon name="hard-hat" />
+            <h2>Work in progress</h2>
         <span className="dim num" style={{ fontSize: 12 }}>
           {jobDaysRemaining(job)} days left
         </span>

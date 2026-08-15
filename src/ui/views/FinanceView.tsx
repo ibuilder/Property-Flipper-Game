@@ -9,7 +9,7 @@ import {
 } from '../../engine';
 import { money, percent } from '../format';
 import { useAction, useGame, useVersion } from '../store';
-import { Face } from '../components/Art';
+import { Face, Icon } from '../components/Art';
 import MarketCharts from './MarketCharts';
 import CampaignTimeline from '../graphics/CampaignTimeline';
 
@@ -57,6 +57,7 @@ export default function FinanceView() {
 
         <div className="panel">
           <div className="panel-head">
+            <Icon name="layers" />
             <h2>Position</h2>
           </div>
           <div className="panel-body">
@@ -176,6 +177,7 @@ export default function FinanceView() {
 
         <div className="panel">
           <div className="panel-head">
+            <Icon name="trending-down" />
             <h2>Where the money went</h2>
           </div>
           <div className="panel-body">
@@ -195,7 +197,8 @@ export default function FinanceView() {
 
       <div className="panel">
         <div className="panel-head">
-          <h2>Ledger</h2>
+          <Icon name="file-text" />
+            <h2>Ledger</h2>
           <button className="btn small" onClick={() => setShowAll((v) => !v)}>
             {showAll ? 'Show recent' : `Show all (${state.ledger.length})`}
           </button>

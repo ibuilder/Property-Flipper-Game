@@ -9,7 +9,7 @@ import {
 } from '../../engine';
 import { conditionLabel, money, percent } from '../format';
 import House from '../graphics/House';
-import { Face } from './Art';
+import { Face, Icon } from './Art';
 import CompPicker from './CompPicker';
 import { useGame } from '../store';
 
@@ -29,7 +29,8 @@ export default function PropertyFacts({ property }: { property: Property }) {
     <>
       <div className="panel">
         <div className="panel-head">
-          <h2>The property</h2>
+          <Icon name="home" />
+            <h2>The property</h2>
           <span className={`pill ${cond.tone}`}>{cond.text}</span>
         </div>
         <House property={property} className="house-hero" showDefects />

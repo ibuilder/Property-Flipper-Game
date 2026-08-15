@@ -1,4 +1,5 @@
-import { writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ARCHETYPES } from '../src/engine/content';
 import {
@@ -50,6 +51,40 @@ describe('the interface art', () => {
   it('has an icon for every tab the shell names', () => {
     for (const name of TAB_ICONS) {
       expect(ICONS[name], `no icon named ${name}`).toBeTruthy();
+    }
+  });
+
+  it('has a drawing for every name the interface actually asks for', () => {
+    /*
+     * Scans the source rather than a list kept alongside it. A hand-maintained
+     * list of what is used is the thing that goes stale, and a missing icon
+     * fails silently -- `Icon` renders nothing rather than throwing, so a typo
+     * shows up as a slightly narrower heading and nothing else.
+     */
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, e.name);
+        if (e.isDirectory()) walk(full);
+        else if (e.name.endsWith('.tsx')) files.push(full);
+      }
+    };
+    walk('src/ui');
+
+    const icons = new Set<string>();
+    const faces = new Set<string>();
+    for (const f of files) {
+      const src = readFileSync(f, 'utf8');
+      for (const m of src.matchAll(/<Icon\s+name="([^"]+)"/g)) icons.add(m[1]);
+      for (const m of src.matchAll(/<Face\s+who="([^"]+)"/g)) faces.add(m[1]);
+    }
+
+    expect(icons.size, 'no icons are being used at all').toBeGreaterThan(6);
+    for (const name of icons) {
+      expect(ICONS[name], `the interface asks for icon "${name}" and it is not drawn`).toBeTruthy();
+    }
+    for (const who of faces) {
+      expect(NPC[who], `the interface asks for face "${who}" and it is not drawn`).toBeTruthy();
     }
   });
 

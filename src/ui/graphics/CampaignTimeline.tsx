@@ -8,6 +8,7 @@ import {
   type TimelineSpan,
 } from '../../engine';
 import { money, percent } from '../format';
+import { Icon } from '../components/Art';
 
 /**
  * The campaign, as a shape.
@@ -47,7 +48,8 @@ export default function CampaignTimeline({ state }: { state: GameState }) {
     return (
       <div className="panel">
         <div className="panel-head">
-          <h2>The campaign</h2>
+          <Icon name="calendar" />
+            <h2>The campaign</h2>
           <span className="faint" style={{ fontSize: 12 }}>
             day {t.today} of {t.toDay}
           </span>
@@ -74,7 +76,8 @@ export default function CampaignTimeline({ state }: { state: GameState }) {
   return (
     <div className="panel">
       <div className="panel-head">
-        <h2>The campaign</h2>
+        <Icon name="calendar" />
+            <h2>The campaign</h2>
         <span className={`pill ${rate > 0.7 ? 'good' : rate > 0.45 ? 'warn' : 'bad'}`}>
           {percent(rate, 0)} deployed
         </span>

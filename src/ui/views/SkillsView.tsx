@@ -20,6 +20,7 @@ import {
 import { money, percent } from '../format';
 import { useAction, useGame } from '../store';
 import MasteryPanel from '../components/MasteryPanel';
+import { Icon } from '../components/Art';
 
 const SKILLS: { id: SkillId; name: string; blurb: string; effect: (lvl: number) => string }[] = [
   {
@@ -123,7 +124,8 @@ export default function SkillsView() {
 
       <div className="panel">
         <div className="panel-head">
-          <h2>Your crew</h2>
+          <Icon name="users" />
+            <h2>Your crew</h2>
           {crew && (
             <span className={`pill ${crewUtilisation(crew) > 0.6 ? 'good' : 'warn'}`}>
               {percent(crewUtilisation(crew), 0)} utilised
@@ -245,7 +247,8 @@ export default function SkillsView() {
 
       <div className="panel">
         <div className="panel-head">
-          <h2>Reputation</h2>
+          <Icon name="badge-check" />
+            <h2>Reputation</h2>
           <span className="faint" style={{ fontSize: 12 }}>
             earned, not bought
           </span>
