@@ -136,6 +136,56 @@ const A={
    line(o,1,[PR(s,0.58,12),PR(s,0.84,12)]);
    line(o,1,[PR(s,0.71,4),PR(s,0.71,24)]);};
   return s;})(),
+
+ colonial:(()=>{const s={x0:0.36,x1:0.96,y0:0.06,y1:0.94,h:20,roofH:8,gable:true,ov:0.06};
+  s.windows=[win('L',0.09,12,0.13,6),win('L',0.44,12,0.13,6),win('L',0.78,12,0.13,6),
+             win('L',0.09,2.5,0.13,6),win('L',0.78,2.5,0.13,6),
+             win('R',0.20,12,0.18,6),win('R',0.62,12,0.18,6),win('R',0.20,2.5,0.18,6)];
+  s.doors=[win('L',0.44,0,0.13,8.5)];
+  s.draw=o=>{
+   line(o,1,[PL(s,0,10.5),PL(s,1,10.5)]); line(o,1,[PR(s,0,10.5),PR(s,1,10.5)]);
+   s.windows.filter(w=>w.face==='L').forEach(w=>{
+     poly(o,1,[PL(s,w.u-0.035,w.v),PL(s,w.u-0.008,w.v),PL(s,w.u-0.008,w.v+w.h),PL(s,w.u-0.035,w.v+w.h)]);
+     poly(o,1,[PL(s,w.u+w.w+0.008,w.v),PL(s,w.u+w.w+0.035,w.v),PL(s,w.u+w.w+0.035,w.v+w.h),PL(s,w.u+w.w+0.008,w.v+w.h)]);});
+   const d=s.doors[0];
+   line(o,1,[PL(s,d.u-0.03,d.v+d.h+0.9),PL(s,d.u+d.w+0.03,d.v+d.h+0.9)]);
+   box(o,0.60,0.14,0.70,0.24,20,26,1);};
+  return s;})(),
+
+ condo:(()=>{const s={x0:0.30,x1:0.98,y0:0.00,y1:1.00,h:26,parapet:3,flat:true,ov:0.02};
+  s.windows=[];
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++)s.windows.push(win('L',0.08+c*0.31,3.5+r*8,0.17,5));
+  for(let r=0;r<3;r++)s.windows.push(win('R',0.28,3.5+r*8,0.30,5));
+  s.doors=[win('L',0.08,0,0.10,0.1)];
+  s.draw=o=>{
+   for(let r=1;r<3;r++) line(o,1,[PL(s,0,2+r*8),PL(s,1,2+r*8)]);
+   [0.39,0.70].forEach(u=>line(o,1,[PL(s,u,0),PL(s,u,s.h)]));
+   poly(o,2,[PL(s,0.02,0),PL(s,0.37,0),PL(s,0.37,10),PL(s,0.02,10)]);
+   poly(o,1,[P(s.x0-0.10,0.04,10),P(s.x0-0.10,0.32,10),P(s.x0,0.32,10),P(s.x0,0.04,10)]);
+   poly(o,1,[P(s.x0-0.10,0.04,10),P(s.x0-0.10,0.32,10),P(s.x0-0.10,0.32,14),P(s.x0-0.10,0.04,14)]);
+   for(let t=0.16;t<1;t+=0.22) line(o,1,[P(s.x0-0.10,0.04+t*0.28,10),P(s.x0-0.10,0.04+t*0.28,14)]);
+   poly(o,1,[PL(s,0.06,0),PL(s,0.16,0),PL(s,0.16,7),PL(s,0.06,7)]);};
+  return s;})(),
+
+ townhouse:(()=>{const s={x0:0.40,x1:0.94,y0:0.26,y1:0.74,h:26,roofH:5,gable:true,ov:0.04};
+  s.windows=[win('L',0.10,18,0.34,6),win('L',0.56,18,0.34,6),
+             win('L',0.10,9,0.34,6),win('L',0.56,9,0.34,6),
+             win('R',0.26,18,0.30,6),win('R',0.26,9,0.30,6)];
+  s.doors=[win('L',0.76,0,0.16,7.5)];
+  s.draw=o=>{
+   poly(o,1,[PL(s,0.10,0),PL(s,0.66,0),PL(s,0.66,7),PL(s,0.10,7)]);
+   for(let t2=0.16;t2<1;t2+=0.20) line(o,1,[PL(s,0.10+t2*0.56,0.7),PL(s,0.10+t2*0.56,6.4)]);
+   [8,17].forEach(z=>{line(o,1,[PL(s,0,z),PL(s,1,z)]);line(o,1,[PR(s,0,z),PR(s,1,z)]);});
+   [[0.00,0.26,7],[0.74,1.00,11]].forEach(([na,nbb,drop])=>{
+     const nh=s.h-drop;
+     poly(o,1,[P(s.x0,na,0),P(s.x0,nbb,0),P(s.x0,nbb,nh),P(s.x0,na,nh)]);
+     poly(o,1,[P(s.x0,na,nh),P(s.x0,nbb,nh),P(s.x0-0.05,nbb,nh+1.4),P(s.x0-0.05,na,nh+1.4)]);
+     poly(o,1,[P(s.x0,na+0.05,11),P(s.x0,nbb-0.05,11),P(s.x0,nbb-0.05,16),P(s.x0,na+0.05,16)]);
+   });
+   line(o,2,[P(s.x0,0.02,0),P(s.x0,0.98,0)]);
+   line(o,2,[P(s.x0,s.y0,0),P(s.x0,s.y0,s.h)]);
+   line(o,2,[P(s.x0,s.y1,0),P(s.x0,s.y1,s.h)]);};
+  return s;})(),
 };
 
 function drawSplit(o,s){

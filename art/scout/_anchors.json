@@ -1,0 +1,65 @@
+{
+ "note": "Board sprites: anchor is the ground contact point (where the dog stands on the lot). Portraits and avatars are UI busts and take no lot anchor.",
+ "sprites": {
+  "scout-idle-1": {
+   "artboard": [
+    64,
+    64
+   ],
+   "anchor": [
+    31,
+    52
+   ]
+  },
+  "scout-idle-2": {
+   "artboard": [
+    64,
+    64
+   ],
+   "anchor": [
+    31,
+    52
+   ]
+  },
+  "scout-walking-1": {
+   "artboard": [
+    64,
+    64
+   ],
+   "anchor": [
+    31,
+    52
+   ]
+  },
+  "scout-walking-2": {
+   "artboard": [
+    64,
+    64
+   ],
+   "anchor": [
+    31,
+    52
+   ]
+  },
+  "scout-digging-1": {
+   "artboard": [
+    64,
+    64
+   ],
+   "anchor": [
+    31,
+    52
+   ]
+  },
+  "scout-digging-2": {
+   "artboard": [
+    64,
+    64
+   ],
+   "anchor": [
+    31,
+    52
+   ]
+  }
+ }
+}

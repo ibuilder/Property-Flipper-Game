@@ -393,11 +393,15 @@ integration and are written up in `docs/design/art-brief.md`:
 ### Still yours
 
 Signing certificates, the itch HTML embed (project kind is stuck on
-Downloadable), the cover image, and human playtesting. Plus the outstanding
-art, now a short and specific list: `colonial`, `condo` and `townhouse` in both
-the line and coloured sets, a lot-origin coordinate for each of the fourteen
-furniture pieces that have now arrived twice, Scout's three board sprites, and
-four more headline plates with digits drawn. And the open balance
+Downloadable), and human playtesting. The cover image is done — it is rendered
+from the commissioned poster now rather than laid out by a script.
+
+The art is essentially complete: ten archetypes matching `content.ts`, forty
+condition overlays, three seasonal sets, both furniture finishes placed, Scout
+on the board, 22 icons, a masthead and a plate for every market event. What is
+left is one number (the scale for Scout's sprites), two icons (`kitchen` and
+`bath`), and a decision about three drawn archetypes the engine does not
+generate — all in `docs/design/art-wanted.md`. And the open balance
 question from `docs/playthrough-findings.md`: **liquidity never binds** in this
 game — measured, zero occasions across eight campaigns — which is a design
 decision rather than a bug, but real flipping is substantially about running

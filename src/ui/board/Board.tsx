@@ -9,6 +9,8 @@ import {
   houseDrawing,
   houseState,
   lotFurniture,
+  scoutDrawing,
+  scoutLot,
 } from './art';
 import { DISTRICTS, STREETS, activeDistricts, buildParcels } from './layout';
 import { GRID, TILE, ZOOM, boardExtent, project, tileSides, tileTop, toPoints } from './projection';
@@ -72,6 +74,14 @@ export default function Board({
     // Rebuilt when the board's contents change, not on every tick.
     [state.market.length, state.portfolio.length, state.day],
   );
+  /*
+   * Where Scout is standing, resolved once so the parcel loop only has to
+   * compare a key rather than re-scan the board for every lot.
+   */
+  const scoutAt = useMemo(() => {
+    const lot = scoutLot(parcels, (p) => Boolean((p as Property).ownership?.renovation));
+    return lot ? `${lot.gx},${lot.gy}` : null;
+  }, [parcels]);
   const districts = activeDistricts(state);
   const active = DATA_VIEWS_BY_ID[view];
   const extent = boardExtent(EXTRUDE);
@@ -221,13 +231,9 @@ export default function Board({
 
                   {/*
                     Furniture before the house, so a sign in the drive is
-                    overlapped by the building rather than pasted over it. Only
-                    in colour: the line furniture arrived centred on its own
-                    bounding box, so where each piece stood is not recoverable.
+                    overlapped by the building rather than pasted over it.
                   */}
-                  {style === 'colour' && (
-                    <Furniture parcel={parcel} extent={extent} />
-                  )}
+                  <Furniture parcel={parcel} extent={extent} style={style} />
                   {/* Drawn after the lot top so they stand on it. */}
                   {built && (
                     <House
@@ -237,9 +243,20 @@ export default function Board({
                       season={boardSeason(state.day)}
                     />
                   )}
+                  {/*
+                    Scout inside his own lot's group, drawn after that lot's
+                    house so he stands in front of it, and before every lot
+                    nearer the camera so they can occlude him. Drawing him
+                    globally last put him on top of houses he is standing
+                    behind.
+                  */}
+                  {scoutAt === key && (
+                    <ScoutOnSite parcel={parcel} state={state} extent={extent} style={style} />
+                  )}
                 </g>
               );
             })}
+
         </svg>
 
         {/*
@@ -276,16 +293,47 @@ export default function Board({
   );
 }
 
+/**
+ * Scout, on the job that is running.
+ *
+ * One dog, on the lot with a clock on it. Anywhere else he would be decoration,
+ * and a figure on every lot is a kennel rather than a town.
+ */
+function ScoutOnSite({
+  parcel,
+  state,
+  extent,
+  style,
+}: {
+  parcel: Parcel;
+  state: GameState;
+  extent: { cx: number; cy: number };
+  style: 'line' | 'colour';
+}) {
+  const d = scoutDrawing(parcel.gx, parcel.gy, 'digging', state.day, style, extent.cx, extent.cy);
+  if (!d) return null;
+  return (
+    <g
+      className="lot-scout"
+      pointerEvents="none"
+      transform={d.transform}
+      dangerouslySetInnerHTML={{ __html: d.body }}
+    />
+  );
+}
+
 /** Whatever stands on the lot besides the house. */
 function Furniture({
   parcel,
   extent,
+  style,
 }: {
   parcel: Parcel;
   extent: { cx: number; cy: number };
+  style: 'line' | 'colour';
 }) {
   const pieces = lotFurniture(parcel.gx, parcel.gy, parcel.property);
-  const f = furnitureDrawing(parcel.gx, parcel.gy, pieces, extent.cx, extent.cy);
+  const f = furnitureDrawing(parcel.gx, parcel.gy, pieces, style, extent.cx, extent.cy);
   if (!f) return null;
   return (
     <g
@@ -352,8 +400,6 @@ function House({
    * it, lifts the building a full storey off the ground it is standing on.
    */
   const d = houseDrawing(parcel.gx, parcel.gy, prop.archetypeId, state, extent.cx, extent.cy);
-  // Everything past the base drawing is the overlay, and is inked differently.
-  const baseCount = houseDrawing(parcel.gx, parcel.gy, prop.archetypeId, null).paths.length;
 
   return (
     <g className="lot-house" pointerEvents="none" transform={d.transform} fill="none" strokeLinejoin="round">
@@ -361,7 +407,7 @@ function House({
         <path
           key={i}
           d={p.d}
-          stroke={i < baseCount ? 'var(--color-text)' : 'var(--color-accent-ink)'}
+          stroke={i < d.baseCount ? 'var(--color-text)' : 'var(--color-accent-ink)'}
           strokeWidth={d.strokeWidth(p.w)}
         />
       ))}

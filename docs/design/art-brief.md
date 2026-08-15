@@ -40,42 +40,21 @@ A duplex must not be mistakable for a bungalow at 40 pixels.
 
 ## 2. Deliverables
 
-### 2a. House archetypes, axonometric — **7 drawings** — **delivered, but against the wrong list**
+### 2a. House archetypes, axonometric — **delivered, all ten**
 
-The core of the commission. Seven drawings arrived and are on the board.
+The core of the commission, and now complete. Ten drawings matching the ten ids
+in `src/engine/content.ts`, each with four condition overlays, in both the line
+and coloured sets.
 
-**This brief asked for the wrong seven ids, and that is our error, not the
-artist's.** The list below was taken from the placeholder module rather than
-from `src/engine/content.ts`, which is what actually decides the archetype of
-every house the game generates. Both lists are seven long, so the test guarding
-coverage — which counted drawings rather than comparing ids — passed throughout.
+**An earlier version of this brief asked for the wrong seven ids**, taken from a
+placeholder module rather than from `content.ts`. Both lists were seven long, so
+the test guarding coverage — which counted drawings rather than comparing names
+— passed throughout while three archetypes the game generates had no art and
+three drawings matched nothing. The test now compares the two lists directly.
 
-| id | What it is | status |
-| --- | --- | --- |
-| `bungalow` | Single storey, low pitched roof, front porch | delivered, in use |
-| `ranch` | Long, low, wide footprint, shallow hip roof | delivered, in use |
-| `duplex` | Two storeys, two front doors, plain | delivered, in use |
-| `victorian` | Tall, steep gable, bay window, ornament | delivered, in use |
-| `mill_loft` | Converted industrial, tall, flat roof, big windows | delivered, **no such archetype** |
-| `split_level` | Staggered floors, offset roofline | delivered, **no such archetype** |
-| `new_build` | Contemporary, mono-pitch roof, clean rectangles | delivered, **no such archetype** |
-
-**Still to draw — these are the ids the game actually generates:**
-
-| id | What it is | currently wearing |
-| --- | --- | --- |
-| `colonial` | Four bed, symmetrical front, 1960–1999, traditional | `split_level` |
-| `condo` | Small, 650–1050 sqft, one of many units, 1975–2015 | `mill_loft` |
-| `townhouse` | Three storeys, narrow, attached, 1985–2010 | `new_build` |
-
-The three delivered drawings with no archetype are being used as stand-ins so
-that no house falls back to a generic blob, and the substitutions are chosen on
-era and massing. They are a stopgap: a colonial is currently wearing a split
-level's roof. The three drawings above are the outstanding commission, and they
-need the same base-plus-four-overlays treatment as everything else.
-
-The three orphans are worth keeping. If `mill_loft`, `split_level` or
-`new_build` are ever added to `content.ts` they are already drawn.
+Three drawings still match no archetype: `mill_loft`, `split_level` and
+`new_build`. They are complete and are kept. Putting them in the game is a
+content and balance change rather than an art one — see `art-wanted.md`.
 
 - **Projection:** true isometric. The board uses a 58° tilt with the ground
   rotated 45°, which flattens to screen as `x = 0.7071·(gx+gy)`,
@@ -109,24 +88,24 @@ boards in one drive reads as a bug rather than as two facts.
 `working` and `distressed` matter most: they are how the board shows, at a
 glance, which of your houses is costing you money today.
 
-### 2c. Lot furniture — **14 small pieces** — **coloured set placed, line set blocked**
+### 2c. Lot furniture — **14 small pieces** — **delivered and placed, both finishes**
 
 Trees (3 varieties), driveway, fence, hedge, pool, skip, permit board, sold
-sign, for-sale sign, rival hoarding, parked car, street lamp. Same projection,
-sized to sit on a 36px lot beside a house.
+sign, for-sale sign, rival hoarding, parked car, street lamp.
 
-**Half resolved by the second delivery.** The coloured furniture arrived in
-world coordinates -- sharing the houses' origin and unit, with each piece's own
-fit wrapped around it -- so it needed no anchor at all and is placed: for-sale
-boards on every listing, permit boards on jobs the city is holding, and trees on
-the empty lots.
+Placed for what they say rather than as dressing: a for-sale board on every
+listing, because the condition overlays only cover houses you already own and
+without it a listing and a holding are the same picture; a permit board on a job
+the city is holding, which was visible nowhere else on the map; and a tree on
+empty lots, keyed off position so it never changes between draws.
 
-The line set is still centred on its own bounding box and still cannot be
-placed. Centring is precisely what destroys the information: a fence belongs on
-a boundary and a driveway at the kerb, and centred they are the same drawing.
-Fourteen numbers, or a redelivery in the coloured set's convention.
+**This took three deliveries, and the reason is worth keeping.** The first two
+sent the line set centred on each piece's own bounding box, which is exactly
+what destroys placement — a fence belongs on a boundary and a driveway at the
+kerb, and centred they are the same drawing. The third sent both finishes on one
+grid with an anchor and a scale each, and they went in the same afternoon.
 
-### 2d. Scout — **6 portraits + 3 sprites** — **portraits delivered, sprites outstanding**
+### 2d. Scout — **6 portraits + 6 board sprites** — **delivered**
 
 All six moods arrived and are wired: the coach card now shows the mood the rule
 that fired asked for. Four extra faces came with them — appraiser, lender,
@@ -135,8 +114,17 @@ placed, each on the panel that reports what that character does: the inspector
 on the condition report, the appraiser on the valuation, the lender on the debt
 panel, and the rival on the auction's interest line.
 
-**Still outstanding: the 3 isometric board sprites** (idle, walking, digging,
-two frames each).
+Six board sprites arrived too — idle, walking and digging, two frames each, in
+colour and in line. Scout now stands on the job that is running, digging,
+alternating frames on the game day rather than on a timer: the board is a still
+picture of one day, so the animation belongs to time passing in the game and not
+to time passing while you look at it.
+
+One dog, on the lot with a clock on it. Anywhere else he would be decoration,
+and a figure on every lot is a kennel rather than a town.
+
+**One number is still missing**: the sprites carry an anchor but no scale, and
+every other placeable piece carries both. See `art-wanted.md`.
 
 Scout is the coaching character: a working dog in a hard hat who has been on
 more sites than the player has. **Not a mascot.** He is the tradesman who has
@@ -148,7 +136,6 @@ Six bust portraits, 320 × 320px, one per mood: `briefing`, `explaining`,
 They must be distinguishable as thumbnails at 34px, which is where they
 actually appear.
 
-Three isometric sprites for the board, 2 frames each: idle, walking, digging.
 
 ### 2e. Icons — **22** — **delivered**
 
@@ -177,7 +164,7 @@ match in the delivered set. **`kitchen` and `bath` have none**, and marking six
 of eight looks broken rather than partial, so none of them are marked. Two more
 icons would unlock that whole list.
 
-### 2f. Newspaper mastheads — **7** — **delivered, 2 unusable**
+### 2f. Newspaper mastheads and plates — **delivered, all usable**
 
 One for *The Weekly Plat* (the in-game paper) plus six headline plates for
 market events. Condensed serif or slab, engraved feel.

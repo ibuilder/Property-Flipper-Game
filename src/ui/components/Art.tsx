@@ -1,6 +1,6 @@
 import {
-  COLOR_BOX,
-  HOUSE_COLOR,
+  HOUSE_COLOR_BARE,
+  HOUSE_PLINTH,
   ICONS,
   ICON_BOX,
   NPC,
@@ -167,12 +167,14 @@ export function ColorHouse({
   size?: number;
   className?: string;
 }) {
-  const art = HOUSE_COLOR[archetypeId];
+  const art = HOUSE_COLOR_BARE[archetypeId];
   if (!art) return null;
-  const body = art.base + (state && art[state] ? art[state] : '');
+  // The plinth is stored once rather than baked into a second copy of every
+  // house; here, where a house is the subject, it is what it stands on.
+  const body = (HOUSE_PLINTH[archetypeId] ?? '') + art.base + (state && art[state] ? art[state] : '');
   return (
     <svg
-      viewBox={`0 0 ${COLOR_BOX} ${COLOR_BOX}`}
+      viewBox="0 0 256 256"
       width={size}
       height={size}
       className={className}
@@ -185,5 +187,5 @@ export function ColorHouse({
 
 /** Whether there is a coloured drawing for an archetype. */
 export function hasColorHouse(archetypeId: string): boolean {
-  return Boolean(HOUSE_COLOR[archetypeId]);
+  return Boolean(HOUSE_COLOR_BARE[archetypeId]);
 }

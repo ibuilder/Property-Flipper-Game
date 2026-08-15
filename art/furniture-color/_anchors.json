@@ -1,0 +1,100 @@
+{
+ "tree_oak": {
+  "anchor": [
+   -44.6,
+   92
+  ],
+  "scale": 2.4374
+ },
+ "tree_pine": {
+  "anchor": [
+   -39.5,
+   92
+  ],
+  "scale": 2.2917
+ },
+ "tree_slim": {
+  "anchor": [
+   -27.2,
+   92
+  ],
+  "scale": 1.9622
+ },
+ "driveway": {
+  "anchor": [
+   -4.4,
+   48
+  ],
+  "scale": 1.3718
+ },
+ "fence": {
+  "anchor": [
+   -41.9,
+   68
+  ],
+  "scale": 2.3551
+ },
+ "hedge": {
+  "anchor": [
+   -24.1,
+   57.4
+  ],
+  "scale": 1.8891
+ },
+ "pool": {
+  "anchor": [
+   -7,
+   48
+  ],
+  "scale": 1.4404
+ },
+ "skip": {
+  "anchor": [
+   -25.3,
+   61
+  ],
+  "scale": 1.9206
+ },
+ "permit_board": {
+  "anchor": [
+   -63.7,
+   92
+  ],
+  "scale": 2.9263
+ },
+ "sold_sign": {
+  "anchor": [
+   -56.8,
+   92
+  ],
+  "scale": 2.7438
+ },
+ "for_sale_sign": {
+  "anchor": [
+   -56.8,
+   92
+  ],
+  "scale": 2.7438
+ },
+ "rival_hoarding": {
+  "anchor": [
+   -20,
+   80.5
+  ],
+  "scale": 1.782
+ },
+ "parked_car": {
+  "anchor": [
+   -14.2,
+   53.8
+  ],
+  "scale": 1.8291
+ },
+ "street_lamp": {
+  "anchor": [
+   -16.7,
+   87.4
+  ],
+  "scale": 1.5172
+ }
+}

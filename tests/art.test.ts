@@ -2,13 +2,7 @@ import { readdirSync } from 'node:fs';
 import { writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ARCHETYPES } from '../src/engine/content';
-import {
-  DRAWN_ARCHETYPES,
-  SUBSTITUTE,
-  artIdFor,
-  houseDrawing,
-  houseState,
-} from '../src/ui/board/art';
+import { DRAWN_ARCHETYPES, artIdFor, houseDrawing, houseState } from '../src/ui/board/art';
 import { HOUSE_ANCHOR, HOUSE_ART, HOUSE_STATES } from '../src/ui/board/art.generated';
 import { project } from '../src/ui/board/projection';
 
@@ -38,7 +32,7 @@ const COLS = ['base', ...HOUSE_STATES] as const;
 
 describe('the house art', () => {
   it('has a base and every state for every archetype, all non-empty', () => {
-    expect(DRAWN_ARCHETYPES).toHaveLength(7);
+    expect(DRAWN_ARCHETYPES.length).toBeGreaterThanOrEqual(10);
     for (const id of DRAWN_ARCHETYPES) {
       for (const col of COLS) {
         const paths = HOUSE_ART[id][col];
@@ -54,42 +48,51 @@ describe('the house art', () => {
   });
 
   it('draws every archetype the content pack actually generates', () => {
-    // The check the old count-based test could not make. Every id the engine
-    // can put on the board has to resolve to a drawing, and every substitute
-    // has to be covering a real gap rather than shadowing a delivered piece.
-    const content = ARCHETYPES.map((a) => a.id);
+    /*
+     * The check a count could not make, and the one that matters most here.
+     *
+     * The first delivery shipped seven drawings against seven archetypes and
+     * matched on four: three ids the engine generates had no art, and three
+     * that were drawn matched nothing. Both lists were seven long, so the
+     * count-based test that guarded this passed the whole way through. The two
+     * lists are now compared directly, as sets of names.
+     */
+    const content = ARCHETYPES.map((a) => a.id).sort();
+    const drawn = new Set(DRAWN_ARCHETYPES);
+
+    const missing = content.filter((id) => !drawn.has(id));
+    expect(missing, 'every archetype the engine generates needs its own drawing').toEqual([]);
+
+    // And nothing falls through to a stand-in any more.
     for (const id of content) {
-      expect(HOUSE_ART[artIdFor(id)], `${id} resolves to a drawing`).toBeDefined();
+      expect(artIdFor(id), `${id} should use its own drawing`).toBe(id);
     }
 
-    const missing = content.filter((id) => !HOUSE_ART[id]);
-    expect(
-      Object.keys(SUBSTITUTE).sort(),
-      'the substitute table must cover exactly the archetypes with no art of their own',
-    ).toEqual(missing.sort());
-
-    for (const [from, to] of Object.entries(SUBSTITUTE)) {
-      expect(HOUSE_ART[from], `${from} has no art, so it needs a substitute`).toBeUndefined();
-      expect(HOUSE_ART[to], `${from} substitutes ${to}, which must exist`).toBeDefined();
-    }
+    /*
+     * The set is a superset, not an equal. `mill_loft`, `split_level` and
+     * `new_build` are drawn -- complete with condition states, in line, colour
+     * and every season -- and match no archetype the engine makes. They are
+     * kept deliberately: adding them to `content.ts` is a content change with
+     * balance consequences, not an art one, so it is a separate decision.
+     * Listed here so the surplus stays visible rather than becoming clutter.
+     */
+    const spare = [...drawn].filter((id) => !content.includes(id)).sort();
+    expect(spare).toEqual(['mill_loft', 'new_build', 'split_level']);
   });
 
   it('stands every archetype on the same ground', () => {
     // The regression that motivates HOUSE_ANCHOR. Placing each artboard by its
-    // centre put the lot origins 15.5px apart on a lot 19px tall; every
-    // archetype must land its own anchor on the one lot centre.
-    const centre = project(3.5, 4.5, 100, 100);
-    const placed = DRAWN_ARCHETYPES.map((id) => {
+    // centre put ground level 15.5px apart across the set, on a lot 19px tall.
+    // Every archetype must land its own anchor on the one lot origin.
+    const origin = project(3, 4, 100, 100);
+    for (const id of DRAWN_ARCHETYPES) {
       const d = houseDrawing(3, 4, id, null, 100, 100);
       const m = d.transform.match(/translate\((-?[\d.]+) (-?[\d.]+)\) scale\(([\d.]+)\)/);
       expect(m, `${id} transform`).not.toBeNull();
       const [tx, ty, k] = m!.slice(1).map(Number);
-      return { id, x: tx + HOUSE_ANCHOR[id].x * k, y: ty + HOUSE_ANCHOR[id].y * k };
-    });
-
-    for (const p of placed) {
-      expect(p.x, `${p.id} x`).toBeCloseTo(centre.x, 1);
-      expect(p.y, `${p.id} y`).toBeCloseTo(centre.y, 1);
+      const a = HOUSE_ANCHOR[id];
+      expect(tx + a.x * k, `${id} x`).toBeCloseTo(origin.x, 1);
+      expect(ty + a.y * k, `${id} y`).toBeCloseTo(origin.y, 1);
     }
   });
 
@@ -121,17 +124,9 @@ describe('the house art', () => {
     const anchor = project(0.5, 0.5, 0, 0);
 
     DRAWN_ARCHETYPES.forEach((id, r) => {
-      const label = Object.entries(SUBSTITUTE)
-        .filter(([, to]) => to === id)
-        .map(([from]) => from);
       body +=
         `<text x="12" y="${r * ROW + 24}" font-family="sans-serif" font-size="13"` +
         ` font-weight="600" fill="#1d1f20">${id}</text>`;
-      if (label.length) {
-        body +=
-          `<text x="12" y="${r * ROW + 40}" font-family="sans-serif" font-size="10"` +
-          ` fill="#a0522d">standing in for ${label.join(', ')}</text>`;
-      }
 
       COLS.forEach((col, c) => {
         const cx = 150 + c * CELL + CELL / 2;

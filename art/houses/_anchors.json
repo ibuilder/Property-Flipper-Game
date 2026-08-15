@@ -1,0 +1,62 @@
+{
+ "bungalow": {
+  "anchor": [
+   45.6,
+   73.4
+  ]
+ },
+ "ranch": {
+  "anchor": [
+   44.9,
+   69.7
+  ]
+ },
+ "duplex": {
+  "anchor": [
+   46,
+   78.2
+  ]
+ },
+ "mill_loft": {
+  "anchor": [
+   46,
+   85
+  ]
+ },
+ "victorian": {
+  "anchor": [
+   46,
+   85.2
+  ]
+ },
+ "split_level": {
+  "anchor": [
+   46,
+   77.5
+  ]
+ },
+ "new_build": {
+  "anchor": [
+   46,
+   79.4
+  ]
+ },
+ "colonial": {
+  "anchor": [
+   45.8,
+   76.4
+  ]
+ },
+ "condo": {
+  "anchor": [
+   45.8,
+   78.6
+  ]
+ },
+ "townhouse": {
+  "anchor": [
+   46,
+   76.9
+  ]
+ }
+}

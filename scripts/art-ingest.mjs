@@ -1,23 +1,40 @@
 /**
- * Compile the delivered SVG art into a typed module the bundle can carry.
+ * Compile the delivered SVG art into typed modules the bundle can carry.
  *
- * The art in `art/` is the source of truth and is never edited here: this reads
+ *     npm run art
+ *
+ * The art in `art/` is the source of truth and is never edited here. This reads
  * it, checks it against the constraints in the brief, and writes
- * `src/ui/board/art.generated.ts`. Run it after adding or replacing art.
+ * `src/ui/board/art.generated.ts` (the line board's geometry) and
+ * `src/ui/art.generated.ts` (everything else).
  *
- *     node scripts/art-ingest.mjs
+ * It is a compile step rather than a set of `?raw` imports because the bundle
+ * ships one self-contained CSP-safe file: anything not inlined is silently
+ * absent at runtime.
  *
- * Two things make this a compile step rather than a set of `?raw` imports.
+ * ## The placement model
  *
- * The bundle ships one self-contained CSP-safe file, so the geometry has to be
- * inlined rather than fetched, and inlining 35 files by hand is how a set goes
- * stale. And more importantly the art needs an **anchor** that is not in the
- * SVGs. Each artboard is centred on its own drawing's bounding box, so the lot
- * origin lands somewhere different in every file -- measured, a 15.5px spread
- * across the seven archetypes on a lot diamond only 19px tall. Placing the
- * artboards by their centres would leave the ranch hovering and the victorian
- * sunk into the ground. The anchor is recovered by running the generator that
- * produced the art, which is shipped alongside it, and baked into the output.
+ * Every piece that stands on the board declares two things, and both come from
+ * the delivery rather than from measurement here:
+ *
+ *   anchor   where the lot origin -- grid (0,0) -- lands inside that file's own
+ *            artboard, in artboard pixels. For Scout's sprites there is no lot
+ *            origin, so it is the point where his feet meet the ground.
+ *   scale    the fit the file applies to its own drawing, as a wrapping
+ *            `<g transform>`. 1 where there is no wrapper.
+ *
+ * Given a set's art unit -- grid units per lot edge in the coordinates the
+ * drawing was made in -- placement is then the same three lines everywhere:
+ *
+ *     s = (TILE / unit) / scale
+ *     translate(origin.x - s * anchor.x, origin.y - s * anchor.y) scale(s)
+ *
+ * Dividing `scale` back out is what keeps a bungalow smaller than a mill loft.
+ * Each artboard is fitted to its own drawing, so using them as delivered would
+ * render every house at the same height.
+ *
+ * This replaced an earlier version that recovered anchors by re-running the
+ * generators, which was only ever a workaround for their absence.
  */
 
 import fs from 'node:fs';
@@ -26,8 +43,19 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ART = path.join(ROOT, 'art');
-const OUT = path.join(ROOT, 'src', 'ui', 'board', 'art.generated.ts');
+const OUT_BOARD = path.join(ROOT, 'src', 'ui', 'board', 'art.generated.ts');
 const OUT_UI = path.join(ROOT, 'src', 'ui', 'art.generated.ts');
+
+const STATES = ['distressed', 'occupied', 'working', 'finished'];
+const SEASONS = ['autumn', 'dusk', 'winter'];
+const SPRITES = [
+  'scout-idle-1',
+  'scout-idle-2',
+  'scout-walking-1',
+  'scout-walking-2',
+  'scout-digging-1',
+  'scout-digging-2',
+];
 
 /** Constraints from the brief that a delivery must not violate. */
 const FORBIDDEN = [
@@ -40,328 +68,172 @@ const FORBIDDEN = [
   [/\bfont-/i, 'font property'],
 ];
 
-/**
- * Recover each archetype's lot origin by re-running the generator.
- *
- * `_gen.js` is a plain script with no exports, so it is evaluated with a driver
- * appended. Deriving this rather than hand-copying seven pairs of numbers means
- * a regenerated art set cannot silently disagree with the board.
- */
-async function readAnchors() {
-  const genPath = path.join(ART, '_gen.js');
-  if (!fs.existsSync(genPath)) {
-    throw new Error(
-      `art/_gen.js is missing. It is the only source of the per-archetype lot ` +
-        `anchor, which is not recoverable from the SVGs alone.`,
-    );
-  }
-  const driver = `
-    const out = { unit: S, anchors: {} };
-    for (const id of Object.keys(A)) {
-      const t = transformFor(id);
-      const c = P(0.5, 0.5, 0);
-      out.anchors[id] = { x: c[0] + t[0], y: c[1] + t[1] };
-    }
-    globalThis.__ART = out;
-  `;
-  const src = fs.readFileSync(genPath, 'utf8') + driver;
-  await import('data:text/javascript;base64,' + Buffer.from(src, 'utf8').toString('base64'));
-  return globalThis.__ART;
-}
-
-/**
- * Pull the stroke groups out of one SVG.
- *
- * Deliberately strict rather than a general SVG parser: the delivery format is
- * two `<g>` groups of `<path>`, and anything else is a change worth failing on
- * rather than silently dropping.
- */
-function parse(file) {
-  const raw = fs.readFileSync(file, 'utf8');
-  const rel = path.relative(ART, file).replace(/\\/g, '/');
-
-  for (const [re, what] of FORBIDDEN) {
-    if (re.test(raw)) throw new Error(`${rel}: contains a ${what}, which the brief forbids`);
-  }
-
-  const box = raw.match(/viewBox="0 0 (\d+) \1"/);
-  if (!box) throw new Error(`${rel}: expected a square viewBox starting at the origin`);
-
-  const paths = [];
-  const groups = [...raw.matchAll(/<g\b([^>]*)>([\s\S]*?)<\/g>/g)];
-  if (!groups.length) throw new Error(`${rel}: no stroke groups found`);
-
-  for (const [, attrs, body] of groups) {
-    const w = attrs.match(/stroke-width="([\d.]+)"/);
-    if (!w) throw new Error(`${rel}: a group has no stroke-width`);
-    const weight = Number(w[1]);
-    for (const [, d] of body.matchAll(/<path\b[^>]*\bd="([^"]+)"/g)) {
-      paths.push({ w: weight, d: d.trim() });
-    }
-  }
-  if (!paths.length) throw new Error(`${rel}: no paths found`);
-  return { size: Number(box[1]), paths };
-}
-
-const { unit: ART_UNIT, anchors } = await readAnchors();
-const ids = Object.keys(anchors);
-const STATES = ['distressed', 'occupied', 'working', 'finished'];
-
-const houses = {};
-let pathCount = 0;
-for (const id of ids) {
-  houses[id] = {};
-  const want = [['base', `house-${id}.svg`], ...STATES.map((s) => [s, `house-${id}-${s}.svg`])];
-  for (const [key, name] of want) {
-    const file = path.join(ART, 'houses', name);
-    if (!fs.existsSync(file)) {
-      throw new Error(`art/houses/${name} is missing: every archetype needs a base and 4 states`);
-    }
-    const { paths } = parse(file);
-    houses[id][key] = paths;
-    pathCount += paths.length;
-  }
-}
-
-const furniture = {};
-const furnDir = path.join(ART, 'furniture');
-if (fs.existsSync(furnDir)) {
-  for (const name of fs.readdirSync(furnDir).sort()) {
-    if (!name.endsWith('.svg')) continue;
-    const { paths, size } = parse(path.join(furnDir, name));
-    furniture[name.replace(/^lot-|\.svg$/g, '')] = { size, paths };
-    pathCount += paths.length;
-  }
-}
-
 const j = (v) => JSON.stringify(v);
-const lines = [];
-lines.push(`// GENERATED by scripts/art-ingest.mjs from art/. Do not edit by hand.`);
-lines.push(`// Source: ${ids.length} archetypes x 5 states, ${Object.keys(furniture).length} furniture pieces.`);
-lines.push(``);
-lines.push(`/** One stroked path. \`w\` is the delivered pen weight: 1 detail, 2 contour. */`);
-lines.push(`export interface ArtPath {`);
-lines.push(`  w: number;`);
-lines.push(`  d: string;`);
-lines.push(`}`);
-lines.push(``);
-lines.push(`/** The condition overlays, drawn on top of the base. */`);
-lines.push(`export type HouseState = ${STATES.map(j).join(' | ')};`);
-lines.push(``);
-lines.push(`export const HOUSE_STATES: HouseState[] = [${STATES.map(j).join(', ')}];`);
-lines.push(``);
-lines.push(
-  `/**\n` +
-    ` * Grid units per lot edge in the art's own coordinate space.\n` +
-    ` *\n` +
-    ` * The board's TILE divided by this is the scale factor that lands a\n` +
-    ` * delivered footprint exactly on a board lot.\n` +
-    ` */`,
-);
-lines.push(`export const ART_UNIT = ${ART_UNIT};`);
-lines.push(``);
-lines.push(
-  `/**\n` +
-    ` * Where the lot origin sits inside each 128x128 artboard.\n` +
-    ` *\n` +
-    ` * Not a constant: each artboard is centred on its own drawing, so this\n` +
-    ` * varies by roof height. Houses are placed by this point, never by the\n` +
-    ` * artboard centre.\n` +
-    ` */`,
-);
-lines.push(`export const HOUSE_ANCHOR: Record<string, { x: number; y: number }> = {`);
-for (const id of ids) {
-  const a = anchors[id];
-  lines.push(`  ${id}: { x: ${+a.x.toFixed(3)}, y: ${+a.y.toFixed(3)} },`);
-}
-lines.push(`};`);
-lines.push(``);
-lines.push(`export const HOUSE_ART: Record<string, Record<string, ArtPath[]>> = {`);
-for (const id of ids) {
-  lines.push(`  ${id}: {`);
-  for (const key of ['base', ...STATES]) {
-    lines.push(`    ${key}: [`);
-    for (const p of houses[id][key]) lines.push(`      { w: ${p.w}, d: ${j(p.d)} },`);
-    lines.push(`    ],`);
-  }
-  lines.push(`  },`);
-}
-lines.push(`};`);
-lines.push(``);
-lines.push(
-  `/**\n` +
-    ` * Lot furniture, delivered but not yet placed.\n` +
-    ` *\n` +
-    ` * These arrived without the generator that produced them, so unlike the\n` +
-    ` * houses their lot anchor cannot be recovered -- placing them would be\n` +
-    ` * guesswork. Carried here so they are ready the moment an anchor is agreed.\n` +
-    ` */`,
-);
-lines.push(`export const FURNITURE: Record<string, { size: number; paths: ArtPath[] }> = {`);
-for (const [name, f] of Object.entries(furniture)) {
-  lines.push(`  ${JSON.stringify(name)}: {`);
-  lines.push(`    size: ${f.size},`);
-  lines.push(`    paths: [`);
-  for (const p of f.paths) lines.push(`      { w: ${p.w}, d: ${j(p.d)} },`);
-  lines.push(`    ],`);
-  lines.push(`  },`);
-}
-lines.push(`};`);
-lines.push(``);
+const dir = (name) => path.join(ART, name);
+const exists = (p) => fs.existsSync(p);
 
-fs.writeFileSync(OUT, lines.join('\n'), 'utf8');
-console.log(
-  `art-ingest: ${ids.length} archetypes x 5 states, ` +
-    `${Object.keys(furniture).length} furniture, ${pathCount} paths -> ` +
-    `${path.relative(ROOT, OUT).replace(/\\/g, '/')}`,
-);
+function readJson(rel) {
+  const p = path.join(ART, rel);
+  if (!exists(p)) throw new Error(`art/${rel} is missing; it carries the anchors`);
+  return JSON.parse(fs.readFileSync(p, 'utf8'));
+}
 
-// ---------------------------------------------------------------------------
-// The rest of the delivery: everything that is not board geometry.
-//
-// These are kept as markup rather than parsed into path arrays. The houses are
-// pulled apart because the board has to re-ink them per theme and place them
-// against a projection; Scout, the mastheads and the coloured houses are
-// finished pictures with their own baked palette, and taking them apart would
-// buy nothing but a chance to get them wrong.
-// ---------------------------------------------------------------------------
+function svgsIn(name) {
+  const d = dir(name);
+  if (!exists(d)) return [];
+  return fs
+    .readdirSync(d)
+    .filter((f) => f.endsWith('.svg'))
+    .sort();
+}
 
-/** Inner markup of an SVG, with the wrapper and its own dimensions removed. */
+/** Inner markup of an SVG, with the wrapper removed and root attributes pushed down. */
 function readMarkup(file, { recolour = false } = {}) {
   const raw = fs.readFileSync(file, 'utf8');
   const rel = path.relative(ART, file).replace(/\\/g, '/');
   for (const [re, what] of FORBIDDEN) {
-    if (re.test(raw)) throw new Error(`${rel}: contains a ${what}, which the brief forbids`);
+    if (re.test(raw)) throw new Error(`art/${rel}: contains a ${what}, which the brief forbids`);
   }
   const box = raw.match(/viewBox="([^"]+)"/);
-  if (!box) throw new Error(`${rel}: no viewBox`);
+  if (!box) throw new Error(`art/${rel}: no viewBox`);
   const [, , w, h] = box[1].split(/\s+/).map(Number);
 
   let body = raw
     .replace(/^[\s\S]*?<svg\b[^>]*>/, '')
     .replace(/<\/svg>\s*$/, '')
     .trim();
-  // Root-level presentation attributes do not survive unwrapping, so anything
-  // the paths inherited has to be pushed back down onto them.
+
+  // Presentation attributes on <svg> do not survive unwrapping.
   const rootStroke = raw.match(/<svg\b[^>]*\bstroke="([^"]+)"/);
   const rootWidth = raw.match(/<svg\b[^>]*\bstroke-width="([^"]+)"/);
   if (rootStroke && !/<(path|g)\b[^>]*\bstroke=/.test(body)) {
-    const w2 = rootWidth ? ` stroke-width="${rootWidth[1]}"` : '';
-    body = `<g fill="none" stroke="${rootStroke[1]}"${w2} stroke-linecap="round" stroke-linejoin="round">${body}</g>`;
+    const sw = rootWidth ? ` stroke-width="${rootWidth[1]}"` : '';
+    body = `<g fill="none" stroke="${rootStroke[1]}"${sw} stroke-linecap="round" stroke-linejoin="round">${body}</g>`;
   }
   if (recolour) body = body.replace(/#000000/gi, 'currentColor');
   return { w, h, body };
 }
 
-const dir = (name) => path.join(ART, name);
-const svgsIn = (name) =>
-  fs.existsSync(dir(name))
-    ? fs
-        .readdirSync(dir(name))
-        .filter((f) => f.endsWith('.svg'))
-        .sort()
-    : [];
+/** `<path>` elements of a body, in document order. */
+const pathsOf = (body) => body.match(/<path\b[^>]*?(?:\/>|>\s*<\/path>)/g) ?? [];
 
-// Icons: single-path, one colour, drawn on a 24px grid. Recoloured to
-// currentColor so they take whatever they are placed inside.
-const icons = {};
-for (const f of svgsIn('icons')) {
-  const raw = fs.readFileSync(path.join(dir('icons'), f), 'utf8');
-  const ds = [...raw.matchAll(/\bd="([^"]+)"/g)].map((m) => m[1]);
-  if (!ds.length) throw new Error(`art/icons/${f}: no path data`);
-  icons[f.replace(/^icon-|\.svg$/g, '')] = ds;
-}
+// ---------------------------------------------------------------------------
+// The line house set: parsed into weighted paths so the board can re-ink it.
+// ---------------------------------------------------------------------------
 
-// Scout's moods and the four other faces, as finished pictures.
-const scout = {};
-const npc = {};
-for (const f of svgsIn('scout')) {
-  const { body } = readMarkup(path.join(dir('scout'), f));
-  if (f.startsWith('avatar-')) npc[f.replace(/^avatar-|\.svg$/g, '')] = body;
-  else scout[f.replace(/^scout-|\.svg$/g, '')] = body;
-}
-
-/*
- * Mastheads and headline plates, un-papered.
+/**
+ * Pull the stroke groups out of one line drawing.
  *
- * These are delivered as ink on a full-bleed sheet of `#f4efe2`. That is right
- * for a printed page and wrong for a panel that has to work in both themes: the
- * sheet would sit in the dark theme as a lit rectangle. The letterforms are
- * outlined paths, so dropping the sheet and mapping the ink to `currentColor`
- * gives a masthead that takes the theme's text colour and keeps every serif.
+ * Deliberately strict rather than a general SVG parser: the delivery format is
+ * two `<g>` groups of `<path>`, and anything else is a change worth failing on
+ * rather than silently dropping.
  */
-const press = {};
-for (const f of svgsIn('press')) {
-  const { w, h, body } = readMarkup(path.join(dir('press'), f));
-  const unpapered = body
-    .replace(/<rect\b[^>]*\bfill="#f4efe2"[^>]*>(?:<\/rect>)?/gi, '')
-    /*
-     * Drop the kicker.
-     *
-     * The masthead's strapline is set in the same wood-type, which has no
-     * digits or punctuation drawn yet, so it renders with holes in it. It is
-     * also the one line here that is static, and the rail already prints a
-     * live dateline underneath -- town, week number and date -- so nothing is
-     * lost by removing it and a broken-looking line is avoided. It is the only
-     * accent-coloured group in the set, which is what makes this findable.
-     */
-    .replace(/<g\b[^>]*>(?:(?!<\/g>)[\s\S])*?fill="#5980a6"[\s\S]*?<\/g>/gi, '')
-    .replace(/#1d1f20/gi, 'currentColor');
-  if (/#f4efe2|#5980a6/i.test(unpapered)) {
-    throw new Error(`art/press/${f}: paper or kicker colour survived the un-papering`);
+function parseLine(file) {
+  const raw = fs.readFileSync(file, 'utf8');
+  const rel = path.relative(ART, file).replace(/\\/g, '/');
+  for (const [re, what] of FORBIDDEN) {
+    if (re.test(raw)) throw new Error(`art/${rel}: contains a ${what}, which the brief forbids`);
   }
-  press[f.replace(/\.svg$/, '')] = { w, h, body: unpapered };
+  const box = raw.match(/viewBox="0 0 (\d+) \1"/);
+  if (!box) throw new Error(`art/${rel}: expected a square viewBox at the origin`);
+
+  const paths = [];
+  for (const [, attrs, body] of raw.matchAll(/<g\b([^>]*)>([\s\S]*?)<\/g>/g)) {
+    const w = attrs.match(/stroke-width="([\d.]+)"/);
+    if (!w) throw new Error(`art/${rel}: a stroke group has no stroke-width`);
+    for (const [, d] of body.matchAll(/<path\b[^>]*\bd="([^"]+)"/g)) {
+      paths.push({ w: Number(w[1]), d: d.trim() });
+    }
+  }
+  if (!paths.length) throw new Error(`art/${rel}: no paths found`);
+  return { size: Number(box[1]), paths };
+}
+
+/**
+ * The line set's art unit, cross-checked against its generator.
+ *
+ * The delivered anchors are the authority. `_gen.js` is still shipped and still
+ * computes the same numbers, so it is used as an independent second opinion:
+ * if the two ever disagree, one of them has been regenerated without the other
+ * and the board would put houses somewhere subtly wrong.
+ */
+async function lineUnitAndCheck(anchors) {
+  const genPath = path.join(ART, '_gen.js');
+  if (!exists(genPath)) {
+    throw new Error('art/_gen.js is missing; it is the only statement of the line set art unit');
+  }
+  const driver = `
+    const out = { unit: S, anchors: {} };
+    for (const id of Object.keys(A)) {
+      const t = transformFor(id);
+      out.anchors[id] = [t[0], t[1]];
+    }
+    globalThis.__LINE = out;
+  `;
+  const src = fs.readFileSync(genPath, 'utf8') + driver;
+  await import('data:text/javascript;base64,' + Buffer.from(src, 'utf8').toString('base64'));
+  const got = globalThis.__LINE;
+
+  for (const [id, a] of Object.entries(anchors)) {
+    const mine = got.anchors[id];
+    if (!mine) continue;
+    const dx = Math.abs(mine[0] - a.anchor[0]);
+    const dy = Math.abs(mine[1] - a.anchor[1]);
+    if (dx > 0.15 || dy > 0.15) {
+      throw new Error(
+        `art/houses/_anchors.json disagrees with _gen.js for ${id}: ` +
+          `[${a.anchor}] against [${mine.map((n) => n.toFixed(2))}]. One was regenerated ` +
+          `without the other.`,
+      );
+    }
+  }
+  return got.unit;
+}
+
+// ---------------------------------------------------------------------------
+// Read the delivery
+// ---------------------------------------------------------------------------
+
+const lineAnchors = readJson('houses/_anchors.json');
+const ids = Object.keys(lineAnchors);
+const ART_UNIT = await lineUnitAndCheck(lineAnchors);
+
+const houses = {};
+let pathCount = 0;
+for (const id of ids) {
+  houses[id] = {};
+  for (const [key, name] of [
+    ['base', `house-${id}.svg`],
+    ...STATES.map((s) => [s, `house-${id}-${s}.svg`]),
+  ]) {
+    const file = path.join(dir('houses'), name);
+    if (!exists(file)) throw new Error(`art/houses/${name} is missing`);
+    const { paths } = parseLine(file);
+    houses[id][key] = paths;
+    pathCount += paths.length;
+  }
 }
 
 /*
  * The coloured houses, in two cuts.
  *
- * Each one is delivered standing on its own kerbed plinth: an opaque lot
- * diamond, its two extruded side faces, a lawn and a contact shadow, all drawn
- * before the building. That is right for a picture of a house and fatal on the
- * board, where it would paint over the lot colour that the four data views
- * exist to show -- the board would stop answering four questions and start
- * answering none.
+ * Each is delivered standing on its own kerbed plinth: an opaque lot diamond,
+ * two extruded side faces, a lawn and a contact shadow, all drawn before the
+ * building. That is right for a picture of a house and fatal on the board,
+ * where it would paint over the lot colour the four data views exist to show --
+ * the board would stop answering four questions and start answering none.
  *
- * The ground is a clean prefix in all thirty-five files, so it can be taken off
- * deterministically rather than by eye. `HOUSE_COLOR` keeps it for anywhere a
- * house is the subject; `HOUSE_COLOR_BARE` drops it so the building can stand
- * on a lot the board has coloured itself.
+ * The ground is a clean prefix of every base file, so it comes off by counting
+ * rather than by eye. `HOUSE_COLOR` keeps it for anywhere a house is the
+ * subject; `HOUSE_COLOR_BARE` drops it so the building can stand on a lot the
+ * board has coloured itself.
  */
 const GROUND_FILLS = new Set(['#cdc4b1', '#b0a693', '#9e9584', '#8b9d63', 'rgba(60,50,40,0.10)']);
-
-/** Half-width of the lot diamond in the coloured set's own coordinates. */
 let colourHalfWidth = null;
+const groundCut = {};
+const plinth = {};
 
-/** The `<path>` elements of a body, in document order. */
-function pathsOf(body) {
-  return body.match(/<path\b[^>]*?(?:\/>|>\s*<\/path>)/g) ?? [];
-}
-
-/**
- * Remove a known number of leading paths.
- *
- * Used for the seasonal remaps, where the ground cannot be found by colour --
- * dusk repaints the plinth itself, so `#cdc4b1` is not there to look for. The
- * geometry and path order are shared with the coloured base, so the count found
- * there is the right count here, and the count is checked against a matching
- * total so a redraw cannot silently shift it.
- */
-function stripLeading(body, cut, rel, expectTotal) {
-  const parts = pathsOf(body);
-  if (parts.length !== expectTotal) {
-    throw new Error(
-      `art/${rel}: has ${parts.length} paths but the coloured base has ` +
-        `${expectTotal}. The seasonal sets are remaps of that base and must ` +
-        `keep its path order, or the plinth cannot be found by position.`,
-    );
-  }
-  let out = body;
-  for (let i = 0; i < cut; i++) out = out.replace(parts[i], '');
-  return out.trim();
-}
-
-function stripGround(body, rel) {
+function stripGround(body, rel, id) {
   const parts = pathsOf(body);
   let cut = 0;
   for (const p of parts) {
@@ -372,203 +244,333 @@ function stripGround(body, rel) {
     if (d) {
       const half = Number(d[1]);
       if (colourHalfWidth === null) colourHalfWidth = half;
-      else if (Math.abs(colourHalfWidth - half) > 0.01) {
-        throw new Error(
-          `art/${rel}: lot diamond is ${half} wide but another file says ` +
-            `${colourHalfWidth}. The coloured set must share one lot size or ` +
-            `houses cannot be placed on a common grid.`,
-        );
+      else if (Math.abs(colourHalfWidth - half) > 0.05) {
+        throw new Error(`art/${rel}: lot diamond ${half} wide, elsewhere ${colourHalfWidth}`);
       }
     }
     cut++;
   }
   if (!cut) throw new Error(`art/${rel}: expected the plinth to be drawn first, found none`);
+  groundCut[id] = { cut, total: parts.length };
+  plinth[id] = parts.slice(0, cut).join('');
   let out = body;
   for (let i = 0; i < cut; i++) out = out.replace(parts[i], '');
-  groundCut[rel.split('/').pop().replace(/^house-|\.svg$/g, '')] = {
-    cut,
-    total: parts.length,
-  };
   return out.trim();
 }
 
-/** How many leading paths were the ground, per archetype, and the path total. */
-const groundCut = {};
-
-const colour = {};
-const colourBare = {};
-let colourTransforms = {};
-const cdir = dir('houses-color');
-if (fs.existsSync(cdir)) {
-  const tf = path.join(cdir, '_transforms.json');
-  if (!fs.existsSync(tf)) {
+/**
+ * Remove a known number of leading paths.
+ *
+ * For the seasonal remaps, where the ground cannot be found by colour -- dusk
+ * and winter repaint the plinth, so `#cdc4b1` is not there to look for. Path
+ * order is shared with the coloured base, so the count found there is the right
+ * count here, checked against a matching total.
+ */
+function stripLeading(body, id, rel) {
+  const { cut, total } = groundCut[id];
+  const parts = pathsOf(body);
+  if (parts.length !== total) {
     throw new Error(
-      `art/houses-color/_transforms.json is missing. Without it the coloured ` +
-        `set cannot be scaled to a common size: each artboard is fitted to its ` +
-        `own drawing, so a bungalow and a victorian would render the same height.`,
+      `art/${rel}: ${parts.length} paths against ${total} in the coloured base. The ` +
+        `seasonal sets are remaps of it and must keep its path order.`,
     );
   }
-  colourTransforms = JSON.parse(fs.readFileSync(tf, 'utf8'));
-  for (const id of Object.keys(colourTransforms)) {
-    colour[id] = {};
-    colourBare[id] = {};
-    for (const [key, name] of [
-      ['base', `house-${id}.svg`],
-      ...STATES.map((s) => [s, `house-${id}-${s}.svg`]),
-    ]) {
-      const file = path.join(cdir, name);
-      if (!fs.existsSync(file)) throw new Error(`art/houses-color/${name} is missing`);
-      const { body } = readMarkup(file);
-      colour[id][key] = body;
-      // Only the base stands on ground; the overlays are drawn over it and add
-      // no plinth of their own, so there is nothing in them to take off.
-      colourBare[id][key] = key === 'base' ? stripGround(body, `houses-color/${name}`) : body;
-    }
-  }
+  let out = body;
+  for (let i = 0; i < cut; i++) out = out.replace(parts[i], '');
+  return out.trim();
 }
 
-/*
- * Coloured lot furniture, which needs no anchor because it never lost one.
- *
- * The line furniture is centred on its own bounding box inside a 64px board,
- * which throws away where each piece actually stood -- a fence belongs on a
- * boundary and a driveway at the kerb, and once both are centred they are the
- * same drawing as far as placement goes. That set stays unplaced until an
- * anchor list arrives.
- *
- * The coloured set was delivered in raw world coordinates instead. Every piece
- * shares the houses' origin: horizontal centres land on 38.2, which is the lot
- * diamond's half width, and anything that stands on the ground has its base on
- * y = 0, the lot's centre line. Flat pieces straddle it. So these drop straight
- * onto the board with the same transform the coloured houses use, minus the
- * per-file fitting, and the offsets that make a street lamp sit off to one side
- * are preserved rather than averaged away.
- */
-const furnitureColour = {};
-for (const f of svgsIn('furniture-color')) {
-  const { body } = readMarkup(path.join(dir('furniture-color'), f));
-  /*
-   * Each piece carries its own artboard fitting, the way the coloured houses
-   * do -- except theirs is in `_transforms.json` and these have it inline. It
-   * has to be read and divided back out at placement, or the fitting is
-   * applied twice and every piece renders at artboard size on the lot.
-   */
-  const m = body.match(/^<g transform="translate\((-?[\d.]+) (-?[\d.]+)\) scale\(([\d.]+)\)">/);
-  if (!m) {
-    throw new Error(
-      `art/furniture-color/${f}: expected a wrapping fit transform. Without it ` +
-        `the piece cannot be scaled back to the board's grid.`,
-    );
+const colourTransforms = readJson('houses-color/_transforms.json');
+const colourBare = {};
+for (const id of ids) {
+  if (!colourTransforms[id]) throw new Error(`art/houses-color/_transforms.json has no ${id}`);
+  colourBare[id] = {};
+  for (const [key, name] of [
+    ['base', `house-${id}.svg`],
+    ...STATES.map((s) => [s, `house-${id}-${s}.svg`]),
+  ]) {
+    const file = path.join(dir('houses-color'), name);
+    if (!exists(file)) throw new Error(`art/houses-color/${name} is missing`);
+    const { body } = readMarkup(file);
+    // Only the base stands on ground; overlays add no plinth of their own.
+    colourBare[id][key] = key === 'base' ? stripGround(body, `houses-color/${name}`, id) : body;
   }
-  furnitureColour[f.replace(/^lot-|\.svg$/g, '')] = {
-    tx: Number(m[1]),
-    ty: Number(m[2]),
-    k: Number(m[3]),
-    body,
-  };
 }
 
 /*
  * The seasonal remaps.
  *
- * Delivered as seven bases each and nothing else, which on its own cannot drive
- * a board that shows houses being renovated, let and listed. They are close to
- * pure colour transforms of the coloured base -- same path count, same order,
- * thirteen of a hundred and two paths genuinely redrawn for the planting -- and
- * the colour substitution they apply is completely consistent: 166 colours, no
- * conflicts, checked here rather than assumed.
- *
- * So the bases are used exactly as delivered, redrawn planting and all, and the
- * *overlays* are carried into season by applying the same substitution. That
- * gives a complete set without asking for 56 more drawings, and the one thing
- * it could get wrong -- a colour meaning two different things -- is the thing
- * the conflict check rules out.
- *
- * Transforms are read from each file rather than borrowed from the coloured
- * set's `_transforms.json`: `split_level` disagrees with it by 1.6 units, which
- * would have put that house off its lot in both seasons.
+ * Delivered complete this time -- ten bases and forty overlays each -- so
+ * nothing has to be derived. Each set carries its own transforms file; they are
+ * checked against the coloured set's rather than assumed equal, because an
+ * earlier delivery disagreed on one archetype by 1.6 units, which would have
+ * put that house off its lot in every season.
  */
-const SEASONS = ['autumn', 'dusk'];
 const seasonal = {};
-const seasonMap = { autumn: new Map(), dusk: new Map() };
-
 for (const season of SEASONS) {
   const sdir = dir(`houses-${season}`);
-  if (!fs.existsSync(sdir)) continue;
+  if (!exists(sdir)) continue;
+  const tf = readJson(`houses-${season}/_transforms.json`);
   seasonal[season] = {};
-
-  for (const id of Object.keys(colourTransforms)) {
-    const file = path.join(sdir, `house-${id}.svg`);
-    if (!fs.existsSync(file)) continue;
-    const rel = `houses-${season}/house-${id}.svg`;
-    const { body } = readMarkup(file);
-
-    const m = body.match(/^<g transform="translate\((-?[\d.]+) (-?[\d.]+)\) scale\(([\d.]+)\)">/);
-    if (!m) throw new Error(`art/${rel}: no fit transform`);
-
-    // Colour substitution, derived from this file against the coloured base.
-    const baseFile = path.join(cdir, `house-${id}.svg`);
-    const from = [...readMarkup(baseFile).body.matchAll(/(?:fill|stroke)="(#[0-9a-fA-F]{6})"/g)];
-    const to = [...body.matchAll(/(?:fill|stroke)="(#[0-9a-fA-F]{6})"/g)];
-    if (from.length !== to.length) {
-      throw new Error(`art/${rel}: ${to.length} colours against ${from.length} in the base`);
-    }
-    const map = new Map();
-    for (let i = 0; i < from.length; i++) {
-      const a = from[i][1].toLowerCase();
-      const b = to[i][1];
-      if (map.has(a) && map.get(a) !== b) {
+  for (const id of ids) {
+    const t = tf[id];
+    if (!t) throw new Error(`art/houses-${season}/_transforms.json has no ${id}`);
+    const c = colourTransforms[id];
+    for (const k of ['k', 'tx', 'ty']) {
+      if (Math.abs(t[k] - c[k]) > 0.05) {
         throw new Error(
-          `art/${rel}: ${a} becomes both ${map.get(a)} and ${b}. The remap has to ` +
-            `be a function of colour alone or the overlays cannot follow it.`,
+          `art/houses-${season}: ${id} ${k} is ${t[k]} but the coloured set says ${c[k]}. ` +
+            `The remaps must share the base's fit or the house moves with the season.`,
         );
       }
-      map.set(a, b);
     }
-
-    const { cut, total } = groundCut[id];
-    seasonal[season][id] = {
-      k: Number(m[3]),
-      tx: Number(m[1]),
-      ty: Number(m[2]),
-      base: stripLeading(body, cut, rel, total),
-    };
-
-    /*
-     * The overlays are *not* baked per season. They are the same drawing with
-     * substituted colours, and storing 56 recoloured copies cost 660KB of
-     * bundle for a picture the player can already see. The substitution is
-     * stored instead and applied where it is needed.
-     */
-    for (const [a, b] of map) {
-      const prev = seasonMap[season].get(a);
-      if (prev && prev !== b) {
-        throw new Error(`art/${rel}: ${a} maps to both ${prev} and ${b} across archetypes`);
-      }
-      seasonMap[season].set(a, b);
+    const states = {};
+    for (const [key, name] of [
+      ['base', `house-${id}.svg`],
+      ...STATES.map((s) => [s, `house-${id}-${s}.svg`]),
+    ]) {
+      const file = path.join(sdir, name);
+      if (!exists(file)) throw new Error(`art/houses-${season}/${name} is missing`);
+      const { body } = readMarkup(file);
+      states[key] = key === 'base' ? stripLeading(body, id, `houses-${season}/${name}`) : body;
     }
+    seasonal[season][id] = states;
   }
 }
 
-const ui = [];
-ui.push(`// GENERATED by scripts/art-ingest.mjs from art/. Do not edit by hand.`);
-ui.push(``);
-ui.push(
+/*
+ * Lot furniture, both finishes, now anchored.
+ *
+ * The line set used to be centred on its own bounding box, which discarded
+ * where each piece stood -- a fence belongs on a boundary and a driveway at the
+ * kerb, and centred they are the same drawing. Both sets are now generated from
+ * one description and share an art space, verified below rather than trusted.
+ */
+function readFurniture(folder, recolour) {
+  const anchors = readJson(`${folder}/_anchors.json`);
+  const out = {};
+  for (const f of svgsIn(folder)) {
+    const name = f.replace(/^lot-|\.svg$/g, '');
+    const a = anchors[name];
+    if (!a) throw new Error(`art/${folder}/_anchors.json has no ${name}`);
+    const { body } = readMarkup(path.join(dir(folder), f), { recolour });
+    out[name] = { anchor: a.anchor, scale: a.scale ?? 1, body };
+  }
+  return out;
+}
+const furnitureLine = readFurniture('furniture', true);
+const furnitureColour = readFurniture('furniture-color', false);
+
+/*
+ * Scout's board sprites, coloured and line.
+ *
+ * Anchored at the ground contact point rather than a lot origin, identical
+ * across all six frames so alternating them does not make him hop.
+ */
+function readSprites(folder, recolour) {
+  const meta = readJson(`${folder}/_anchors.json`);
+  const table = meta.sprites ?? meta;
+  const out = {};
+  for (const name of SPRITES) {
+    const file = path.join(dir(folder), `${name}.svg`);
+    if (!exists(file)) continue;
+    const a = table[name];
+    if (!a) throw new Error(`art/${folder}/_anchors.json has no ${name}`);
+    const { body } = readMarkup(file, { recolour });
+    out[name] = { anchor: a.anchor, scale: a.scale ?? 1, body };
+  }
+  return out;
+}
+const spriteColour = readSprites('scout', false);
+const spriteLine = readSprites('scout-line', true);
+
+// Scout's busts and the four faces he is not.
+const scout = {};
+const npc = {};
+for (const f of svgsIn('scout')) {
+  if (SPRITES.some((s) => f === `${s}.svg`)) continue;
+  const { body } = readMarkup(path.join(dir('scout'), f));
+  if (f.startsWith('avatar-')) npc[f.replace(/^avatar-|\.svg$/g, '')] = body;
+  else scout[f.replace(/^scout-|\.svg$/g, '')] = body;
+}
+
+// Icons: single-path, one colour, on a 24px grid.
+const icons = {};
+for (const f of svgsIn('icons')) {
+  const raw = fs.readFileSync(path.join(dir('icons'), f), 'utf8');
+  const ds = [...raw.matchAll(/\bd="([^"]+)"/g)].map((m) => m[1]);
+  if (!ds.length) throw new Error(`art/icons/${f}: no path data`);
+  icons[f.replace(/^icon-|\.svg$/g, '')] = ds;
+}
+
+/*
+ * Press, un-papered.
+ *
+ * Delivered on transparent this time, as asked. The ink is still mapped to
+ * `currentColor` so a masthead takes the theme's text colour, and the accent
+ * used by the masthead kicker -- switched on now that the face has digits --
+ * is mapped to the accent token.
+ *
+ * The cover is the one file that deliberately carries a ground, so it is left
+ * exactly as delivered.
+ */
+const press = {};
+for (const f of svgsIn('press')) {
+  const name = f.replace(/\.svg$/, '');
+  /*
+   * The cover is not interface art and never appears inside the app: it is a
+   * poster for the itch page, rasterised by `scripts/make-cover.mjs`, which
+   * reads it straight from `art/`. Inlining it here would ship a 630x500
+   * illustration -- the one file that deliberately carries its own ground --
+   * into every player's bundle to be drawn nowhere.
+   */
+  if (name === 'cover-630x500') continue;
+  const { w, h, body } = readMarkup(path.join(dir('press'), f));
+  const themed = body
+    .replace(/#1d1f20/gi, 'currentColor')
+    .replace(/#5980a6/gi, 'var(--color-accent)');
+  if (/#f4efe2/i.test(themed)) {
+    throw new Error(`art/press/${f}: still carries a paper ground; deliver these on transparent`);
+  }
+  press[name] = { w, h, body: themed };
+}
+
+// ---------------------------------------------------------------------------
+// Checks that span sets
+// ---------------------------------------------------------------------------
+
+const COLOR_UNIT = colourHalfWidth === null ? null : +(colourHalfWidth / 0.7071).toFixed(4);
+
+/*
+ * The furniture shares the coloured houses' art space.
+ *
+ * Asserted rather than assumed: a flat lot-sized piece must span the lot, so
+ * the driveway's own width is a direct read of the unit it was drawn in. If a
+ * future delivery moves the furniture back onto its own grid, this fails here
+ * rather than by putting a hedge through a wall.
+ */
+function checkFurnitureUnit(set, label) {
+  const drive = set.driveway;
+  if (!drive || COLOR_UNIT === null) return;
+  const xs = [];
+  for (const d of drive.body.match(/\bd="([^"]+)"/g) ?? []) {
+    const nums = [...d.matchAll(/-?\d*\.?\d+/g)].map((m) => Number(m[0]));
+    for (let i = 0; i < nums.length; i += 2) xs.push(nums[i]);
+  }
+  if (!xs.length) return;
+  const centre = (Math.min(...xs) + Math.max(...xs)) / 2;
+  const want = 0.7071 * COLOR_UNIT;
+  if (Math.abs(centre - want) > 1.5) {
+    throw new Error(
+      `art/${label}: the driveway centres on ${centre.toFixed(2)} but the lot centre is ` +
+        `${want.toFixed(2)}. This set is not drawn in the coloured art space.`,
+    );
+  }
+}
+checkFurnitureUnit(furnitureLine, 'furniture');
+checkFurnitureUnit(furnitureColour, 'furniture-color');
+
+// ---------------------------------------------------------------------------
+// Emit: the line board
+// ---------------------------------------------------------------------------
+
+const b = [];
+b.push(`// GENERATED by scripts/art-ingest.mjs from art/. Do not edit by hand.`);
+b.push(`// ${ids.length} archetypes x 5 states.`);
+b.push(``);
+b.push(`/** One stroked path. \`w\` is the delivered pen weight: 1 detail, 2 contour. */`);
+b.push(`export interface ArtPath {`);
+b.push(`  w: number;`);
+b.push(`  d: string;`);
+b.push(`}`);
+b.push(``);
+b.push(`/** The condition overlays, drawn on top of the base. */`);
+b.push(`export type HouseState = ${STATES.map(j).join(' | ')};`);
+b.push(``);
+b.push(`export const HOUSE_STATES: HouseState[] = [${STATES.map(j).join(', ')}];`);
+b.push(``);
+b.push(
   `/**\n` +
-    ` * Icon path data, on a 24px grid at 1.5 stroke.\n` +
+    ` * Grid units per lot edge in the line set's own coordinates.\n` +
     ` *\n` +
-    ` * Delivered under Lucide-compatible names, so any one of these can be\n` +
-    ` * swapped for the Lucide original without touching a call site.\n` +
+    ` * The board's TILE divided by this lands a delivered footprint exactly on\n` +
+    ` * a board lot.\n` +
     ` */`,
 );
-ui.push(`export const ICON_BOX = 24;`);
-ui.push(`export const ICONS: Record<string, string[]> = {`);
-for (const [k, v] of Object.entries(icons)) ui.push(`  ${JSON.stringify(k)}: ${j(v)},`);
-ui.push(`};`);
-ui.push(``);
-ui.push(`export type IconName = keyof typeof ICONS & string;`);
-ui.push(``);
-ui.push(
+b.push(`export const ART_UNIT = ${ART_UNIT};`);
+b.push(``);
+b.push(
+  `/**\n` +
+    ` * Where the lot origin -- grid (0,0) -- sits inside each artboard.\n` +
+    ` *\n` +
+    ` * Not a constant: each artboard is fitted to its own drawing, so this\n` +
+    ` * varies with roof height. Houses are placed by this point, never by the\n` +
+    ` * artboard centre, or a ranch hovers while a victorian sinks.\n` +
+    ` */`,
+);
+b.push(`export const HOUSE_ANCHOR: Record<string, { x: number; y: number }> = {`);
+for (const id of ids) {
+  const [x, y] = lineAnchors[id].anchor;
+  b.push(`  ${id}: { x: ${x}, y: ${y} },`);
+}
+b.push(`};`);
+b.push(``);
+b.push(`export const HOUSE_ART: Record<string, Record<string, ArtPath[]>> = {`);
+for (const id of ids) {
+  b.push(`  ${id}: {`);
+  for (const key of ['base', ...STATES]) {
+    b.push(`    ${key}: [`);
+    for (const p of houses[id][key]) b.push(`      { w: ${p.w}, d: ${j(p.d)} },`);
+    b.push(`    ],`);
+  }
+  b.push(`  },`);
+}
+b.push(`};`);
+b.push(``);
+fs.writeFileSync(OUT_BOARD, b.join('\n'), 'utf8');
+
+// ---------------------------------------------------------------------------
+// Emit: everything else
+// ---------------------------------------------------------------------------
+
+const emitPlaceables = (out, name, table, doc) => {
+  out.push(doc);
+  out.push(`export const ${name}: Record<string, Placeable> = {`);
+  for (const [k, v] of Object.entries(table)) {
+    out.push(
+      `  ${j(k)}: { anchor: [${v.anchor[0]}, ${v.anchor[1]}], scale: ${v.scale}, body: ${j(v.body)} },`,
+    );
+  }
+  out.push(`};`);
+  out.push(``);
+};
+
+const u = [];
+u.push(`// GENERATED by scripts/art-ingest.mjs from art/. Do not edit by hand.`);
+u.push(``);
+u.push(
+  `/**\n` +
+    ` * A drawing that stands somewhere on the board.\n` +
+    ` *\n` +
+    ` * \`anchor\` is where the lot origin lands inside the artboard -- or, for\n` +
+    ` * Scout, where his feet meet the ground. \`scale\` is the fit the file\n` +
+    ` * applies to itself, which has to be divided back out at placement.\n` +
+    ` */`,
+);
+u.push(`export interface Placeable {`);
+u.push(`  anchor: [number, number];`);
+u.push(`  scale: number;`);
+u.push(`  body: string;`);
+u.push(`}`);
+u.push(``);
+u.push(`export const ICON_BOX = 24;`);
+u.push(`export const ICONS: Record<string, string[]> = {`);
+for (const [k, v] of Object.entries(icons)) u.push(`  ${j(k)}: ${j(v)},`);
+u.push(`};`);
+u.push(``);
+u.push(`export type IconName = keyof typeof ICONS & string;`);
+u.push(``);
+u.push(
   `/**\n` +
     ` * Scout, one drawing per mood, and the four faces he is not.\n` +
     ` *\n` +
@@ -576,154 +578,120 @@ ui.push(
     ` * character who changes colour with the interface stops being one.\n` +
     ` */`,
 );
-ui.push(`export const SCOUT_BOX = 320;`);
-ui.push(`export const SCOUT: Record<string, string> = {`);
-for (const [k, v] of Object.entries(scout)) ui.push(`  ${JSON.stringify(k)}: ${j(v)},`);
-ui.push(`};`);
-ui.push(``);
-ui.push(`export const NPC: Record<string, string> = {`);
-for (const [k, v] of Object.entries(npc)) ui.push(`  ${JSON.stringify(k)}: ${j(v)},`);
-ui.push(`};`);
-ui.push(``);
-ui.push(`export interface PressPlate {`);
-ui.push(`  w: number;`);
-ui.push(`  h: number;`);
-ui.push(`  body: string;`);
-ui.push(`}`);
-ui.push(``);
-ui.push(`export const PRESS: Record<string, PressPlate> = {`);
+u.push(`export const SCOUT_BOX = 320;`);
+u.push(`export const SCOUT: Record<string, string> = {`);
+for (const [k, v] of Object.entries(scout)) u.push(`  ${j(k)}: ${j(v)},`);
+u.push(`};`);
+u.push(``);
+u.push(`export const NPC: Record<string, string> = {`);
+for (const [k, v] of Object.entries(npc)) u.push(`  ${j(k)}: ${j(v)},`);
+u.push(`};`);
+u.push(``);
+u.push(`export const SPRITE_NAMES = ${j(SPRITES)};`);
+u.push(``);
+emitPlaceables(
+  u,
+  'SPRITE_COLOR',
+  spriteColour,
+  `/** Scout on the board, coloured. Anchored where his feet meet the ground. */`,
+);
+emitPlaceables(u, 'SPRITE_LINE', spriteLine, `/** The same six frames, inked for the line board. */`);
+u.push(`export interface PressPlate {`);
+u.push(`  w: number;`);
+u.push(`  h: number;`);
+u.push(`  body: string;`);
+u.push(`}`);
+u.push(``);
+u.push(`export const PRESS: Record<string, PressPlate> = {`);
 for (const [k, v] of Object.entries(press)) {
-  ui.push(`  ${JSON.stringify(k)}: { w: ${v.w}, h: ${v.h}, body: ${j(v.body)} },`);
+  u.push(`  ${j(k)}: { w: ${v.w}, h: ${v.h}, body: ${j(v.body)} },`);
 }
-ui.push(`};`);
-ui.push(``);
-ui.push(
+u.push(`};`);
+u.push(``);
+u.push(
   `/**\n` +
-    ` * The coloured houses.\n` +
-    ` *\n` +
-    ` * Not used on the board: each one paints its own kerbed plinth and lawn,\n` +
-    ` * which would cover the very lot colour the four data views exist to show.\n` +
-    ` * They are for anywhere a single house is the subject and there is no ramp\n` +
-    ` * underneath it.\n` +
-    ` *\n` +
-    ` * \`k\` differs per archetype because each artboard is fitted to its own\n` +
-    ` * drawing. Dividing it out is what keeps a bungalow smaller than a mill\n` +
-    ` * loft instead of rendering both at the same height.\n` +
-    ` */`,
-);
-ui.push(`export const COLOR_BOX = 256;`);
-ui.push(
-  `export const COLOR_TRANSFORM: Record<string, { k: number; tx: number; ty: number }> = ${JSON.stringify(colourTransforms, null, 2)};`,
-);
-ui.push(``);
-ui.push(
-  `/**\n` +
-    ` * Grid units per lot edge in the coloured set's own coordinate space.\n` +
+    ` * Grid units per lot edge in the coloured set's coordinates.\n` +
     ` *\n` +
     ` * Read off the plinth diamond rather than assumed, and asserted identical\n` +
-    ` * across all thirty-five files at ingest.\n` +
+    ` * across every base file at ingest. The furniture shares it.\n` +
     ` */`,
 );
-ui.push(`export const COLOR_UNIT = ${colourHalfWidth === null ? 'null' : +(colourHalfWidth / 0.7071).toFixed(4)};`);
-ui.push(``);
-ui.push(`export const HOUSE_COLOR: Record<string, Record<string, string>> = {`);
-for (const [id, states] of Object.entries(colour)) {
-  ui.push(`  ${id}: {`);
-  for (const [k, v] of Object.entries(states)) ui.push(`    ${k}: ${j(v)},`);
-  ui.push(`  },`);
+u.push(`export const COLOR_UNIT = ${COLOR_UNIT};`);
+u.push(``);
+u.push(`export const COLOR_TRANSFORM: Record<string, { k: number; tx: number; ty: number }> = {`);
+for (const id of ids) {
+  const t = colourTransforms[id];
+  u.push(`  ${id}: { k: ${t.k}, tx: ${t.tx}, ty: ${t.ty} },`);
 }
-ui.push(`};`);
-ui.push(``);
-ui.push(
+u.push(`};`);
+u.push(``);
+u.push(
   `/**\n` +
-    ` * Lot furniture in the coloured set's world coordinates.\n` +
+    ` * The kerbed plinth, lawn and contact shadow, on its own.\n` +
     ` *\n` +
-    ` * Shares the coloured houses' origin and unit, so it is placed with the\n` +
-    ` * same transform and no per-piece fitting. The line furniture is not here:\n` +
-    ` * it is centred on its own bounding box, which discards where each piece\n` +
-    ` * stood, and cannot be placed until an anchor list arrives.\n` +
+    ` * Kept apart from the buildings rather than as a second copy of every\n` +
+    ` * house. The board never wants it -- it would paint over the lot colour\n` +
+    ` * the four data views exist to show -- and anywhere a house is the\n` +
+    ` * subject it is this plus the bare drawing. Carrying both cuts in full\n` +
+    ` * cost 438KB of bundle to say what these few paths say.\n` +
     ` */`,
 );
-ui.push(`export interface ColorPiece {`);
-ui.push(`  k: number;`);
-ui.push(`  tx: number;`);
-ui.push(`  ty: number;`);
-ui.push(`  body: string;`);
-ui.push(`}`);
-ui.push(``);
-ui.push(`export const FURNITURE_COLOR: Record<string, ColorPiece> = {`);
-for (const [k, v] of Object.entries(furnitureColour)) {
-  ui.push(
-    `  ${JSON.stringify(k)}: { k: ${v.k}, tx: ${v.tx}, ty: ${v.ty}, body: ${j(v.body)} },`,
-  );
+u.push(`export const HOUSE_PLINTH: Record<string, string> = {`);
+for (const id of ids) u.push(`  ${id}: ${j(plinth[id] ?? '')},`);
+u.push(`};`);
+u.push(``);
+u.push(`/** The houses themselves, with no ground under them. */`);
+u.push(`export const HOUSE_COLOR_BARE: Record<string, Record<string, string>> = {`);
+for (const id of ids) {
+  u.push(`  ${id}: {`);
+  for (const [k, v] of Object.entries(colourBare[id])) u.push(`    ${k}: ${j(v)},`);
+  u.push(`  },`);
 }
-ui.push(`};`);
-ui.push(``);
-ui.push(
+u.push(`};`);
+u.push(``);
+u.push(`export const SEASON_NAMES = ${j(Object.keys(seasonal))};`);
+u.push(``);
+u.push(
   `/**\n` +
-    ` * Seasonal remaps, plinth removed, with overlays carried across by the\n` +
-    ` * same colour substitution the bases use. Each carries its own fit, which\n` +
-    ` * is not always the one in the coloured set's transforms file.\n` +
+    ` * Seasonal remaps, plinth removed, complete with condition states.\n` +
+    ` *\n` +
+    ` * They share the coloured set's fit exactly, checked at ingest, so a house\n` +
+    ` * does not move when the season turns.\n` +
     ` */`,
 );
-ui.push(`export interface SeasonalHouse {`);
-ui.push(`  k: number;`);
-ui.push(`  tx: number;`);
-ui.push(`  ty: number;`);
-ui.push(`  base: string;`);
-ui.push(`}`);
-ui.push(``);
-ui.push(
-  `export const HOUSE_SEASON: Record<string, Record<string, SeasonalHouse>> = {`,
+u.push(
+  `export const HOUSE_SEASON: Record<string, Record<string, Record<string, string>>> = {`,
 );
 for (const [season, byId] of Object.entries(seasonal)) {
-  ui.push(`  ${season}: {`);
-  for (const [id, v] of Object.entries(byId)) {
-    ui.push(`    ${id}: {`);
-    ui.push(`      k: ${v.k}, tx: ${v.tx}, ty: ${v.ty},`);
-    ui.push(`      base: ${j(v.base)},`);
-    ui.push(`    },`);
+  u.push(`  ${season}: {`);
+  for (const [id, states] of Object.entries(byId)) {
+    u.push(`    ${id}: {`);
+    for (const [k, v] of Object.entries(states)) u.push(`      ${k}: ${j(v)},`);
+    u.push(`    },`);
   }
-  ui.push(`  },`);
+  u.push(`  },`);
 }
-ui.push(`};`);
-ui.push(``);
-ui.push(
-  `/**
-` +
-    ` * Colour substitution per season, applied to the overlays at draw time.
-` +
-    ` *
-` +
-    ` * Storing recoloured copies of all 28 overlays for each season cost 660KB
-` +
-    ` * of bundle to say what this table says in a few hundred bytes. Asserted
-` +
-    ` * conflict-free at ingest, which is the only way it could be wrong.
-` +
-    ` */`,
+u.push(`};`);
+u.push(``);
+emitPlaceables(
+  u,
+  'FURNITURE_LINE',
+  furnitureLine,
+  `/** Lot furniture, inked for the line board. */`,
 );
-ui.push(`export const SEASON_MAP: Record<string, Record<string, string>> = {`);
-for (const [season, m] of Object.entries(seasonMap)) {
-  if (!m.size) continue;
-  ui.push(`  ${season}: ${JSON.stringify(Object.fromEntries(m))},`);
-}
-ui.push(`};`);
-ui.push(``);
-ui.push(`/** The same houses with the plinth, lawn and shadow removed. */`);
-ui.push(`export const HOUSE_COLOR_BARE: Record<string, Record<string, string>> = {`);
-for (const [id, states] of Object.entries(colourBare)) {
-  ui.push(`  ${id}: {`);
-  for (const [k, v] of Object.entries(states)) ui.push(`    ${k}: ${j(v)},`);
-  ui.push(`  },`);
-}
-ui.push(`};`);
-ui.push(``);
+emitPlaceables(
+  u,
+  'FURNITURE_COLOR',
+  furnitureColour,
+  `/** The same fourteen pieces, coloured. */`,
+);
+fs.writeFileSync(OUT_UI, u.join('\n'), 'utf8');
 
-fs.writeFileSync(OUT_UI, ui.join('\n'), 'utf8');
 console.log(
-  `art-ingest: ${Object.keys(icons).length} icons, ${Object.keys(scout).length} Scout moods, ` +
-    `${Object.keys(npc).length} faces, ${Object.keys(press).length} press, ` +
-    `${Object.keys(colour).length} coloured archetypes -> ` +
-    `${path.relative(ROOT, OUT_UI).replace(/\\/g, '/')}`,
+  `art-ingest: ${ids.length} archetypes x 5 states (${pathCount} paths), ` +
+    `${Object.keys(seasonal).length} seasons, ` +
+    `${Object.keys(furnitureLine).length}+${Object.keys(furnitureColour).length} furniture, ` +
+    `${Object.keys(spriteColour).length}+${Object.keys(spriteLine).length} sprites, ` +
+    `${Object.keys(icons).length} icons, ${Object.keys(scout).length} moods, ` +
+    `${Object.keys(npc).length} faces, ${Object.keys(press).length} press`,
 );

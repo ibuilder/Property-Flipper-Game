@@ -72,22 +72,27 @@ export default function NewsRail({ state }: { state: GameState }) {
 }
 
 /**
- * Which headline plate, if any, belongs to a news item.
+ * Which headline plate belongs to a news item.
  *
- * Six plates were drawn and only four are claimed here. `zoning_shift` and
- * `mill_rezoned` name events this game does not have -- the nearest are
- * `school_rezoning` and `revitalization`, and a plate reading MILL REZONED
- * above a story about a school catchment would be the picture contradicting
- * the text. They stay unused until either the plate or the event is renamed.
+ * Every market event now has one. The two that used to name events this game
+ * does not have -- `zoning_shift` and `mill_rezoned` -- were redrawn as
+ * `school_rezoning` and `revitalization` rather than renamed, so the drawn
+ * words match the story underneath them.
  *
  * Keyed off the definition id inside the item id, which is built as
  * `event:<defId>:<startedDay>`.
  */
-const PLATES: Record<string, string> = {
+export const PLATES: Record<string, string> = {
   housing_boom: 'plate-boom',
   correction: 'plate-slump',
   rate_cut: 'plate-rates_cut',
   rate_hike: 'plate-rates_spike',
+  school_rezoning: 'plate-school_rezoning',
+  revitalization: 'plate-revitalization',
+  lumber_spike: 'plate-lumber_spike',
+  labor_shortage: 'plate-labor_shortage',
+  permit_backlog: 'plate-permit_backlog',
+  employer_exit: 'plate-employer_exit',
 };
 
 function plateFor(itemId: string): string | null {

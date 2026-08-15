@@ -1,15 +1,19 @@
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ARCHETYPES } from '../src/engine/content';
+import { ARCHETYPES, EVENTS } from '../src/engine/content';
 import {
   COLOR_TRANSFORM,
   COLOR_UNIT,
-  HOUSE_COLOR,
   HOUSE_COLOR_BARE,
+  HOUSE_PLINTH,
   HOUSE_SEASON,
-  SEASON_MAP,
+  SEASON_NAMES,
   FURNITURE_COLOR,
+  FURNITURE_LINE,
+  SPRITE_COLOR,
+  SPRITE_LINE,
+  SPRITE_NAMES,
   ICONS,
   ICON_BOX,
   NPC,
@@ -17,8 +21,15 @@ import {
   SCOUT,
   SCOUT_BOX,
 } from '../src/ui/art.generated';
-import { artIdFor, boardSeason, lotFurniture } from '../src/ui/board/art';
+import {
+  artIdFor,
+  boardSeason,
+  lotFurniture,
+  scoutDrawing,
+  scoutLot,
+} from '../src/ui/board/art';
 import { RULES } from '../src/ui/coach/rules';
+import { PLATES } from '../src/ui/components/NewsRail';
 
 /**
  * The rest of the delivered art.
@@ -100,15 +111,20 @@ describe('the interface art', () => {
     expect(ICON_BOX).toBe(24);
   });
 
-  it('strips the paper and the broken kicker off the press set', () => {
+  it('inks the press set with theme tokens rather than paper', () => {
     expect(Object.keys(PRESS).length).toBeGreaterThan(0);
+    // The cover is a poster for the itch page, rasterised from art/ by a build
+    // script. Shipping it inside the app would carry an illustration nothing
+    // draws.
+    expect(PRESS['cover-630x500'], 'the cover must not ship in the bundle').toBeUndefined();
     for (const [name, plate] of Object.entries(PRESS)) {
-      expect(plate.body, name).not.toMatch(/#f4efe2/i);
-      // The kicker is set in a type with no digits drawn, so it renders with
-      // holes; it is the only accent-coloured group and it must not survive.
-      expect(plate.body, name).not.toMatch(/#5980a6/i);
-      expect(plate.body, `${name} must take the theme's ink`).toMatch(/currentColor/);
       expect(plate.w, name).toBeGreaterThan(0);
+      expect(plate.h, name).toBeGreaterThan(0);
+      expect(plate.body, `${name} still carries a paper ground`).not.toMatch(/#f4efe2/i);
+      expect(plate.body, `${name} must take the theme's ink`).toMatch(/currentColor/);
+      // Raw accent hex is mapped to the token so the kicker -- switched on now
+      // the face has digits -- follows the theme rather than one fixed blue.
+      expect(plate.body, `${name} has a hardcoded accent`).not.toMatch(/#5980a6/i);
     }
   });
 
@@ -123,15 +139,16 @@ describe('the interface art', () => {
         }
       }
     }
-    // And keeps it on the picture copy, or the houses would float there.
-    for (const id of Object.keys(HOUSE_COLOR)) {
-      expect(HOUSE_COLOR[id].base, `${id} lost its plinth`).toContain('#cdc4b1');
+    // And it is kept, once, so a house that is the subject still stands on
+    // something. Carrying a whole second copy of every house cost 438KB.
+    for (const id of Object.keys(HOUSE_COLOR_BARE)) {
+      expect(HOUSE_PLINTH[id], `${id} has no plinth`).toContain('#cdc4b1');
     }
   });
 
   it('can place every coloured house on the board grid', () => {
     expect(COLOR_UNIT).toBeGreaterThan(0);
-    for (const id of Object.keys(HOUSE_COLOR)) {
+    for (const id of Object.keys(HOUSE_COLOR_BARE)) {
       const t = COLOR_TRANSFORM[id];
       expect(t, `${id} has no transform`).toBeDefined();
       expect(t.k, `${id} scale`).toBeGreaterThan(0);
@@ -139,7 +156,7 @@ describe('the interface art', () => {
     // Every archetype the engine generates must resolve to a coloured drawing
     // too, or the board's colour style has holes the line style does not.
     for (const a of ARCHETYPES) {
-      expect(HOUSE_COLOR[artIdFor(a.id)], `${a.id} has no coloured drawing`).toBeDefined();
+      expect(HOUSE_COLOR_BARE[artIdFor(a.id)], `${a.id} has no coloured drawing`).toBeDefined();
     }
   });
 
@@ -189,16 +206,46 @@ describe('the interface art', () => {
     expect(across.some((n) => n === 0)).toBe(true);
   });
 
-  it('divides out each furniture piece own artboard fitting', () => {
-    // These arrived wrapped in a fit-to-artboard transform, like the coloured
-    // houses but inline. Ingesting it without dividing it back out rendered
-    // every piece at artboard size on the lot -- a tree taller than a house.
-    for (const [name, piece] of Object.entries(FURNITURE_COLOR)) {
-      expect(piece.k, `${name} scale`).toBeGreaterThan(0);
-      expect(piece.body, name).toMatch(/^<g transform="translate\(/);
-      expect(Number.isFinite(piece.tx) && Number.isFinite(piece.ty), name).toBe(true);
+  it('carries an anchor and a fit for every placeable piece', () => {
+    /*
+     * The anchor is the whole reason these can be placed at all. The line
+     * furniture was unusable for two deliveries because it had been centred on
+     * its own bounding box -- a fence belongs on a boundary and a driveway at
+     * the kerb, and centred they are the same drawing.
+     *
+     * The fit has to be divided back out at placement. Ingesting it without
+     * doing so rendered every piece at artboard size: measured in the app, all
+     * fourteen identical at 65.8px on a lot 24.2px tall.
+     */
+    for (const [label, set] of [
+      ['line', FURNITURE_LINE],
+      ['colour', FURNITURE_COLOR],
+    ] as const) {
+      expect(Object.keys(set), `${label} furniture`).toHaveLength(14);
+      for (const [name, piece] of Object.entries(set)) {
+        expect(piece.scale, `${label}/${name} fit`).toBeGreaterThan(0);
+        expect(Number.isFinite(piece.anchor[0]), `${label}/${name} anchor x`).toBe(true);
+        expect(Number.isFinite(piece.anchor[1]), `${label}/${name} anchor y`).toBe(true);
+        expect(piece.body.length, `${label}/${name} body`).toBeGreaterThan(0);
+      }
     }
-    expect(Object.keys(FURNITURE_COLOR)).toHaveLength(14);
+    // Both finishes must describe the same piece in the same place, or the two
+    // board styles disagree about where a hedge is.
+    for (const name of Object.keys(FURNITURE_LINE)) {
+      expect(FURNITURE_COLOR[name], `${name} has no coloured twin`).toBeDefined();
+    }
+  });
+
+  it('anchors all six Scout frames on one ground point', () => {
+    // Frames alternate. If the contact point moved between them he would hop.
+    for (const [label, set] of [
+      ['colour', SPRITE_COLOR],
+      ['line', SPRITE_LINE],
+    ] as const) {
+      expect(Object.keys(set), `${label} sprites`).toHaveLength(SPRITE_NAMES.length);
+      const anchors = new Set(Object.values(set).map((p) => `${p.anchor[0]},${p.anchor[1]}`));
+      expect(anchors.size, `${label} sprites must share one ground point`).toBe(1);
+    }
   });
 
   it('dresses the board for the season the rest of the game is in', () => {
@@ -207,26 +254,84 @@ describe('the interface art', () => {
     const seen = new Set<string | null>();
     for (let day = 0; day < 366; day += 7) seen.add(boardSeason(day));
     expect(seen.has('autumn'), 'autumn never comes').toBe(true);
-    expect(seen.has('dusk'), 'winter never comes').toBe(true);
+    expect(seen.has('winter'), 'winter never comes').toBe(true);
     expect(seen.has(null), 'spring and summer must use the set as drawn').toBe(true);
 
-    for (const season of ['autumn', 'dusk']) {
+    for (const season of SEASON_NAMES) {
       const set = HOUSE_SEASON[season];
       expect(set, `${season} has no drawings`).toBeDefined();
       for (const id of Object.keys(HOUSE_COLOR_BARE)) {
         expect(set[id], `${season}/${id}`).toBeDefined();
-        expect(set[id].k, `${season}/${id} scale`).toBeGreaterThan(0);
         // A remap that came back identical would mean the season is drawn but
         // not applied, which looks exactly like it working.
         expect(set[id].base, `${season}/${id} is identical to the base set`).not.toBe(
           HOUSE_COLOR_BARE[id].base,
         );
-        // And the plinth has to be off these too, or a seasonal lot covers the
-        // data ramp that a spring one does not.
-        expect(set[id].base).not.toContain('#cdc4b1');
+        // The plinth has to be off these too, or a seasonal lot covers the data
+        // ramp that a spring one does not.
+        expect(set[id].base, `${season}/${id} kept its plinth`).not.toContain('#cdc4b1');
+        // And every condition state has to exist, or a house being renovated
+        // loses its scaffolding when the leaves turn.
+        for (const st of ['distressed', 'occupied', 'working', 'finished']) {
+          expect(set[id][st], `${season}/${id}/${st}`).toBeTruthy();
+        }
       }
-      const map = SEASON_MAP[season];
-      expect(Object.keys(map).length, `${season} colour map`).toBeGreaterThan(20);
+    }
+  });
+
+  it('has a headline plate for every market event', () => {
+    // Two plates used to name events this game does not have. They were
+    // redrawn rather than renamed, so the drawn words match the story.
+    const events = EVENTS.map((e) => e.id);
+    for (const id of events) {
+      expect(PLATES[id], `market event ${id} has no plate mapped`).toBeTruthy();
+      expect(PRESS[PLATES[id]], `${id} maps to a plate that is not drawn`).toBeTruthy();
+    }
+    for (const name of Object.keys(PRESS)) {
+      if (!name.startsWith('plate-')) continue;
+      const claimed = Object.values(PLATES).includes(name);
+      expect(claimed, `${name} is drawn but no event uses it`).toBe(true);
+    }
+  });
+
+  it('puts Scout on the job that is running, and only there', () => {
+    const working = { ownership: { renovation: {} } };
+    const idle = { ownership: null };
+    const parcels = [
+      { gx: 9, gy: 9, property: idle },
+      { gx: 4, gy: 2, property: working },
+      { gx: 7, gy: 1, property: working },
+      { gx: 1, gy: 1, property: null },
+    ];
+    const isWorking = (p: unknown) =>
+      Boolean((p as { ownership?: { renovation?: unknown } })?.ownership?.renovation);
+
+    const lot = scoutLot(parcels, isWorking)!;
+    expect(lot, 'Scout should stand on a live job').toBeTruthy();
+    // Ties break on position so he does not teleport between two equally valid
+    // sites as the day advances.
+    expect([lot.gx, lot.gy]).toEqual([4, 2]);
+    expect(scoutLot(parcels, isWorking)).toBe(lot);
+
+    // No job, no dog. A figure on every lot is a kennel, not a town.
+    expect(scoutLot([{ gx: 0, gy: 0, property: idle }], isWorking)).toBeNull();
+    expect(scoutLot([], isWorking)).toBeNull();
+  });
+
+  it('alternates Scout on the day rather than on a timer', () => {
+    // The board is a still picture of one day, so the animation belongs to time
+    // passing in the game. It also means nothing runs while nothing happens.
+    const a = scoutDrawing(3, 4, 'digging', 10, 'colour', 0, 0)!;
+    const b = scoutDrawing(3, 4, 'digging', 11, 'colour', 0, 0)!;
+    expect(a.body).not.toBe(b.body);
+    expect(scoutDrawing(3, 4, 'digging', 12, 'colour', 0, 0)!.body).toBe(a.body);
+    // Same lot, same transform: alternating frames must not make him hop.
+    expect(a.transform).toBe(b.transform);
+
+    for (const style of ['line', 'colour'] as const) {
+      for (const action of ['idle', 'walking', 'digging'] as const) {
+        expect(scoutDrawing(2, 2, action, 0, style, 0, 0), `${style}/${action}`).toBeTruthy();
+      }
     }
   });
 

@@ -284,6 +284,67 @@ H.new_build={x0:0.44,x1:0.94,y0:0.08,y1:0.92,h:30,rh:22,roof:'mono',mat:'white',
     for(let i=0;i<4;i++) fp(o,[P(0.06,0.06+i*0.05,0),P(0.06,0.10+i*0.05,0),P(0.06,0.10+i*0.05,14),P(0.06,0.06+i*0.05,14)],
       i%2?'#8d7355':'#a4886a',sh('#8d7355',0.8),0.6); }};
 
+H.colonial={x0:0.40,x1:0.94,y0:0.08,y1:0.92,h:44,rh:16,roof:'gable',mat:'white',ov:0.055,pathY:0.50,
+  windows:[{face:'L',u:0.08,v:26,w:0.12,h:11},{face:'L',u:0.44,v:26,w:0.12,h:11,lit:false},{face:'L',u:0.80,v:26,w:0.12,h:11},
+           {face:'L',u:0.08,v:6,w:0.12,h:11},{face:'L',u:0.80,v:6,w:0.12,h:11},
+           {face:'R',u:0.20,v:26,w:0.18,h:11},{face:'R',u:0.60,v:26,w:0.18,h:11},{face:'R',u:0.20,v:6,w:0.18,h:11,lit:false}],
+  doors:[{face:'L',u:0.44,v:1,w:0.13,h:18,col:'#3d5343'}],
+  extra(o,s){
+    s.windows.filter(w=>w.face==='L').forEach(w=>{
+      [[-0.038,-0.008],[w.w+0.008,w.w+0.038]].forEach(([p,q])=>
+        fp(o,[PL(s,w.u+p,w.v),PL(s,w.u+q,w.v),PL(s,w.u+q,w.v+w.h),PL(s,w.u+p,w.v+w.h)],'#3d5343','#26362a',0.6));});
+    const d=s.doors[0];
+    fp(o,[PL(s,d.u-0.05,d.v+d.h),PL(s,d.u+d.w+0.05,d.v+d.h),PL(s,d.u+d.w+0.05,d.v+d.h+2.6),PL(s,d.u-0.05,d.v+d.h+2.6)],C.trim,sh(C.trim,0.66),0.7);
+    [P(s.x0,d.u,0)].forEach(()=>{});
+    fp(o,[P(s.x0-0.09,0.40,0.8),P(s.x0-0.09,0.62,0.8),P(s.x0,0.62,0.8),P(s.x0,0.40,0.8)],'#b89a76','#8d7355',0.8);
+    chimney(s,o,0.62,0.16,44,56,0.030); chimney(s,o,0.62,0.86,44,54,0.030);
+    ln(o,[PL(s,0,22),PL(s,1,22)],sh(MAT.white.w,0.7),0.8);
+    ln(o,[PR(s,0,22),PR(s,1,22)],sh(MAT.white.w,0.62),0.8);
+    tree(o,0.13,0.14,15,10,'#8fa05c'); tree(o,0.14,0.88,13,9,C.leafDark);
+    bush(o,0.22,0.34,8,5,C.leaf2); bush(o,0.22,0.66,8,5,C.leaf2);
+    flowers(o,0.24,0.50,8,0.16); }};
+
+H.condo={x0:0.26,x1:0.98,y0:0.00,y1:1.00,h:56,parapet:5,flat:true,mat:'stone',ov:0.02,pathY:0.16,
+  windows:(()=>{const w=[];
+    for(let r=0;r<3;r++)for(let c=0;c<3;c++)w.push({face:'L',u:0.07+c*0.31,v:8+r*16,w:0.18,h:10,lit:!(r===2&&c===1)});
+    for(let r=0;r<3;r++)w.push({face:'R',u:0.28,v:8+r*16,w:0.30,h:10,lit:r!==1});
+    return w;})(),
+  doors:[{face:'L',u:0.06,v:1,w:0.11,h:15,col:'#3f464b'}],
+  extra(o,s){
+    for(let r=1;r<3;r++) ln(o,[PL(s,0,5+r*16),PL(s,1,5+r*16)],sh(MAT.stone.w,0.72),0.9);
+    [0.38,0.69].forEach(u=>ln(o,[PL(s,u,0),PL(s,u,s.h)],sh(MAT.stone.w,0.68),0.9));
+    // the unit: picked out by a brighter render and its own balcony
+    fp(o,[PL(s,0.02,0),PL(s,0.36,0),PL(s,0.36,21),PL(s,0.02,21)],sh(MAT.stone.w,1.16),sh(MAT.stone.w,0.6),1.1);
+    fp(o,[P(s.x0-0.10,0.03,21),P(s.x0-0.10,0.31,21),P(s.x0,0.31,21),P(s.x0,0.03,21)],'#b89a76','#8d7355',0.8);
+    fp(o,[P(s.x0-0.10,0.03,21),P(s.x0-0.10,0.31,21),P(s.x0-0.10,0.31,29),P(s.x0-0.10,0.03,29)],'#9aa3ab','#6e767d',0.7);
+    for(let t=0.12;t<1;t+=0.15) ln(o,[P(s.x0-0.10,0.03+t*0.28,21),P(s.x0-0.10,0.03+t*0.28,29)],'#7d858c',0.6);
+    ln(o,[P(s.x0-0.10,0.03,29),P(s.x0-0.10,0.31,29)],'#6e767d',1.2);
+    fp(o,[P(0.44,0.30,61),P(0.62,0.30,61),P(0.62,0.48,61),P(0.44,0.48,61)],'#4b515a','#33383f',0.8);
+    bush(o,0.14,0.06,8,5,C.leafDark); bush(o,0.14,0.22,7,4,C.leaf2);
+    tree(o,0.12,0.60,14,9,'#8fa05c'); tree(o,0.13,0.86,12,8,C.leafDark);
+    flowers(o,0.16,0.40,7,0.14); }};
+
+H.townhouse={x0:0.42,x1:0.94,y0:0.26,y1:0.74,h:52,rh:10,roof:'gable',mat:'brick',siding:'brick',ov:0.04,pathY:0.86,
+  windows:[{face:'L',u:0.10,v:36,w:0.34,h:10},{face:'L',u:0.56,v:36,w:0.34,h:10,lit:false},
+           {face:'L',u:0.10,v:18,w:0.34,h:10},{face:'L',u:0.56,v:18,w:0.34,h:10},
+           {face:'R',u:0.26,v:36,w:0.30,h:10},{face:'R',u:0.26,v:18,w:0.30,h:10,lit:false}],
+  doors:[{face:'L',u:0.76,v:1,w:0.16,h:14,col:'#3d4a55'}],
+  extra(o,s){
+    fp(o,[PL(s,0.10,0),PL(s,0.66,0),PL(s,0.66,13),PL(s,0.10,13)],'#7d858c','#565d64',0.8);
+    for(let t=0.14;t<1;t+=0.16) ln(o,[PL(s,0.10+t*0.56,1),PL(s,0.10+t*0.56,12)],'#9aa3ab',0.6);
+    ln(o,[PL(s,0,15),PL(s,1,15)],sh(MAT.brick.w,0.7),0.9);
+    ln(o,[PL(s,0,33),PL(s,1,33)],sh(MAT.brick.w,0.7),0.9);
+    [[0.00,0.26,13,'#8a5a48'],[0.74,1.00,20,'#7d6a58']].forEach(([na,nb,drop,col])=>{
+      const nh=s.h-drop;
+      fp(o,[P(s.x0,na,0),P(s.x0,nb,0),P(s.x0,nb,nh),P(s.x0,na,nh)],sh(col,1.06),sh(col,0.62),0.9);
+      fp(o,[P(s.x0,na,nh),P(s.x0,nb,nh),P(s.x0-0.05,nb,nh+2.6),P(s.x0-0.05,na,nh+2.6)],sh(col,0.8),sh(col,0.56),0.9);
+      fp(o,[P(s.x0,na+0.05,20),P(s.x0,nb-0.05,20),P(s.x0,nb-0.05,30),P(s.x0,na+0.05,30)],C.trim,sh(C.trim,0.7),0.7);
+      fp(o,[P(s.x0,na+0.075,22),P(s.x0,nb-0.075,22),P(s.x0,nb-0.075,28),P(s.x0,na+0.075,28)],C.glassDim,sh(C.glassDim,0.8),0.6);
+    });
+    chimney(s,o,0.66,0.30,56,66,0.028);
+    bush(o,0.24,0.16,8,5,C.leafDark); bush(o,0.24,0.84,8,5,C.leaf2);
+    tree(o,0.12,0.50,14,9,'#8fa05c'); flowers(o,0.26,0.70,7,0.14); }};
+
 function drawHouse(id){
   const s=Object.assign({},H[id]), o=mk();
   shadow(o); plinth(o,s.pathY);
@@ -305,7 +366,9 @@ const ANCH={
  bungalow:{lawn:[0.09,0.25,0.74,0.96]}, ranch:{lawn:[0.10,0.40,0.58,0.96]},
  duplex:{lawn:[0.10,0.30,0.62,0.96]},  mill_loft:{lawn:[0.07,0.22,0.58,0.94]},
  victorian:{lawn:[0.06,0.21,0.58,0.96]}, split_level:{lawn:[0.05,0.15,0.40,0.96]},
- new_build:{lawn:[0.07,0.25,0.42,0.66]}
+ new_build:{lawn:[0.07,0.25,0.42,0.66]},
+ colonial:{lawn:[0.06,0.24,0.60,0.96]}, condo:{lawn:[0.05,0.18,0.30,0.62]},
+ townhouse:{lawn:[0.08,0.26,0.34,0.70]}
 };
 function cube(o,x0,y0,x1,y1,z0,z1,col){
   fp(o,[P(x0,y0,z1),P(x1,y0,z1),P(x1,y1,z1),P(x0,y1,z1)],sh(col,1.14),sh(col,0.58),0.7);

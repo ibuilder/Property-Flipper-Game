@@ -1,46 +1,64 @@
 # Property Flipper — art delivery
 
-Two complete sets. Pick one before extending either.
+Anchors for every placeable piece are in **ANCHORS.md** (and in a `_anchors.json` /
+`_transforms.json` beside the files). An anchor is the pixel coordinate, inside that file's own
+artboard, where the lot origin sits.
 
-## art/houses/ — monochrome line set (original brief)
-7 archetypes + 28 condition overlays. Pure #000000 stroke on transparent, two weights
-(2px contour / 1px interior), 128x128 artboard, recoloured at runtime. Source: `_gen.js`.
-Known deviation: strokes are live stroke attributes, not outlined paths.
+Ten archetype ids, matching the engine: bungalow, ranch, duplex, mill_loft, victorian, split_level,
+new_build, colonial, condo, townhouse.
 
-## art/houses-color/ — coloured set (reference-matched)
-7 archetypes + 28 condition overlays. 256x256 artboard. Flat-shaded: one base colour per material
-with four derived values (roof-left x1.14, roof-right x0.86, left wall x1.08, right wall x0.80),
-warm lit windows, fascia bands, chimneys, kerbed plinth with lawn, path and planting.
-Colour is baked, so runtime recolour and the two themes do not apply to this set.
-Source: `_gen_color.js`.
+## art/houses/ — monochrome line set
+10 archetypes + 40 condition overlays (distressed, occupied, working, finished).
+128 x 128, pure #000000 stroke on transparent, two weights (2px contour / 1px interior), no fills.
+Overlays share their base's transform exactly, so a state swap never moves the building.
+Source: `_gen.js`. Known deviation: strokes are live stroke attributes, not outlined paths.
 
-## art/houses-dusk/ · art/houses-autumn/
-7 each. Colour remaps of the coloured bases, not redraws — dusk drops every value to 52% and pushes
-it blue while the glass brightens; autumn rusts the greens. Winter follows the same pattern.
+## art/houses-color/ — coloured set
+10 archetypes + 40 condition overlays. 256 x 256. Flat-shaded: one base colour per material with
+four derived values (roof-left x1.14, roof-right x0.86, left wall x1.08, right wall x0.80), warm lit
+windows, fascia bands, chimneys, kerbed plinth with lawn, path and planting. Colour is baked, so
+runtime recolour does not apply to this set. Source: `_gen_color.js`.
 
-## art/furniture-color/ (14) · art/furniture/ (14 line)
-Trees x3, driveway, fence, hedge, pool, skip, permit board, sold sign, for-sale sign,
-rival hoarding, parked car, street lamp. 96px artboards, same projection and scale.
+## art/houses-dusk/ · art/houses-autumn/ · art/houses-winter/
+10 bases + 40 overlays each. Pure colour remaps of the coloured set, not redraws — dusk drops every
+value to 52% and pushes it blue while the glass brightens; autumn rusts the greens; winter goes cold
+and pale. Same anchors and transforms as houses-color.
 
-## art/scout/ — 6 moods + 4 NPC cast
-One parametric bust rig. Mood is carried by brow height and angle, eyelid, mouth curve, ear droop
-and head tilt; nothing else moves. 320x320. Cast: appraiser, lender, rival, inspector.
-Not yet delivered: the 3 isometric board sprites (idle / walking / digging, 2 frames each).
+## art/furniture/ (64px line) · art/furniture-color/ (96px colour)
+14 pieces each, same geometry, both anchored: tree_oak, tree_pine, tree_slim, driveway, fence, hedge,
+pool, skip, permit_board, sold_sign, for_sale_sign, rival_hoarding, parked_car, street_lamp.
+Both sets are now generated from one description in `_gen_color.js`, which is why the anchors agree.
+
+## art/scout/ · art/scout-line/
+Six board sprites (coloured in `scout/`, monochrome line in `scout-line/` for the line board) — idle, walking, digging, two frames each — isometric, standing on the ground
+plane, 64 x 64, anchored at the ground contact point.
+Six mood portraits (briefing, explaining, pointing, warning, approving, disappointed) and four NPC
+avatars (appraiser, lender, rival, inspector) at 320 x 320. One parametric bust rig: mood is carried
+by brow height and angle, eyelid, mouth curve, ear droop and head tilt.
 
 ## art/icons/ — 22
-24px grid, 1.5 stroke, round caps and joins, single colour. All 22 use Lucide-compatible names;
-swap any for the Lucide original rather than carrying your own.
+24px grid, 1.5 stroke, round caps and joins, single colour, Lucide-compatible names.
 
-## art/press/ — 1 masthead + 6 headline plates
-Condensed wood-type drawn as outlined paths, no font dependency. Uppercase A-Z only —
-digits and punctuation glyphs are not drawn yet, which is why the masthead kicker has gaps.
+## art/press/ — transparent, no paper ground
+`charset.svg` — the full drawn face: A-Z, 0-9, % . , ' - : $ ! ? /. No font dependency.
+`masthead-the_weekly_plat.svg` (760 x 190) with its kicker now switched on.
+Ten headline plates at 680 x 140: rates_cut, rates_spike, boom, slump, school_rezoning,
+revitalization, lumber_spike, labor_shortage, permit_backlog, employer_exit.
+(plate-zoning_shift and plate-mill_rezoned are gone — replaced by school_rezoning and
+revitalization, redrawn rather than renamed, so the words match the events.)
+`cover-630x500.svg` — the itch.io cover. A poster, not isometric, and the one file that
+deliberately carries a ground.
+
+## art/index.html
+Open it in a browser: every file in the delivery at its real size, grouped by folder and captioned
+with its filename. Nothing to install.
 
 ## Format
 SVG throughout. Paths only, explicit viewBox, origin top-left, no <image>, no fonts, no external
-references, no id attributes on internal elements. Overlays share their base's transform exactly,
-so a state swap never moves the building.
+references, no id attributes.
 
-## Screens built on the set
-- `Board Screen.dc.html` — 3x3 block, click a lot, underwriting panel, Scout coaching, state machine
-- `Style Guide.dc.html` — construction rules, palette, full asset index
-- `Coloured Houses.dc.html` · `Property Flipper Art.dc.html` · `Colour Test.dc.html` — delivery boards
+## Generators
+`_gen.js` (line houses + overlays), `_gen_color.js` (coloured houses, overlays, furniture),
+`_gen_scout.js` (board sprites, coloured and line from one description),
+`_type.js` (the wood-type face and the plate layout). Anchors are re-derivable from these — nothing
+was measured by hand.
