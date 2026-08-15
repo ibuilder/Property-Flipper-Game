@@ -16,6 +16,7 @@
     "build": "npm run build:renderer && npm run build:electron",
     "start": "npm run build && electron .",
     "dist": "npm run build && node scripts/dist.mjs",
+    "art": "node scripts/art-ingest.mjs",
     "icon": "node scripts/make-icon.mjs",
     "smoke": "node scripts/smoke.mjs",
     "audit": "node scripts/audit.mjs",

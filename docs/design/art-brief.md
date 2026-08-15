@@ -39,19 +39,42 @@ A duplex must not be mistakable for a bungalow at 40 pixels.
 
 ## 2. Deliverables
 
-### 2a. House archetypes, axonometric — **7 drawings**
+### 2a. House archetypes, axonometric — **7 drawings** — **delivered, but against the wrong list**
 
-The core of the commission.
+The core of the commission. Seven drawings arrived and are on the board.
 
-| id | What it is |
-| --- | --- |
-| `bungalow` | Single storey, low pitched roof, front porch |
-| `ranch` | Long, low, wide footprint, shallow hip roof |
-| `duplex` | Two storeys, two front doors, plain |
-| `mill_loft` | Converted industrial, tall, flat roof, big windows |
-| `victorian` | Tall, steep gable, bay window, ornament |
-| `split_level` | Staggered floors, offset roofline |
-| `new_build` | Contemporary, mono-pitch roof, clean rectangles |
+**This brief asked for the wrong seven ids, and that is our error, not the
+artist's.** The list below was taken from the placeholder module rather than
+from `src/engine/content.ts`, which is what actually decides the archetype of
+every house the game generates. Both lists are seven long, so the test guarding
+coverage — which counted drawings rather than comparing ids — passed throughout.
+
+| id | What it is | status |
+| --- | --- | --- |
+| `bungalow` | Single storey, low pitched roof, front porch | delivered, in use |
+| `ranch` | Long, low, wide footprint, shallow hip roof | delivered, in use |
+| `duplex` | Two storeys, two front doors, plain | delivered, in use |
+| `victorian` | Tall, steep gable, bay window, ornament | delivered, in use |
+| `mill_loft` | Converted industrial, tall, flat roof, big windows | delivered, **no such archetype** |
+| `split_level` | Staggered floors, offset roofline | delivered, **no such archetype** |
+| `new_build` | Contemporary, mono-pitch roof, clean rectangles | delivered, **no such archetype** |
+
+**Still to draw — these are the ids the game actually generates:**
+
+| id | What it is | currently wearing |
+| --- | --- | --- |
+| `colonial` | Four bed, symmetrical front, 1960–1999, traditional | `split_level` |
+| `condo` | Small, 650–1050 sqft, one of many units, 1975–2015 | `mill_loft` |
+| `townhouse` | Three storeys, narrow, attached, 1985–2010 | `new_build` |
+
+The three delivered drawings with no archetype are being used as stand-ins so
+that no house falls back to a generic blob, and the substitutions are chosen on
+era and massing. They are a stopgap: a colonial is currently wearing a split
+level's roof. The three drawings above are the outstanding commission, and they
+need the same base-plus-four-overlays treatment as everything else.
+
+The three orphans are worth keeping. If `mill_loft`, `split_level` or
+`new_build` are ever added to `content.ts` they are already drawn.
 
 - **Projection:** true isometric. The board uses a 58° tilt with the ground
   rotated 45°, which flattens to screen as `x = 0.7071·(gx+gy)`,
@@ -62,11 +85,18 @@ The core of the commission.
   yours to judge per archetype — the mill loft should tower over the bungalow.
 - **Canvas:** 128 × 128px artboard, house centred, so it can be scaled down.
 
-### 2b. Condition states — **4 per archetype, 28 total**
+### 2b. Condition states — **4 per archetype, 28 total** — **delivered**
 
 Same footprint every time. These are drawn as **swappable overlays** on the
 base drawing, not as four separate houses, so a lot can change state without
 the building appearing to move.
+
+Delivered and wired. The overlay is inked in the accent while the building
+stays in the text colour, so the state of a lot reads at town zoom without
+having to read the house. One overlay shows at a time, in the order
+`working` > `occupied` > `distressed` > `finished`: they compose cleanly in
+geometry, but several of them put furniture in the same driveway, and two
+boards in one drive reads as a bug rather than as two facts.
 
 | state | What it shows |
 | --- | --- |
@@ -78,11 +108,19 @@ the building appearing to move.
 `working` and `distressed` matter most: they are how the board shows, at a
 glance, which of your houses is costing you money today.
 
-### 2c. Lot furniture — **14 small pieces**
+### 2c. Lot furniture — **14 small pieces** — **delivered, not yet placed**
 
 Trees (3 varieties), driveway, fence, hedge, pool, skip, permit board, sold
 sign, for-sale sign, rival hoarding, parked car, street lamp. Same projection,
 sized to sit on a 36px lot beside a house.
+
+All fourteen arrived and are carried in the bundle, but nothing is placed yet,
+because **where on the lot each piece stands is not recoverable from the files**
+— see the anchor note in section 3. The houses solved this by shipping their
+generator, from which the lot origin can be re-derived; the furniture came
+without one. Placing them by eye would put a street lamp in a different spot at
+every zoom. What is needed is one number per piece: where the lot origin sits
+inside its 64 × 64 artboard.
 
 ### 2d. Scout — **6 portraits + 3 sprites**
 
@@ -126,6 +164,21 @@ market events. Condensed serif or slab, engraved feel.
 - Origin at top-left of the artboard, with an explicit `viewBox`.
 - Source files (AI, Figma, whatever you work in) delivered alongside.
 
+**The anchor. Read this one twice — it is the thing that goes wrong.**
+
+Tell us, for every piece, **where the lot origin sits inside its artboard**, as
+a pixel coordinate. One line per file in a `README` is fine.
+
+It is not enough to say the drawing is centred, because a taller house pushes
+its own drawing up the artboard. In the first delivery every artboard was
+centred on its own bounding box, which put the lot origin at a different height
+in all seven files — a **15.5px spread on a lot diamond only 19px tall**. Placed
+by artboard centre, the ranch hovered a storey up and the victorian sank into
+the ground. It was recoverable only because the generator shipped with the art
+and the anchor could be re-derived by running it.
+
+A drawing is unusable without this number, however good it is.
+
 **Licence:** full assignment or a perpetual, irrevocable, worldwide licence to
 use, modify and sublicense as part of the game, including commercial release.
 Say up front if that is a problem.
@@ -137,10 +190,16 @@ Say up front if that is a problem.
 If the whole thing is too large to take at once, this is the order that gets
 the most value soonest, and each stage is usable on its own:
 
-1. **7 house archetypes** — the board stops looking like a spreadsheet.
-2. **Condition states**, `distressed` and `working` first.
-3. **Scout's 6 portraits** — the coach is written and running; he has no face.
-4. Lot furniture, then icons, then mastheads.
+1. ~~**7 house archetypes**~~ — **delivered**, though against the wrong id list.
+2. ~~**Condition states**~~ — **delivered**, all 28, and wired.
+3. **The 3 missing archetypes** — `colonial`, `condo`, `townhouse`, base plus
+   four overlays each, 15 drawings. This is now the top of the list: until they
+   land, three of the seven house types the game generates are wearing another
+   type's roof.
+4. **Anchors for the 14 delivered furniture pieces** — no drawing needed, just
+   the lot origin for each. Small, and it unblocks work already paid for.
+5. **Scout's 6 portraits** — the coach is written and running; he has no face.
+6. Icons, then mastheads.
 
 Please quote per stage.
 

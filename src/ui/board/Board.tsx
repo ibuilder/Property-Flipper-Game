@@ -2,7 +2,7 @@
 import { NEIGHBORHOODS_BY_ID, type GameState, type Property } from '../../engine';
 import { RAMP } from '../graphics/Charts';
 import { DATA_VIEWS, DATA_VIEWS_BY_ID, type DataViewId, type Parcel } from './dataViews';
-import { conditionOf, houseShape } from './houses';
+import { houseDrawing, houseState } from './art';
 import { DISTRICTS, STREETS, activeDistricts, buildParcels } from './layout';
 import { GRID, TILE, ZOOM, boardExtent, project, tileSides, tileTop, toPoints } from './projection';
 
@@ -175,12 +175,8 @@ export default function Board({
                     strokeWidth={isHover ? 1.5 : 0.6}
                   />
 
-                  {/*
-                    Placeholder houses. Line drawings, no fill, anchored where
-                    the commissioned art will sit -- see docs/design/art-brief.md.
-                    Drawn after the lot top so they stand on it.
-                  */}
-                  {built && <PlaceholderHouse parcel={parcel} extent={extent} />}
+                  {/* Drawn after the lot top so they stand on it. */}
+                  {built && <House parcel={parcel} extent={extent} />}
                 </g>
               );
             })}
@@ -221,60 +217,39 @@ export default function Board({
 }
 
 /**
- * A house on a lot, in placeholder line art.
+ * A house on a lot.
  *
  * Ink only, no fill, so it reads over any step of the data ramp beneath it --
- * the same problem the labels have, solved the same way. The roof of a
- * distressed house is drawn broken open, because at this size a gap in the
- * roofline is the only thing that reads as "wrecked" without detail.
+ * the same problem the labels have, solved the same way. Everything about how
+ * the drawing meets the ground lives in `art.ts`; this only decides the colour
+ * of the ink.
+ *
+ * The overlay is drawn in the accent rather than the text colour. It is the
+ * half of the picture that changes -- scaffolding, a board in the drive,
+ * boarded windows -- and holding it apart from the building is what lets the
+ * player read the state of a lot at town zoom without reading the house.
  */
-function PlaceholderHouse({
-  parcel,
-  extent,
-}: {
-  parcel: Parcel;
-  extent: { cx: number; cy: number };
-}) {
+function House({ parcel, extent }: { parcel: Parcel; extent: { cx: number; cy: number } }) {
   const prop = parcel.property!;
-  const shape = houseShape(
-    parcel.gx,
-    parcel.gy,
-    prop.archetypeId,
-    conditionOf(prop),
-    extent.cx,
-    extent.cy - EXTRUDE,
-  );
+  const state = houseState(prop);
+  /*
+   * `extent.cy`, not `extent.cy - EXTRUDE`. A built lot is drawn as a plateau:
+   * the top face sits at `cy` and the extrusion hangs *below* it. Subtracting
+   * the height, which this did while the houses were abstract enough to hide
+   * it, lifts the building a full storey off the ground it is standing on.
+   */
+  const d = houseDrawing(parcel.gx, parcel.gy, prop.archetypeId, state, extent.cx, extent.cy);
+  // Everything past the base drawing is the overlay, and is inked differently.
+  const baseCount = houseDrawing(parcel.gx, parcel.gy, prop.archetypeId, null).paths.length;
 
   return (
-    <g pointerEvents="none">
-      {shape.walls.map((face, i) => (
-        <polygon
-          key={`w${i}`}
-          points={toPoints(face)}
-          fill="var(--color-bg)"
-          fillOpacity="0.55"
-          stroke="var(--color-text)"
-          strokeWidth="0.7"
-        />
-      ))}
-      {shape.roof.map((plane, i) => (
-        <polygon
-          key={`r${i}`}
-          points={toPoints(plane)}
-          fill="var(--color-bg)"
-          fillOpacity={shape.broken ? 0.2 : 0.75}
-          stroke="var(--color-text)"
-          strokeWidth="0.9"
-          strokeDasharray={shape.broken ? '2 2' : undefined}
-        />
-      ))}
-      {shape.scaffold.map((line, i) => (
-        <polyline
-          key={`s${i}`}
-          points={toPoints(line)}
-          fill="none"
-          stroke="var(--color-accent-ink)"
-          strokeWidth="0.7"
+    <g pointerEvents="none" transform={d.transform} fill="none" strokeLinejoin="round">
+      {d.paths.map((p, i) => (
+        <path
+          key={i}
+          d={p.d}
+          stroke={i < baseCount ? 'var(--color-text)' : 'var(--color-accent-ink)'}
+          strokeWidth={d.strokeWidth(p.w)}
         />
       ))}
     </g>

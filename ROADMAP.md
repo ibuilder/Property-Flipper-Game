@@ -356,6 +356,23 @@ the lettering shears and the whole aesthetic collapses.
 
 Do not ship this with placeholder blocks.
 
+**The art landed.** Seven axonometric archetypes and all 28 condition overlays,
+compiled into the bundle by `npm run art` from `art/` and placed by
+`src/ui/board/art.ts`. The placeholders are gone. Two things came out of the
+integration and are written up in `docs/design/art-brief.md`:
+
+- The brief asked for the **wrong seven archetype ids** — they were copied from
+  the placeholder module instead of `content.ts`. Four match. `colonial`,
+  `condo` and `townhouse` have no art and are currently wearing `split_level`,
+  `mill_loft` and `new_build`; those three drawings match nothing the engine
+  generates. The coverage test counted drawings instead of comparing ids, which
+  is why it never fired. It compares ids now.
+- Each artboard was centred on its own drawing, so the lot origin landed at a
+  different height in every file — 15.5px of spread on a lot 19px tall. Houses
+  are placed by a re-derived per-archetype anchor, and a test asserts all seven
+  stand on the same ground. Fixing this also surfaced that houses had been
+  drawn a full storey above their lot since the placeholders went in.
+
 ### E. Smaller, all cheap
 
 - ~~**Widen the contrast audit.**~~ **Done.** Seven scenes — menu, market, the
@@ -376,7 +393,10 @@ Do not ship this with placeholder blocks.
 ### Still yours
 
 Signing certificates, the itch HTML embed (project kind is stuck on
-Downloadable), the cover image, and human playtesting. And the open balance
+Downloadable), the cover image, and human playtesting. Plus the outstanding
+art, now a short and specific list: `colonial`, `condo` and `townhouse` (base
+plus four overlays each), and a lot-origin coordinate for each of the fourteen
+furniture pieces that already arrived. And the open balance
 question from `docs/playthrough-findings.md`: **liquidity never binds** in this
 game — measured, zero occasions across eight campaigns — which is a design
 decision rather than a bug, but real flipping is substantially about running
