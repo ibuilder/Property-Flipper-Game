@@ -5,6 +5,8 @@ import { useGame } from '../store';
 import { Waterfall } from '../graphics/Charts';
 import CalibrationPanel from '../components/CalibrationPanel';
 import PostMortemPanel from '../components/PostMortemPanel';
+import DealCardModal from '../components/DealCardModal';
+import { Icon } from '../components/Art';
 import House from '../graphics/House';
 
 /**
@@ -18,6 +20,7 @@ export default function DealsView() {
   const state = useGame();
   const [selected, setSelected] = useState<string>('');
   const deals = state?.closedDeals ?? [];
+  const [card, setCard] = useState<(typeof deals)[number] | null>(null);
 
   // Default to the most recent deal, and follow along as new ones close.
   const key = (d: (typeof deals)[number]) => `${d.propertyId}-${d.soldDay}`;
@@ -86,6 +89,11 @@ export default function DealsView() {
       <div className="panel">
         <div className="panel-head">
           <h2>Where the margin went</h2>
+          {shown && (
+            <button className="btn" onClick={() => setCard(shown)} title="A picture of this flip">
+              <Icon name="file-text" /> Deal card
+            </button>
+          )}
           <select
             className="btn small"
             style={{ paddingRight: 24 }}
@@ -242,6 +250,7 @@ export default function DealsView() {
         ROI is annualised on the cash you actually put in, so a small fast flip can beat a large
         slow one. Concessions are what buyers took off for defects you chose not to repair.
       </p>
+      {card && <DealCardModal deal={card} onClose={() => setCard(null)} />}
     </>
   );
 }

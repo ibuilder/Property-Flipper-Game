@@ -41,10 +41,10 @@ carry a board, a job the city is holding carries a permit board, and Scout
 stands on whichever site is running. It reads as a town now rather than as a
 diagram of one.
 
-**What it still does not have:** anything to take away from it. A finished flip
-is a number in a table; there is no artefact a player can put in front of
-someone else. That is the last item on the list below and the only one that is
-neither bought nor blocked.
+**What it still does not have:** an hour of someone else's attention. Every
+mechanic on the list below is built and every one of them is measured against a
+bot. Whether any of it is *fun* is the one question nothing in this repository
+can answer.
 
 ---
 
@@ -210,7 +210,7 @@ Make the underwriting itself richer, since that is the differentiator.
   for the day's random one rather than arriving on top of it — otherwise "chains" is just a word for
   more events.
 
-### Phase 5 — Make it teach deliberately — **mostly done**
+### Phase 5 — Make it teach deliberately — **done**
 
 Where the professional-education market gets served.
 
@@ -222,7 +222,15 @@ Where the professional-education market gets served.
 - ~~**Curriculum mode.**~~ **Done.** Five lessons, each isolating one failure: the 70% rule, why the
   inspection pays, how comps mislead, what carry costs, what leverage rents you. The lesson text is
   shown on completion either way, because failing is when you most need it.
-- **Shareable deal cards** — an image of your best or worst flip. Free distribution.
+- ~~**Shareable deal cards.**~~ **Done.** A 1200x630 picture of one flip -- the cost stack, the
+  profit or the loss, the annualised return, how long it was held, and what the post-mortem
+  decided was the cause. Copy it to the clipboard or save it as a PNG. Every figure is read off
+  the closed deal rather than recomputed, and a test asserts the lines reconcile to the profit the
+  engine recorded, because a card that rounded differently from the panel it was opened from would
+  be a second, competing account of the same deal. It says *Loss* as readily as *Profit*: a bad
+  flip is the one worth posting, and a card that only celebrated would be advertising rather than
+  a record. It is also the one place the plinth-carrying coloured houses belong -- a single house
+  is the subject and there is no data ramp underneath to cover.
 
 ### Phase 6 — Distribution — **wired, pending credentials**
 
@@ -250,10 +258,14 @@ Where the professional-education market gets served.
 
 Phase 1 → Phase 2 → Phase 5 → Phase 3 → Phase 4 → Phase 6.
 
-**Status.** Phases 1 through 4 are complete. Phase 5 has one item left — shareable deal cards — and
-it is the only unbuilt thing on this roadmap that is neither bought nor blocked. Phase 6 is wired and
-waiting on credentials that have to be bought rather than written, plus a manual upload and
-playtesting with real people.
+**Status.** Phases 1 through 5 are complete. Nothing on this roadmap is unbuilt for want of
+building it.
+
+Phase 6 is wired and waiting on three things that cannot be written: certificates that have to be
+bought (~$200–400/yr for a Windows CA, $99/yr for Apple), a manual upload to itch, and playtesting
+with real flippers. That last one is the genuinely irreplaceable item — the harness can prove
+discipline beats recklessness across thirty seeds, and it cannot tell you whether the game is any
+good.
 
 Phase 5 was pulled ahead of 3 and 4 deliberately: post-mortems and the scenario editor are cheap,
 they compound the existing differentiator, and they serve the professional audience without needing
