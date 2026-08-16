@@ -60,20 +60,15 @@ export const ART_SCALE = TILE / ART_UNIT;
 const INK = 0.55;
 
 /**
- * How big Scout is on a lot.
+ * How big Scout is when nobody has measured the board.
  *
- * The one number the delivery does not state: every other placeable piece
- * carries a scale and the sprites carry only an anchor. Read in the coloured
- * set's units -- where the houses and furniture live -- all six frames measure
- * 65 to 69% of a lot wide, which is a dog as long as the parked car two lots
- * over. So this is chosen rather than derived: sized so he is about a third of
- * a lot, which reads as a figure standing on a plot at town zoom without
- * competing with the building.
- *
- * Replace with the delivered figure the moment one exists. It is the only
- * placement number in this file that is a judgement rather than a measurement.
+ * The sprites are the one delivery that states an anchor and no scale, so his
+ * size is chosen rather than derived -- see `legibility.ts`, which chooses it
+ * from the board's rendered width so he does not vanish on a narrow window.
+ * This is only the fallback for a caller that has not measured yet, and it is
+ * the size a comfortable desktop board settles on anyway.
  */
-const SPRITE_UNIT = 108;
+const SPRITE_UNIT_FALLBACK = 108;
 
 /** Every archetype id there is a drawing for. */
 export const DRAWN_ARCHETYPES = Object.keys(HOUSE_ART);
@@ -157,6 +152,8 @@ export function houseDrawing(
   state: HouseState | null,
   cx = 0,
   cy = 0,
+  /** From `inkWeight()`, which keeps a hairline above a device pixel. */
+  ink: number = INK,
 ): HouseDrawing {
   const id = artIdFor(archetypeId);
   const art = HOUSE_ART[id];
@@ -167,7 +164,7 @@ export function houseDrawing(
     paths,
     baseCount: art.base.length,
     transform,
-    strokeWidth: (w: number) => (w * INK) / ART_SCALE,
+    strokeWidth: (w: number) => (w * ink) / ART_SCALE,
   };
 }
 
@@ -391,6 +388,8 @@ export function scoutDrawing(
   style: 'line' | 'colour',
   cx = 0,
   cy = 0,
+  /** From `spriteUnit()`, which sizes him against the board as rendered. */
+  unit: number = SPRITE_UNIT_FALLBACK,
 ): { body: string; transform: string } | null {
   if (!COLOR_UNIT) return null;
   const set: Record<string, Placeable> = style === 'colour' ? SPRITE_COLOR : SPRITE_LINE;
@@ -398,6 +397,6 @@ export function scoutDrawing(
   if (!frame) return null;
   // Stands toward the front of the lot, clear of the building.
   const at = offsetFor(gx, gy, { name: 'scout', u: 0.72, v: 0.94 }, cx, cy);
-  const { transform } = place(at, frame.anchor, frame.scale, SPRITE_UNIT);
+  const { transform } = place(at, frame.anchor, frame.scale, unit);
   return { body: frame.body, transform };
 }

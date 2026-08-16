@@ -11,22 +11,20 @@ What follows is what is left, and it is short.
 
 ---
 
-## 1. A scale for Scout's board sprites — one number
+## 1. ~~A scale for Scout's board sprites~~ — **resolved here, not needed**
 
-The only placement figure in the game that is a judgement rather than a
-measurement. Every other placeable piece declares a `scale` alongside its
-anchor; the six sprites declare an anchor only.
+The sprites were the one delivery carrying an anchor and no scale, and the
+answer turned out not to be a number at all: the right size depends on how big
+the board is on the device it is being drawn on.
 
-Read in the coloured set's units — where the houses and furniture live — all six
-frames measure **65–69% of a lot wide**, which puts a dog the length of the
-parked car two lots over. They are currently drawn at a scale chosen here so
-Scout is about a third of a lot: a figure standing on a plot, legible at town
-zoom, not competing with the building.
+Read in the coloured set's units all six frames measure 65 to 69% of a lot wide,
+which is a dog as long as the parked car two lots over. He is now sized against
+the board's measured width — a third of a lot wherever a third of a lot is big
+enough to see, and larger in proportion as the board gets smaller, so he does
+not disappear before the houses do.
 
-Needed: the intended scale, or confirmation that a third of a lot is right. If
-the sprites are meant to be read in a different art space, say which.
-
----
+Nothing needed from your side. If a future set is drawn to a stated scale, say
+what it is and it becomes the ceiling rather than the guess.
 
 ## 2. Two icons — `kitchen` and `bath`
 

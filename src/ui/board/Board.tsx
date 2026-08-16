@@ -1,4 +1,4 @@
-﻿import { memo, useMemo, useState } from 'react';
+﻿import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { NEIGHBORHOODS_BY_ID, type GameState, type Property } from '../../engine';
 import { RAMP } from '../graphics/Charts';
 import { DATA_VIEWS, DATA_VIEWS_BY_ID, type DataViewId, type Parcel } from './dataViews';
@@ -14,6 +14,7 @@ import {
 } from './art';
 import { backdropAt, type BackdropHouse } from './backdrop';
 import { DISTRICTS, STREETS, activeDistricts, buildParcels } from './layout';
+import { fitZoom, inkWeight, spriteUnit } from './legibility';
 import { GRID, TILE, ZOOM, boardExtent, project, tileSides, tileTop, toPoints } from './projection';
 
 /**
@@ -51,7 +52,70 @@ export default function Board({
       return 'value';
     }
   });
+  /*
+   * How wide the board actually got.
+   *
+   * Not a breakpoint. The board does not care whether it is on a phone, it
+   * cares how many pixels it was given, which is a different number in a split
+   * window, a sidebar, or a tablet turned on its side. Measured with a
+   * ResizeObserver so a window drag is answered rather than only a reload.
+   */
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const [frame, setFrame] = useState({ width: 0, dpr: 1 });
+  useLayoutEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const width = el.clientWidth;
+      const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
+      setFrame((prev) =>
+        Math.abs(prev.width - width) < 0.5 && prev.dpr === dpr ? prev : { width, dpr },
+      );
+    };
+    measure();
+
+    /*
+     * Three signals, because they catch different things.
+     *
+     * A ResizeObserver catches the case that matters most and that the others
+     * miss entirely: the frame changing while the window does not, which is
+     * what a collapsing sidebar or an opening panel looks like.
+     *
+     * `resize` is here for the one thing an observer cannot see. Device pixel
+     * ratio changes when a window is dragged to a different-density monitor,
+     * and nothing about the element's size changes -- but the hairline that was
+     * a solid device pixel is suddenly half of one. The measurement below reads
+     * the ratio as well as the width, so that arrives as a re-render.
+     *
+     * `orientationchange` because a tablet turning is exactly the case this
+     * exists for, and does not always surface as either of the others.
+     *
+     * All three funnel into one measurement that bails when nothing moved, so
+     * the extra listeners cost a comparison rather than a render.
+     */
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    ro?.observe(el);
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+    };
+  }, []);
+  const frameWidth = frame.width;
+
   const [zoom, setZoom] = useState<keyof typeof ZOOM>('town');
+  /*
+   * Open at a zoom the device can actually show. On a wide window that is the
+   * whole town; on a 375px phone the whole town renders lots 17.6px across with
+   * hairlines under half a device pixel, which does not read as small, it reads
+   * as missing.
+   * Every stop stays available -- this picks where to start, it does not take
+   * the control away.
+   */
+  const [zoomTouched, setZoomTouched] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
   /*
    * Line or colour.
@@ -89,6 +153,34 @@ export default function Board({
   const active = DATA_VIEWS_BY_ID[view];
   const extent = boardExtent(EXTRUDE);
   const scale = ZOOM[zoom];
+
+  useEffect(() => {
+    if (zoomTouched || frameWidth <= 0) return;
+    setZoom(fitZoom(frameWidth, extent.width));
+  }, [frameWidth, extent.width, zoomTouched]);
+
+  /* Scout's size, chosen against the board as rendered rather than once. */
+  const sprite = useMemo(
+    () => spriteUnit(frameWidth, extent.width, scale),
+    [frameWidth, extent.width, scale],
+  );
+
+  /*
+   * Ink, likewise. The delivered hairline is half a CSS pixel at desktop zoom,
+   * which is solid on a 2x display and gone on a 1x one, so the floor is in
+   * device pixels and the line only ever widens when it has to.
+   */
+  const ink = useMemo(
+    () =>
+      inkWeight(
+        0.55,
+        frameWidth,
+        extent.width,
+        scale,
+        frame.dpr,
+      ),
+    [frameWidth, frame.dpr, extent.width, scale],
+  );
 
   const choose = (next: DataViewId) => {
     setView(next);
@@ -141,7 +233,10 @@ export default function Board({
             <button
               key={z}
               className={`seg-opt${z === zoom ? ' on' : ''}`}
-              onClick={() => setZoom(z)}
+              onClick={() => {
+                setZoomTouched(true);
+                setZoom(z);
+              }}
               aria-pressed={z === zoom}
             >
               {z}
@@ -152,7 +247,7 @@ export default function Board({
 
       <p className="board-question">{active.question}</p>
 
-      <div className="board-frame">
+      <div className="board-frame" ref={frameRef}>
         <svg
           viewBox={`0 0 ${extent.width} ${extent.height}`}
           style={{ width: `${scale * 100}%`, height: 'auto', display: 'block' }}
@@ -253,6 +348,7 @@ export default function Board({
                       cy={extent.cy}
                       style={style}
                       season={season}
+                      ink={ink}
                     />
                   )}
                   {/*
@@ -267,6 +363,7 @@ export default function Board({
                       extent={extent}
                       style={style}
                       season={boardSeason(state.day)}
+                      ink={ink}
                     />
                   )}
                   {/*
@@ -277,7 +374,13 @@ export default function Board({
                     behind.
                   */}
                   {scoutAt === key && (
-                    <ScoutOnSite parcel={parcel} state={state} extent={extent} style={style} />
+                    <ScoutOnSite
+                      parcel={parcel}
+                      state={state}
+                      extent={extent}
+                      style={style}
+                      unit={sprite}
+                    />
                   )}
                 </g>
               );
@@ -330,13 +433,24 @@ function ScoutOnSite({
   state,
   extent,
   style,
+  unit,
 }: {
   parcel: Parcel;
   state: GameState;
   extent: { cx: number; cy: number };
   style: 'line' | 'colour';
+  unit: number;
 }) {
-  const d = scoutDrawing(parcel.gx, parcel.gy, 'digging', state.day, style, extent.cx, extent.cy);
+  const d = scoutDrawing(
+    parcel.gx,
+    parcel.gy,
+    'digging',
+    state.day,
+    style,
+    extent.cx,
+    extent.cy,
+    unit,
+  );
   if (!d) return null;
   return (
     <g
@@ -379,6 +493,7 @@ const Backdrop = memo(function Backdrop({
   cy,
   style,
   season,
+  ink,
 }: {
   gx: number;
   gy: number;
@@ -387,6 +502,7 @@ const Backdrop = memo(function Backdrop({
   cy: number;
   style: 'line' | 'colour';
   season: string | null;
+  ink: number;
 }) {
   const house = backdropAt(gx, gy, neighborhoodId);
   if (!house) return null;
@@ -405,7 +521,7 @@ const Backdrop = memo(function Backdrop({
     );
   }
 
-  const d = houseDrawing(gx, gy, house.archetypeId, house.state, cx, cy);
+  const d = houseDrawing(gx, gy, house.archetypeId, house.state, cx, cy, ink);
   return (
     <g
       className="lot-backdrop"
@@ -473,11 +589,13 @@ function House({
   extent,
   style,
   season,
+  ink,
 }: {
   parcel: Parcel;
   extent: { cx: number; cy: number };
   style: 'line' | 'colour';
   season: string | null;
+  ink: number;
 }) {
   const prop = parcel.property!;
   const state = houseState(prop);
@@ -510,7 +628,15 @@ function House({
    * the height, which this did while the houses were abstract enough to hide
    * it, lifts the building a full storey off the ground it is standing on.
    */
-  const d = houseDrawing(parcel.gx, parcel.gy, prop.archetypeId, state, extent.cx, extent.cy);
+  const d = houseDrawing(
+    parcel.gx,
+    parcel.gy,
+    prop.archetypeId,
+    state,
+    extent.cx,
+    extent.cy,
+    ink,
+  );
 
   return (
     <g className="lot-house" pointerEvents="none" transform={d.transform} fill="none" strokeLinejoin="round">
