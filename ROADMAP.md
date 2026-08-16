@@ -28,14 +28,23 @@ retires per concept once it has been demonstrated twice.
 Barlow embedded and subset, blueprint geometry, one accent with three token
 roles, red reserved for a negative projected profit alone.
 
-**Verification.** 375 tests. A 20-seed balance harness. A contrast audit that
+**Verification.** 473 tests. A 20-seed balance harness. A contrast audit that
 runs the real renderer in Electron on every push and fails the build under AA.
 A smoke test launching the packaged app on all three platforms.
 
-**What it still does not have:** a sense of *place*. The map is a flat polygon
-diagram; there is no property you can look at, no board you can zoom into, and
-no world that speaks to you between decisions. It is now a very good
-instrument. It is not yet somewhere you want to spend an evening.
+**Place.** The flat polygon map is gone. The town is an isometric board of six
+neighbourhoods on a 17x17 grid, drawn from commissioned art: ten house
+archetypes, four condition overlays each, in a themed line set and a coloured
+one the player chooses between, with autumn and winter sets that follow the
+game's own calendar. Roughly three quarters of every lot is built, listings
+carry a board, a job the city is holding carries a permit board, and Scout
+stands on whichever site is running. It reads as a town now rather than as a
+diagram of one.
+
+**What it still does not have:** anything to take away from it. A finished flip
+is a number in a table; there is no artefact a player can put in front of
+someone else. That is the last item on the list below and the only one that is
+neither bought nor blocked.
 
 ---
 
@@ -87,7 +96,7 @@ The Pygame README listed the author's own future ideas. Status after v2:
 | More diverse upgrades | **Done** — 18 scope items across 8 categories |
 | More detailed market simulation (gentrification) | **Done** — multi-year neighborhood arcs |
 | More complex event types and chains | **Done** — chains with probabilistic links |
-| Improved UI/UX (visual properties, graphs, tooltips) | **Partial** — tooltips and copy done, visuals are Phase 1 |
+| Improved UI/UX (visual properties, graphs, tooltips) | **Done** — commissioned art on an isometric board, charts throughout |
 | Difficulty levels | **Done** — four campaigns times three settings |
 | More staff types (specialists, agents) | **Done** — a crew on the payroll |
 | Player XP and levelling alongside cash-bought skills | **Done** |
@@ -124,7 +133,7 @@ The single biggest gap, and the one the retention research points straight at.
 No new stack — SVG and Canvas in the existing React app, ~20–30 kB. Explicitly **not** a game
 engine; see §6.
 
-### Phase 2 — Depth in the deal — **partly done**
+### Phase 2 — Depth in the deal — **done**
 
 Make the underwriting itself richer, since that is the differentiator.
 
@@ -143,9 +152,15 @@ Make the underwriting itself richer, since that is the differentiator.
   money that has to be earned before anyone will lend it, seller paper bought by paying more for
   the house, and an equity partner who takes no interest and a third of the upside. Cash-out refi
   arrived with BRRRR.
-- **Permits and inspections as schedule risk**, tied to the existing permit-backlog event.
+- ~~**Permits and inspections as schedule risk**~~ **Done.** Structural, systems and
+  addition work pulls a permit; cosmetic work does not. The queue is drawn once when the
+  job starts and told to the player rather than ticked down in secret, because a wait whose
+  length you discover by waiting is not a decision, it is weather. The permit-backlog event
+  stretches it, which is the first time that event has done anything a player can see -- it
+  previously only nudged a time multiplier nobody could attribute. The board shows a permit
+  board on any lot the city is still holding.
 
-### Phase 3 — Progression that survives run three — **partly done**
+### Phase 3 — Progression that survives run three — **done**
 
 - ~~**Reputation**~~ **Done.** Three tracks — lenders, agents, contractors — earned by outcomes
   rather than bought with cash. Lenders price points and rates; agents cut commission and bring
@@ -168,7 +183,7 @@ Make the underwriting itself richer, since that is the differentiator.
   70% rule, the cost stack, cap rate and DSCR mean the same thing at every setting; what changes is
   how much room you have to be wrong.
 
-### Phase 4 — A world with other people in it — **partly done**
+### Phase 4 — A world with other people in it — **done**
 
 - ~~**AI competitors**~~ **Done.** Every listing carries a rival-interest level driven by how good
   the deal looks from outside. Contested listings get bought out from under you while you
@@ -235,8 +250,10 @@ Where the professional-education market gets served.
 
 Phase 1 → Phase 2 → Phase 5 → Phase 3 → Phase 4 → Phase 6.
 
-**Status.** Phases 1 through 5 are complete. Phase 6 is wired and waiting on credentials that have
-to be bought rather than written.
+**Status.** Phases 1 through 4 are complete. Phase 5 has one item left — shareable deal cards — and
+it is the only unbuilt thing on this roadmap that is neither bought nor blocked. Phase 6 is wired and
+waiting on credentials that have to be bought rather than written, plus a manual upload and
+playtesting with real people.
 
 Phase 5 was pulled ahead of 3 and 4 deliberately: post-mortems and the scenario editor are cheap,
 they compound the existing differentiator, and they serve the professional audience without needing
