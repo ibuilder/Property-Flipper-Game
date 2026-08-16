@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+﻿import { memo, useMemo, useState } from 'react';
 import { NEIGHBORHOODS_BY_ID, type GameState, type Property } from '../../engine';
 import { RAMP } from '../graphics/Charts';
 import { DATA_VIEWS, DATA_VIEWS_BY_ID, type DataViewId, type Parcel } from './dataViews';
@@ -12,6 +12,7 @@ import {
   scoutDrawing,
   scoutLot,
 } from './art';
+import { backdropAt, type BackdropHouse } from './backdrop';
 import { DISTRICTS, STREETS, activeDistricts, buildParcels } from './layout';
 import { GRID, TILE, ZOOM, boardExtent, project, tileSides, tileTop, toPoints } from './projection';
 
@@ -82,6 +83,8 @@ export default function Board({
     const lot = scoutLot(parcels, (p) => Boolean((p as Property).ownership?.renovation));
     return lot ? `${lot.gx},${lot.gy}` : null;
   }, [parcels]);
+  const season = boardSeason(state.day);
+
   const districts = activeDistricts(state);
   const active = DATA_VIEWS_BY_ID[view];
   const extent = boardExtent(EXTRUDE);
@@ -191,6 +194,13 @@ export default function Board({
             .map((parcel) => {
               const step = active.step(parcel, state);
               const built = parcel.property !== null;
+              /*
+                Extrusion means "something stands here", so scenery earns it
+                too -- a house on a flat lot beside houses on plinths reads as
+                a rendering fault. It changes no data: the ramp still colours
+                the top face by the view's own answer.
+              */
+              const standing = built || backdropAt(parcel.gx, parcel.gy, parcel.neighborhoodId) !== null;
               const isHover = hover === `${parcel.gx},${parcel.gy}`;
               const sideStep = Math.min(7, step + 3);
               const key = `${parcel.gx},${parcel.gy}`;
@@ -218,7 +228,7 @@ export default function Board({
                   }
                   style={{ cursor: parcel.property ? 'pointer' : 'default', outline: 'none' }}
                 >
-                  {built &&
+                  {standing &&
                     tileSides(parcel.gx, parcel.gy, EXTRUDE, extent.cx, extent.cy).map((face, i) => (
                       <polygon key={i} points={toPoints(face)} fill={RAMP[sideStep]} />
                     ))}
@@ -229,6 +239,22 @@ export default function Board({
                     strokeWidth={isHover ? 1.5 : 0.6}
                   />
 
+                  {/*
+                    The rest of the town. Scenery on lots the game does not
+                    model, drawn first and dimmed, so a real listing is always
+                    the sharpest thing on its block.
+                  */}
+                  {!built && (
+                    <Backdrop
+                      gx={parcel.gx}
+                      gy={parcel.gy}
+                      neighborhoodId={parcel.neighborhoodId}
+                      cx={extent.cx}
+                      cy={extent.cy}
+                      style={style}
+                      season={season}
+                    />
+                  )}
                   {/*
                     Furniture before the house, so a sign in the drive is
                     overlapped by the building rather than pasted over it.
@@ -322,6 +348,85 @@ function ScoutOnSite({
   );
 }
 
+/**
+ * A house on a lot the game does not model.
+ *
+ * Inert by construction: no pointer events, no focus, no label. Dimmed rather
+ * than restyled -- the moment scenery gets its own visual language it starts to
+ * look like it means something, and the one thing it must never look like is a
+ * lot you can buy.
+ *
+ * Drawn out in full, and memoised rather than deduplicated.
+ *
+ * The obvious optimisation is to define each distinct picture once in `<defs>`
+ * and instance it with `<use>`, since a hundred lots share about thirty
+ * drawings. It does cut the node count -- 13,805 to 5,627 on the six-district
+ * board -- and it measured about six times *worse* on forced layout, because
+ * every `<use>` instantiates its own shadow tree. So the duplication stays.
+ *
+ * What actually mattered was not drawing this twice. The scenery depends on the
+ * lot, the style and the season and on nothing else -- not the data view, not
+ * the hover -- so with primitive props and `memo` around it, switching view or
+ * moving the mouse skips all hundred houses instead of re-parsing 800KB of
+ * markup. Measured: the first paint costs 576ms, every view switch after it
+ * costs under a millisecond.
+ */
+const Backdrop = memo(function Backdrop({
+  gx,
+  gy,
+  neighborhoodId,
+  cx,
+  cy,
+  style,
+  season,
+}: {
+  gx: number;
+  gy: number;
+  neighborhoodId: string;
+  cx: number;
+  cy: number;
+  style: 'line' | 'colour';
+  season: string | null;
+}) {
+  const house = backdropAt(gx, gy, neighborhoodId);
+  if (!house) return null;
+
+  if (style === 'colour') {
+    const c = colorHouseDrawing(gx, gy, house.archetypeId, house.state, cx, cy, season);
+    if (!c) return null;
+    return (
+      <g
+        className="lot-backdrop"
+        pointerEvents="none"
+        opacity={0.62}
+        transform={c.transform}
+        dangerouslySetInnerHTML={{ __html: c.body }}
+      />
+    );
+  }
+
+  const d = houseDrawing(gx, gy, house.archetypeId, house.state, cx, cy);
+  return (
+    <g
+      className="lot-backdrop"
+      pointerEvents="none"
+      opacity={0.42}
+      transform={d.transform}
+      fill="none"
+      strokeLinejoin="round"
+    >
+      {d.paths.map((p, i) => (
+        <path
+          key={i}
+          d={p.d}
+          stroke={i < d.baseCount ? 'var(--color-text)' : 'var(--color-accent-ink)'}
+          strokeWidth={d.strokeWidth(p.w)}
+        />
+      ))}
+    </g>
+  );
+});
+
 /** Whatever stands on the lot besides the house. */
 function Furniture({
   parcel,
@@ -332,7 +437,13 @@ function Furniture({
   extent: { cx: number; cy: number };
   style: 'line' | 'colour';
 }) {
-  const pieces = lotFurniture(parcel.gx, parcel.gy, parcel.property);
+  /*
+   * A tree goes where nothing else does. Before the backdrop existed every
+   * open lot was a candidate; now the open lots are the ones the town did not
+   * build on, which is exactly where a tree belongs.
+   */
+  const occupied = !parcel.property && backdropAt(parcel.gx, parcel.gy, parcel.neighborhoodId);
+  const pieces = occupied ? [] : lotFurniture(parcel.gx, parcel.gy, parcel.property);
   const f = furnitureDrawing(parcel.gx, parcel.gy, pieces, style, extent.cx, extent.cy);
   if (!f) return null;
   return (

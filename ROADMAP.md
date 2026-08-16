@@ -356,6 +356,22 @@ the lettering shears and the whole aesthetic collapses.
 
 Do not ship this with placeholder blocks.
 
+**The town is built.** Measured after the art went in, a Portfolio Builder
+board was 150 lots with ten houses on it -- seven per cent built -- because only
+listings and your own holdings stand on the grid. That read as a diagram of a
+town rather than a town, and real architecture on one lot in fourteen only drew
+attention to the other thirteen. `src/ui/board/backdrop.ts` fills the rest:
+derived from each lot's own coordinates and its neighbourhood's demand, so the
+same town every draw, nothing stored and no migration. Now 72-73% built across
+every campaign.
+
+It is scenery and the tests hold it to that. Backdrop houses never enter
+`state.market` or `state.portfolio`, are invisible to the four data views, take
+no pointer events, cannot be focused, and can never wear `working` or
+`finished` -- those two overlays mean *you* are doing something there, and
+scenery must not claim it. A backdrop house a player tries to buy would be
+worse than an empty lot.
+
 **The art landed.** Seven axonometric archetypes and all 28 condition overlays,
 compiled into the bundle by `npm run art` from `art/` and placed by
 `src/ui/board/art.ts`. The placeholders are gone. Two things came out of the

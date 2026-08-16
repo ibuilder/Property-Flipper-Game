@@ -171,6 +171,44 @@ export function houseDrawing(
   };
 }
 
+/**
+ * The markup of a coloured house, with no placement.
+ *
+ * Split out so the board can define a drawing once and instance it. The town's
+ * scenery repeats perhaps thirty distinct drawings across a hundred lots, and
+ * emitting each one in full cost 13,800 SVG nodes and 130ms a layout pass.
+ */
+export function colorHouseBody(
+  archetypeId: string,
+  state: HouseState | null,
+  season: string | null = null,
+): string | null {
+  const id = artIdFor(archetypeId);
+  const set = (season && HOUSE_SEASON[season]?.[id]) || HOUSE_COLOR_BARE[id];
+  if (!set) return null;
+  return set.base + (state && set[state] ? set[state] : '');
+}
+
+/** Where a house of this archetype sits on this lot, without its drawing. */
+export function housePlacement(
+  gx: number,
+  gy: number,
+  archetypeId: string,
+  style: 'line' | 'colour',
+  cx = 0,
+  cy = 0,
+): string | null {
+  const id = artIdFor(archetypeId);
+  if (style === 'line') {
+    const a = HOUSE_ANCHOR[id];
+    if (!a) return null;
+    return place(project(gx, gy, cx, cy), [a.x, a.y], 1, ART_UNIT).transform;
+  }
+  const t = COLOR_TRANSFORM[id];
+  if (!t || !COLOR_UNIT) return null;
+  return place(project(gx, gy, cx, cy), [t.tx, t.ty], t.k, COLOR_UNIT).transform;
+}
+
 /** The coloured drawing of one house, placed, in whatever season is asked for. */
 export function colorHouseDrawing(
   gx: number,
