@@ -28,9 +28,10 @@ retires per concept once it has been demonstrated twice.
 Barlow embedded and subset, blueprint geometry, one accent with three token
 roles, red reserved for a negative projected profit alone.
 
-**Verification.** 473 tests. A 20-seed balance harness. A contrast audit that
-runs the real renderer in Electron on every push and fails the build under AA.
-A smoke test launching the packaged app on all three platforms.
+**Verification.** 490 tests. A 20-seed balance harness. An accessibility audit
+that runs the real renderer in Electron on every push across seven scenes and
+fails the build on any text under AA contrast or any control that misses WCAG
+2.2 target size. A smoke test launching the packaged app on all three platforms.
 
 **Place.** The flat polygon map is gone. The town is an isometric board of six
 neighbourhoods on a 17x17 grid, drawn from commissioned art: ten house
@@ -233,6 +234,14 @@ Where the professional-education market gets served.
   is the subject and there is no data ramp underneath to cover.
 
 ### Phase 6 — Distribution — **wired, pending credentials**
+
+Checked against itch's own published requirements. The cover is the right size
+(630x500), the web build is the right shape, and the game holds up at the
+960x540 the platform recommends for an embed: no horizontal overflow and every
+control meeting target size. What is left on the page itself -- three to five
+screenshots, tags, a genre, and the accessibility fields -- is filled in on itch
+rather than in this repository.
+
 
 - ~~**Code signing.**~~ **Wired.** Windows signing with a timestamp server, and macOS signing with
   the hardened runtime, JIT entitlements and notarisation, all switched on automatically the moment

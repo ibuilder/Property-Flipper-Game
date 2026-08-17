@@ -119,6 +119,102 @@
   };
 
   /**
+   * WCAG 2.2 SC 2.5.8, Target Size (Minimum), Level AA.
+   *
+   * A pointer target must be at least 24 by 24 CSS pixels, *unless* it is
+   * clear of every other target by 24 pixels -- the spacing exception, which is
+   * what lets a tight row of small controls pass when it is genuinely alone on
+   * the screen. Both halves are checked here, because checking only the size
+   * fails a lot of perfectly usable interfaces and checking only the spacing
+   * fails none of the ones that matter.
+   *
+   * Theme has no bearing on geometry, so this runs once per scene rather than
+   * twice. It rides along with the contrast walk because the expensive part is
+   * reaching the seven screens, and that work is already done.
+   */
+  const targetFailures = (scene) => {
+    const SELECTOR = 'button,a[href],input,select,textarea,[role="button"],[tabindex="0"]';
+    const boxes = [];
+    for (const el of document.querySelectorAll(SELECTOR)) {
+      const cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) continue;
+      if (el.disabled) continue;
+      /*
+       * Measure what actually receives the interaction, not the element that
+       * happens to look like a control.
+       *
+       * Two cases, both of which reported false failures here. A checkbox
+       * inside a `<label>` is hit by clicking anywhere on the label, which in
+       * the scope builder is a full-width row rather than a 13px box. And an
+       * input that is `readonly` and `tabindex="-1"` is not a target at all --
+       * the comp picker draws one inside each `<tr role="button">` purely as an
+       * indicator, and the row is the thing you click.
+       *
+       * Anything that resolves to an ancestor is deduplicated below, so a row
+       * with three such marks in it is still one target.
+       */
+      const inert =
+        el.readOnly || el.getAttribute('tabindex') === '-1' || el.getAttribute('aria-hidden') === 'true';
+      let hit = el;
+      if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') {
+        const wrapping = el.closest('label');
+        const associated = el.id ? document.querySelector(`label[for="${CSS.escape(el.id)}"]`) : null;
+        hit = wrapping || associated || el;
+      }
+      if (inert) {
+        const owner = el.closest('button,a[href],[role="button"],[tabindex="0"],label');
+        if (owner) hit = owner;
+        else continue; // inert and owned by nothing: not a target
+      }
+      const b = hit.getBoundingClientRect();
+      if (b.width <= 0 || b.height <= 0) continue;
+      if (boxes.some((x) => x.el === hit)) continue; // one label, one target
+      boxes.push({ el: hit, b });
+    }
+
+    // Closest edge-to-edge distance; 0 when they touch or overlap.
+    const offset = (a, b) => {
+      const dx = Math.max(0, Math.max(a.left - b.right, b.left - a.right));
+      const dy = Math.max(0, Math.max(a.top - b.bottom, b.top - a.bottom));
+      return Math.hypot(dx, dy);
+    };
+
+    const out = [];
+    for (const x of boxes) {
+      if (x.b.width >= 24 && x.b.height >= 24) continue;
+      const crowded = boxes.some((y) => y !== x && offset(x.b, y.b) < 24);
+      if (!crowded) continue; // spacing exception carries it
+
+      /*
+       * A lot on the board is exempt, on two of the criterion's own grounds.
+       *
+       * Essential: the lot is drawn at its true size and position under the
+       * projection. Enlarging one to 24px would put it somewhere it is not,
+       * which is the information the map exists to convey.
+       *
+       * Equivalent control: every property reachable on the board is also a row
+       * in the market table, the row is full height, and both set the same
+       * selection -- so the same function is available at a conforming size.
+       *
+       * The player can also zoom the board, which enlarges the targets. Written
+       * out rather than filtered quietly, because an exemption nobody can see
+       * is indistinguishable from a bug nobody caught.
+       */
+      if (x.el.tagName === 'g' && x.el.closest('.board-frame')) continue;
+      out.push({
+        scene,
+        selector:
+          (x.el.className && String(x.el.className).trim().split(/\s+/).slice(0, 2).join('.')) ||
+          x.el.tagName.toLowerCase(),
+        text: (x.el.textContent || x.el.getAttribute('aria-label') || '').trim().slice(0, 24),
+        w: Math.round(x.b.width),
+        h: Math.round(x.b.height),
+      });
+    }
+    return out;
+  };
+
+  /**
    * Both themes for whatever is on screen now.
    *
    * Transitions are frozen first. Without that the audit measures its own
@@ -270,6 +366,7 @@
   const reached = [];
   const missed = [];
 
+  const targets = [];
   for (const scene of scenes) {
     let ok = false;
     try {
@@ -283,6 +380,7 @@
     }
     reached.push(scene.name);
     all.push(...(await auditScene(scene.name)));
+    targets.push(...targetFailures(scene.name));
   }
 
   // One bad rule usually paints twenty cells, and twenty identical lines hide
@@ -296,11 +394,24 @@
   }
 
   const unique = [...seen.values()].sort((a, b) => a.ratio - b.ratio);
+
+  // Same collapsing for targets: one undersized rule is one finding, not one
+  // per row of a table.
+  const tseen = new Map();
+  for (const t of targets) {
+    const key = `${t.scene}|${t.selector}|${t.w}x${t.h}`;
+    const at = tseen.get(key);
+    if (at) at.count++;
+    else tseen.set(key, { ...t, count: 1 });
+  }
+
   return {
     scenes: reached,
     missed,
     darkFailures: all.filter((f) => f.theme === 'dark').length,
     lightFailures: all.filter((f) => f.theme === 'light').length,
     unique,
+    targetFailures: targets.length,
+    targets: [...tseen.values()].sort((a, b) => a.w * a.h - b.w * b.h),
   };
 })();

@@ -74,10 +74,12 @@ child.on('exit', (code) => {
     process.exit(1);
   }
 
+  const targets = report.targets ?? [];
   console.log(
     `audit: ${report.scenes.length} scenes (${report.scenes.join(', ')}), ` +
       `${report.darkFailures} dark and ${report.lightFailures} light below AA ` +
-      `(${report.unique.length} distinct)`,
+      `(${report.unique.length} distinct), ` +
+      `${report.targetFailures ?? 0} targets under 24px (${targets.length} distinct)`,
   );
 
   // A scene the audit could not reach is a scene it is not defending. Silently
@@ -87,11 +89,31 @@ child.on('exit', (code) => {
     process.exit(2);
   }
 
-  if (report.unique.length === 0) {
+  if (report.unique.length === 0 && targets.length === 0) {
     console.log(
-      `audit: every piece of text meets AA in both themes, across ${report.scenes.length} scenes.`,
+      `audit: every piece of text meets AA in both themes and every control ` +
+        `meets WCAG 2.5.8, across ${report.scenes.length} scenes.`,
     );
     process.exit(0);
+  }
+
+  /*
+   * WCAG 2.2 SC 2.5.8, Target Size (Minimum), AA.
+   *
+   * Reported separately from contrast because it is a different failure with a
+   * different fix: a control too small to hit reliably, with no 24px of clear
+   * space around it to excuse the size.
+   */
+  if (targets.length > 0) {
+    console.log('');
+    for (const t of targets) {
+      const times = t.count > 1 ? ` ×${t.count}` : '';
+      console.log(
+        `  ${String(`${t.w}x${t.h}`).padStart(7)}  (needs 24x24 or 24px clear)  ` +
+          `${String(t.scene).padEnd(12)} ${t.selector}${times}
+           "${t.text}"`,
+      );
+    }
   }
 
   console.log('');
@@ -103,7 +125,7 @@ child.on('exit', (code) => {
     );
   }
   console.log('');
-  process.exit(code === 0 ? 0 : 2);
+  process.exit(report.unique.length || targets.length ? 2 : code === 0 ? 0 : 2);
 });
 
 child.on('error', (err) => {

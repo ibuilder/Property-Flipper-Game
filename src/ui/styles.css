@@ -2772,3 +2772,48 @@ tr.clickable.selected .pill.bad {
   max-width: 220px;
   height: 8px;
 }
+
+/*
+ * WCAG 2.2 SC 2.5.8, Target Size (Minimum), Level AA.
+ *
+ * A pointer target must be 24 by 24 CSS pixels unless it is clear of every
+ * other target by 24px. These controls are all in tight rows -- segmented
+ * switches, sort headers, filter chips -- so the spacing exception does not
+ * carry them and the size has to.
+ *
+ * Measured before this, across the seven scenes the audit walks: 87 targets
+ * under the bar, at 15px for a sort header and 21 to 23px for the rest. The
+ * audit now fails the build on any of it, the same way it does on contrast.
+ *
+ * Height only. Every one of these was already wide enough, and widening a
+ * segmented control to a square would push the row off a narrow screen to fix
+ * a problem it does not have.
+ */
+button.th-sort,
+.seg-opt,
+.btn.small,
+.stress-toggle,
+.watch-star,
+.close-x {
+  min-height: 24px;
+}
+
+/*
+ * And a minimum width, for the short ones.
+ *
+ * A star, a close cross and a three-letter column head are all narrower than
+ * they are tall. Only these three need it: everything else in the list above
+ * carries a word and was already past 24px across.
+ */
+.watch-star,
+.close-x,
+button.th-sort {
+  min-width: 24px;
+}
+
+/* `all: unset` drops the box model, so the sort header needs it back. */
+button.th-sort {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+}
