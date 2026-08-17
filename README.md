@@ -10,6 +10,24 @@ get out before commission, financing, and carry eat the margin. The numbers are 
 the industry's own heuristic — the 70% rule — is the right default, and so that ignoring it loses
 money.
 
+![The town, in the coloured board style](docs/images/board-colour.svg)
+
+The town is an isometric board of six neighbourhoods. Every house is drawn from one of ten
+archetypes with four condition overlays — a job running, a house let, one derelict, one on the
+market — and the lots are shaded by whichever of four questions you are asking: what things cost,
+what needs work, where the rivals are, and what is yours. Scout, the site foreman, stands on
+whatever job is running.
+
+The same board in the line style, which takes the interface theme and stays out of the way of the
+data underneath it:
+
+![The same town, in the line board style](docs/images/board-line.svg)
+
+Every closed deal produces a card you can take away — the cost stack, the profit or the loss, and
+what the post-mortem decided was the cause:
+
+![A deal card](docs/design/deal-card.svg)
+
 This is a ground-up rewrite of [ibuilder/Property-Flipper-Game](https://github.com/ibuilder/Property-Flipper-Game),
 which was a Python/Pygame project. See [REWRITE.md](REWRITE.md) for what was wrong with the
 original and why the design changed.
@@ -33,7 +51,7 @@ Saves go to `%APPDATA%\Property Flipper\saves\` and survive uninstalling and rei
 npm run bundle:web
 ```
 
-Folds the whole game into one self-contained ~308 kB HTML file at
+Folds the whole game into one self-contained ~2.4 MB HTML file at
 `dist-web/property-flipper.html` — no external scripts, styles, or fonts, so it runs anywhere,
 including under a strict CSP. Saves go to `localStorage`; file export/import is desktop-only and
 the buttons say so.
@@ -73,11 +91,25 @@ works either way. Copying into a restricted directory is fine; only the rename i
 npm test
 ```
 
-166 tests. `tests/engine.test.ts` covers correctness; `rental`, `auction`, `financing`,
+490 tests. `tests/engine.test.ts` covers correctness; `rental`, `auction`, `financing`,
 `progression` and `arcs` each cover their own subsystem; `tests/store.test.ts` pins the multi-day
 skip behaviour; and `tests/balance.test.ts` runs a rules-following bot through complete campaigns
 across 30 seeds to check the economics are both winnable and punishing. Balance results are written
 to `balance-output.txt`.
+
+`tests/art.test.ts` and `tests/ui-art.test.ts` check the commissioned art against what the code
+asks for by *name* rather than by count — the check that would have caught three archetypes being
+drawn that the engine never generates while three it does generate had no art at all. The contact
+sheets in `docs/design/` and the board images above are written by the test run, so a picture in
+this README that disagrees with the game is a failing build rather than a stale file.
+
+```bash
+npm run audit
+```
+
+Launches the real renderer in Electron, walks seven screens, and fails the build on any text under
+AA contrast or any control that misses the WCAG 2.2 target-size minimum. A screen it cannot reach
+is a hard failure rather than a quiet skip.
 
 To check the packaged desktop app actually starts:
 
@@ -194,11 +226,22 @@ src/engine/     Pure TypeScript simulation. No DOM, no React, fully unit-tested.
   save.ts         Versioned saves with migrations
 
 src/ui/         React renderer. Reads the engine, never reimplements it.
-  components/     Modal, ScopeBuilder, DealAnalyzer, PropertyFacts, ClickableRow
+  components/     Modal, ScopeBuilder, DealAnalyzer, PropertyFacts, Art, DealCardModal
   views/          Market, Portfolio, Finance, Skills, Track record, Help, Saves
+  board/          The isometric town
+    projection.ts   The one copy of the isometric maths
+    art.ts          Placing commissioned drawings on the grid
+    backdrop.ts     The rest of the town: scenery on lots the game does not model
+    legibility.ts   Sizing the board against the device it is drawn on
+  coach/          Scout: the rules table, and what he is looking at
+  dealCard.ts     A closed deal as a shareable picture
+
+art/            The commissioned drawings, as delivered, plus their generators.
+                `npm run art` compiles them into the bundle. Never edited by hand.
 electron/       Main process and preload. The only filesystem access in the app.
-scripts/        Build, dev launcher, packaging fallback, icon generator.
-tests/          Correctness suite, skip-behaviour tests, and the balance harness.
+scripts/        Build, dev launcher, packaging, icon and cover, art ingest, audit.
+tests/          Correctness suite, skip-behaviour tests, the balance harness, and
+                the art checks that compare drawings against what the code names.
 ```
 
 Two design decisions worth knowing about:
