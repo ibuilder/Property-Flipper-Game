@@ -40,23 +40,23 @@ difference between that checklist being marked and not.
 
 ---
 
-## 3. A decision, not a drawing: three archetypes with nowhere to live
+## 3. ~~A decision, not a drawing~~ — **resolved, they are archetypes now**
 
-`mill_loft`, `split_level` and `new_build` are drawn — base plus four condition
-states, in line, colour and all three seasons — and match no archetype the
-engine generates. They have been kept rather than discarded.
+`mill_loft`, `split_level` and `new_build` are real property types. They were
+drawn before the game had them and sat as scenery until they were given beds,
+baths, a size range, an era and a value adjustment.
 
-Adding them to `content.ts` would put them in the game and is a small change on
-our side, but it is a **content and balance** change rather than an art one:
-each needs a bed and bath count, a size range, an era and a value adjustment,
-and the balance harness has to be re-run against it. Say the word and it is an
-afternoon's work with the numbers measured before and after.
+It cost something, measured rather than guessed. The tutorial's discipline gap
+-- how much better a 70%-rule buyer does than one paying 92% of ARV -- was 35
+points at seven archetypes and is 17 at ten, over a hundred seeds. About eleven
+of those points are structural: adding three *exact clones* of existing types
+costs the same, because a wider pool of types drawn into a fixed number of
+listings raises variance, and variance always helps the weaker strategy. The
+rest is the specific economics, and tuning the three profiles did not recover
+it.
 
-Either answer is fine. What is not fine is leaving three complete sets of
-drawings that nothing can ever show, so this wants a decision rather than
-silence.
-
----
+Nothing further needed from your side. Noted here because the next archetype
+will cost the same again, and that is worth knowing before adding an eleventh.
 
 ## 4. Lower priority
 

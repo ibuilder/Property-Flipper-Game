@@ -69,15 +69,17 @@ describe('the house art', () => {
     }
 
     /*
-     * The set is a superset, not an equal. `mill_loft`, `split_level` and
-     * `new_build` are drawn -- complete with condition states, in line, colour
-     * and every season -- and match no archetype the engine makes. They are
-     * kept deliberately: adding them to `content.ts` is a content change with
-     * balance consequences, not an art one, so it is a separate decision.
-     * Listed here so the surplus stays visible rather than becoming clutter.
+     * The two lists are now equal, not a superset.
+     *
+     * `mill_loft`, `split_level` and `new_build` were drawn before they
+     * existed in the game and sat as town scenery until they were given
+     * economics. Asserting equality rather than coverage means the next
+     * archetype cannot be added on either side alone: a drawing with no
+     * archetype fails here, and so does an archetype with no drawing.
      */
-    const spare = [...drawn].filter((id) => !content.includes(id)).sort();
-    expect(spare).toEqual(['mill_loft', 'new_build', 'split_level']);
+    expect([...drawn].sort(), 'the art and content.ts must name the same archetypes').toEqual(
+      content,
+    );
   });
 
   it('stands every archetype on the same ground', () => {

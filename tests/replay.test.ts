@@ -15,9 +15,18 @@ import { currentReserve } from '../src/engine/market';
 /** Buy, renovate, sell — and return the closed deal. */
 function playOneDeal(seed: number, opts: { inspect?: boolean } = {}) {
   const state = createGame('sandbox', seed);
+  /*
+   * The cheapest listing with room to improve.
+   *
+   * The point of the fixture is a house that visibly changes between bought
+   * and sold, so a house that is already in good order is the wrong subject --
+   * it used to be excluded by accident, because the cheapest listing happened
+   * to be a wreck.
+   */
   const prop = state.market
-    .filter((p) => p.listing)
+    .filter((p) => p.listing && p.condition < 0.85)
     .sort((a, b) => currentReserve(a) - currentReserve(b))[0];
+  if (!prop) return null;
 
   if (opts.inspect) orderInspection(state, prop.id, 'thorough');
   if (!makeOffer(state, prop.id, prop.listing!.askPrice, false).ok) return null;
@@ -45,9 +54,14 @@ describe('replaying a closed deal', () => {
     expect(deal.replay).not.toBeNull();
     const spec = deal.replay!.property;
 
-    // The renovation raised the condition and completed work. The replay must
-    // hand back the wreck, not the finished house.
-    expect(spec.condition).toBeLessThan(0.9);
+    /*
+     * The renovation raised the condition and completed work, so the replay has
+     * to hand back the wreck rather than the finished house. Compared against
+     * what it actually sold as, not against a fixed number: the threshold this
+     * replaced was a stand-in for "not the finished one" and broke the day the
+     * generator produced a tidier starting house.
+     */
+    expect(spec.condition).toBeLessThan(deal.after!.condition);
     expect(spec.condition).toBeCloseTo(deal.before!.condition, 5);
     expect(spec.sqft).toBe(played.bought.sqft);
     expect(spec.yearBuilt).toBe(played.bought.yearBuilt);

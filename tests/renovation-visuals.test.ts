@@ -12,9 +12,19 @@ import { currentReserve } from '../src/engine/market';
 
 function boughtWreck(seed: number) {
   const state = createGame('sandbox', seed);
+  /*
+   * The worst house on the board that the player can actually pay for.
+   *
+   * Sorting on condition alone once picked a wreck priced past the sandbox
+   * opening balance, and the setup failed with a financing message rather than
+   * a renovation. What this fixture needs is a wreck to renovate; which wreck
+   * is not the point, so affordability is part of the selection rather than an
+   * assumption about what the generator happens to produce.
+   */
   const prop = state.market
-    .filter((p) => p.listing)
+    .filter((p) => p.listing && Math.round(p.listing.askPrice * 1.15) <= state.cash)
     .sort((a, b) => a.condition - b.condition)[0];
+  expect(prop, 'no affordable listing to renovate').toBeTruthy();
   const res = makeOffer(state, prop.id, Math.round(prop.listing!.askPrice * 1.15), false);
   expect(res.ok, `setup purchase failed: ${res.message}`).toBe(true);
   return { state, prop };

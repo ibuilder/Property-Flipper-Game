@@ -28,7 +28,7 @@ retires per concept once it has been demonstrated twice.
 Barlow embedded and subset, blueprint geometry, one accent with three token
 roles, red reserved for a negative projected profit alone.
 
-**Verification.** 490 tests. A 20-seed balance harness. An accessibility audit
+**Verification.** 491 tests. A 100-seed balance harness. An accessibility audit
 that runs the real renderer in Electron on every push across seven scenes and
 fails the build on any text under AA contrast or any control that misses WCAG
 2.2 target size. A smoke test launching the packaged app on all three platforms.
@@ -93,7 +93,7 @@ The Pygame README listed the author's own future ideas. Status after v2:
 
 | Idea | Status |
 | --- | --- |
-| More property types and locations | **Done** — 7 archetypes, 6 neighborhoods |
+| More property types and locations | **Done** — 10 archetypes, 6 neighborhoods |
 | More diverse upgrades | **Done** — 18 scope items across 8 categories |
 | More detailed market simulation (gentrification) | **Done** — multi-year neighborhood arcs |
 | More complex event types and chains | **Done** — chains with probabilistic links |

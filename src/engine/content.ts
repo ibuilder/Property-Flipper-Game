@@ -99,6 +99,20 @@ export const ARCHETYPES: Archetype[] = [
   { id: 'victorian', name: 'Victorian', beds: 4, baths: 2, sqftRange: [1800, 2600], yearRange: [1890, 1925], valueAdj: 1.04 },
   { id: 'townhouse', name: 'Townhouse', beds: 3, baths: 3, sqftRange: [1400, 1900], yearRange: [1985, 2010], valueAdj: 1.0 },
   { id: 'duplex', name: 'Duplex', beds: 4, baths: 2, sqftRange: [1600, 2200], yearRange: [1940, 1980], valueAdj: 0.98 },
+  /*
+   * Three added once their drawings existed, and given numbers that make them
+   * worth telling apart rather than a third bungalow with a different roof.
+   *
+   * The loft carries a conversion premium on a lot of floor and very few
+   * bedrooms, which is exactly the shape that makes a bed-count comp mislead.
+   * The split level is the one archetype that is worth less than a plain ranch
+   * of the same size -- a period taste nobody shares any more, and the cheapest
+   * honest lesson in the table. The new build is the premium, and the one where
+   * there is least to fix and therefore least to add.
+   */
+  { id: 'mill_loft', name: 'Mill Loft', beds: 1, baths: 1, sqftRange: [1100, 1900], yearRange: [1900, 1935], valueAdj: 1.02 },
+  { id: 'split_level', name: 'Split Level', beds: 3, baths: 2, sqftRange: [1500, 2100], yearRange: [1960, 1985], valueAdj: 0.97 },
+  { id: 'new_build', name: 'New Build', beds: 3, baths: 2, sqftRange: [1700, 2400], yearRange: [2005, 2020], valueAdj: 1.08 },
 ];
 
 // ---------------------------------------------------------------------------
