@@ -118,19 +118,27 @@ export default function Board({
   const [zoomTouched, setZoomTouched] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
   /*
-   * Line or colour.
+   * Line or colour, opening on colour.
    *
    * Both sets are complete, and they are genuinely different pictures rather
    * than two finishes of one: the line set takes the theme and stays out of the
    * way of the data ramp, and the coloured set is a warmer, more literal town
    * that reads better at a glance and worse over a colour scale. There is no
    * right answer to impose, so it is the player's, and it persists.
+   *
+   * Which one it opens on is a different question, and the answer is not the
+   * one that reads best over a price ramp. It is the first picture anybody sees
+   * of this game, and a town drawn as a survey plat reads as unfinished to
+   * someone who has not been told it is a survey plat -- the first person shown
+   * a screenshot asked what had happened to the colour. The ramp still tints
+   * the ground under the coloured houses, so nothing is lost that a click does
+   * not get back.
    */
   const [style, setStyle] = useState<'line' | 'colour'>(() => {
     try {
-      return localStorage.getItem('flipper:boardArt') === 'colour' ? 'colour' : 'line';
+      return localStorage.getItem('flipper:boardArt') === 'line' ? 'line' : 'colour';
     } catch {
-      return 'line';
+      return 'colour';
     }
   });
 
