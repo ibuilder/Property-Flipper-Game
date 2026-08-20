@@ -153,6 +153,14 @@ jobs:
           # it, and the run stayed green while the portable build was quietly
           # never published. Waiting is the whole fix; the queue clears in
           # seconds.
+          #
+          # They also need separate channels, which is a different mistake with
+          # the same symptom. A butler channel holds exactly one build: pushing
+          # Setup.exe and then Portable.exe to `:windows` does not add a second
+          # download, it replaces the first. 2.2.0 went up with a portable build
+          # and no installer, and the page still offered 2.1.0's installer
+          # beside it. `windows-portable` still reads as Windows to itch,
+          # because the platform is inferred from the channel name.
           push() {
             file=$1
             channel=$2
@@ -170,7 +178,7 @@ jobs:
 
           expected=0
           pushed=0
-          for spec in "windows:desktop/*Setup*.exe" "windows:desktop/*Portable*.exe" "mac:desktop/*.dmg" "linux:desktop/*.AppImage"; do
+          for spec in "windows:desktop/*Setup*.exe" "windows-portable:desktop/*Portable*.exe" "mac:desktop/*.dmg" "linux:desktop/*.AppImage"; do
             channel=${spec%%:*}
             for f in ${spec#*:}; do
               expected=$((expected + 1))
