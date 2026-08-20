@@ -236,9 +236,10 @@ playable on a phone and more comfortable on a tablet.
 **Play in the browser:** press the button above. Nothing to install, and saves
 live in the browser's own storage.
 
-**Windows:** `Property Flipper-2.1.0-Setup.exe` to install, or
-`Property Flipper-2.1.0-Portable.exe` to run without installing. Unsigned builds
-raise a SmartScreen warning on first launch — *More info* then *Run anyway*.
+**Windows:** the `…-Setup.exe` to install, or the `…-Portable.exe` to run without
+installing. Unsigned builds raise a SmartScreen warning on first launch —
+*More info* then *Run anyway*. (Written without the version number on purpose:
+this copy is pasted once and the filenames change every release.)
 
 **macOS:** open the `.dmg` and drag Property Flipper to Applications. Unsigned
 builds need *right-click → Open* the first time, because Gatekeeper will not
