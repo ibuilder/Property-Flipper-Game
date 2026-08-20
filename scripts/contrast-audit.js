@@ -255,17 +255,38 @@
       if (cs.overflowY !== 'auto' && cs.overflowY !== 'scroll') continue;
       if (el.clientHeight <= 0) continue;
       const top = el.getBoundingClientRect().top + parseFloat(cs.borderTopWidth || '0');
+      const floor = minScrollTop(el);
       for (const kid of el.children) {
         const kcs = getComputedStyle(kid);
         if (kcs.position === 'absolute' || kcs.position === 'fixed') continue;
         if (kcs.display === 'none') continue;
         // How far above the fully-scrolled-up position this child begins.
-        const above = top - el.scrollTop - kid.getBoundingClientRect().top;
+        const above = top - (el.scrollTop - floor) - kid.getBoundingClientRect().top;
         if (above <= 1) continue;
         found.push({ scene, selector: name(el), child: name(kid), above: Math.round(above) });
       }
     }
     return found;
+  };
+
+  /**
+   * How far up a container can actually be scrolled.
+   *
+   * Not always zero, and assuming it was reported the activity rail as broken
+   * across four screens. A `flex-direction: column-reverse` list -- the standard
+   * way to pin a log to the bottom -- puts its scroll origin at the far end, so
+   * `scrollTop` runs from `clientHeight - scrollHeight` up to `0` and the
+   * oldest entry is reached by scrolling *negative*. Measured by asking the
+   * element rather than derived from its style, because the same is true of
+   * `wrap-reverse`, of right-to-left writing modes, and of whatever the next
+   * one turns out to be.
+   */
+  const minScrollTop = (el) => {
+    const held = el.scrollTop;
+    el.scrollTop = -1e7;
+    const floor = el.scrollTop;
+    el.scrollTop = held;
+    return floor;
   };
 
   /**

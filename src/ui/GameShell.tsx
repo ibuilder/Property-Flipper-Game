@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import {
   DIFFICULTY_META,
   ECON,
@@ -12,10 +12,13 @@ import {
   netWorth,
   totalDebt,
   tutorialComplete,
+  type ClosedDeal,
   type ScenarioDef,
 } from '../engine';
 import { gameDate, money, moneyShort, percent } from './format';
 import { advanceDays, quitToMenu, saveGame, useAction, useDigest, useGame } from './store';
+import DealCardModal from './components/DealCardModal';
+import Ticker from './components/Ticker';
 import TimeDigestBar from './components/TimeDigestBar';
 import { play, setSoundEnabled, soundEnabled } from './sound';
 import { theme, toggleTheme } from './theme';
@@ -45,6 +48,36 @@ export default function GameShell() {
   const [sound, setSound] = useState(soundEnabled);
   const [mode, setMode] = useState(theme);
   const digest = useDigest();
+
+  /*
+   * The card, at the moment the flip closes.
+   *
+   * Selling is the point of the entire game and it used to produce a toast and
+   * a row in a ledger. Meanwhile `dealCard.ts` renders a complete 1200x630
+   * picture of the deal that nobody saw unless they went looking for it on the
+   * Track record tab, three clicks away and long after the moment had passed.
+   *
+   * Watched here rather than raised by the action that sells, because a flip
+   * can close by accepting an offer *or* by an auction settling, and both go
+   * through the engine rather than through one button. The length of
+   * `closedDeals` is the one thing true of every path.
+   *
+   * The ref starts at whatever the count already is, so loading a save with
+   * forty flips in it does not celebrate the fortieth.
+   */
+  const [justClosed, setJustClosed] = useState<ClosedDeal | null>(null);
+  const closedCount = state?.closedDeals.length ?? 0;
+  const seenClosed = useRef<number | null>(null);
+  useEffect(() => {
+    if (seenClosed.current === null) {
+      seenClosed.current = closedCount;
+      return;
+    }
+    if (closedCount > seenClosed.current && state) {
+      setJustClosed(state.closedDeals[state.closedDeals.length - 1]);
+    }
+    seenClosed.current = closedCount;
+  }, [closedCount]);
 
   // Autosave every few days so a crash never costs much progress.
   useEffect(() => {
@@ -146,7 +179,7 @@ export default function GameShell() {
         <div className="stat">
           <span className="label">Day</span>
           <span className="value">
-            {state.day}
+            <Ticker value={state.day} format={(n) => String(Math.round(n))} tint={false} />
             {dayLimit && <span className="faint"> / {dayLimit}</span>}
           </span>
         </div>
@@ -160,18 +193,20 @@ export default function GameShell() {
 
         <div className="stat">
           <span className="label">Cash</span>
-          <span className={`value ${state.cash < 0 ? 'bad' : ''}`}>{money(state.cash)}</span>
+          <Ticker className={`value ${state.cash < 0 ? 'bad' : ''}`} value={state.cash} format={money} />
         </div>
 
         <div className="stat">
           <span className="label">Net worth</span>
-          <span className="value">{money(worth)}</span>
+          <Ticker className="value" value={worth} format={money} />
         </div>
 
         {debt > 0 && (
           <div className="stat">
             <span className="label">Debt</span>
-            <span className="value bad">{money(debt)}</span>
+            {/* Debt going up is bad and going down is good, which is the
+                opposite of every other figure here, so it says nothing. */}
+            <Ticker className="value bad" value={debt} format={money} tint={false} />
           </div>
         )}
 
@@ -261,6 +296,10 @@ export default function GameShell() {
       <Coach context={{ state }} />
 
       {digest && <TimeDigestBar digest={digest} />}
+      {/* The payoff. See `justClosed` above for why it lives here. */}
+      {justClosed && (
+        <DealCardModal fresh deal={justClosed} onClose={() => setJustClosed(null)} />
+      )}
 
       {events.length > 0 && (
         <div

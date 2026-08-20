@@ -425,6 +425,45 @@ button {
   font-weight: 600;
 }
 
+/*
+ * The direction a figure just moved.
+ *
+ * Tabular numerals are what make this readable rather than dizzying: every
+ * digit is the same width, so a counting number holds its position instead of
+ * shuffling the ones beside it. That was already set for a different reason
+ * and is the reason this works.
+ *
+ * The tint is short and low-contrast on purpose. It is a hint about which way
+ * a number went, not an alarm, and it fires after almost every action.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .tick-up {
+    animation: tick-up 0.5s ease-out;
+  }
+
+  .tick-down {
+    animation: tick-down 0.5s ease-out;
+  }
+}
+
+@keyframes tick-up {
+  0% {
+    color: var(--good);
+  }
+  100% {
+    color: inherit;
+  }
+}
+
+@keyframes tick-down {
+  0% {
+    color: var(--bad);
+  }
+  100% {
+    color: inherit;
+  }
+}
+
 .topbar .spacer {
   flex: 1;
 }
@@ -928,6 +967,78 @@ label.field .label {
   font-size: 13px;
 }
 
+/*
+ * The larger empty state, for a whole screen rather than a table cell.
+ *
+ * Sized to fill some of the room it is standing in -- a single grey sentence
+ * marooned in six hundred pixels of nothing reads as a broken screen, which is
+ * exactly what Track record looked like on day one.
+ *
+ * The dashes are the point. They are the labels the screen will really carry,
+ * shown empty, so the reader learns what is being measured before anything has
+ * been measured.
+ */
+.empty-state {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 52px 24px 56px;
+  text-align: center;
+}
+
+.empty-state-title {
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.empty-state-body {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-dim);
+}
+
+.empty-state-preview {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 26px 0 0;
+}
+
+.empty-state-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 118px;
+  padding: 12px 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.empty-state-label {
+  font-size: 9.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.empty-state-dash {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+
+.empty-state-hint {
+  margin: 24px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
 /* ----------------------------------------------------------- house art */
 
 .house-thumb {
@@ -1050,7 +1161,11 @@ label.field .label {
 .digest-span {
   font-family: var(--mono);
   font-size: 12px;
-  color: var(--accent);
+  /* The ink token, not the raw accent: `--accent` is tuned to be seen, and at
+     12px on the digest bar's ground it measured 3.42:1 in the light theme.
+     `--color-accent-ink` is the same hue darkened until it clears AA, which is
+     what every other small accent-coloured string here already uses. */
+  color: var(--color-accent-ink);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -1069,8 +1184,19 @@ label.field .label {
   color: var(--text-faint);
   font-size: 18px;
   line-height: 1;
-  padding: 0 2px;
   flex-shrink: 0;
+  /*
+   * WCAG 2.2 SC 2.5.8. The glyph is 12x18; what you have to hit was the same,
+   * and it sits in a row with other controls so the spacing exception does not
+   * carry it. Padding rather than a bigger character, so the bar looks the same
+   * and only the target grows.
+   */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
 }
 
 .digest-close:hover {
@@ -1964,6 +2090,86 @@ table.stress-grid td.base {
   flex-shrink: 0;
   font-size: 11px;
   padding-top: 1px;
+}
+
+/* --------------------------------------------------------- closing a flip */
+
+/*
+ * The moment the flip closes.
+ *
+ * One number, larger than anything else in the game, counting to itself. The
+ * card underneath carries the whole story; this carries the answer, which is
+ * the only thing anybody wants in the first second.
+ *
+ * The loss case gets exactly the same treatment. A game about underwriting
+ * that only makes a noise when you win is teaching the wrong lesson, and the
+ * post-mortem on the card is more useful after a bad one than a good one.
+ */
+.close-headline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 18px 16px 20px;
+  margin-bottom: 16px;
+  border: 1px solid;
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.close-headline.good {
+  border-color: var(--good);
+  background: var(--good-dim);
+}
+
+.close-headline.bad {
+  border-color: var(--bad);
+  background: var(--bad-dim);
+}
+
+.close-headline-label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.close-headline-figure {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.close-headline.good .close-headline-figure {
+  color: var(--good);
+}
+
+.close-headline.bad .close-headline-figure {
+  color: var(--bad);
+}
+
+.close-headline-sub {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .close-headline {
+    animation: close-rise 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@keyframes close-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ------------------------------------------------------------------ toast */

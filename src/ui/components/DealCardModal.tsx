@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { ClosedDeal } from '../../engine';
 import { CARD_H, CARD_W, dealCard } from '../dealCard';
+import { money, percent } from '../format';
 import Modal from './Modal';
+import Ticker from './Ticker';
 
 /**
  * The deal card, on screen and on its way out.
@@ -19,9 +21,18 @@ import Modal from './Modal';
 export default function DealCardModal({
   deal,
   onClose,
+  fresh = false,
 }: {
   deal: ClosedDeal;
   onClose: () => void;
+  /**
+   * Shown because the flip just closed, rather than fetched from the ledger.
+   *
+   * The same card either way -- what changes is that the moment gets a line
+   * saying what happened and a number that counts to it. Selling is the point
+   * of the game and it used to produce a toast.
+   */
+  fresh?: boolean;
 }) {
   const [handle, setHandle] = useState('');
   const [note, setNote] = useState<string | null>(null);
@@ -82,8 +93,29 @@ export default function DealCardModal({
   };
 
   return (
-    <Modal onClose={onClose} title={`${deal.address} — deal card`} width={760}>
+    <Modal
+      onClose={onClose}
+      title={fresh ? `Sold — ${deal.address}` : `${deal.address} — deal card`}
+      width={760}
+    >
       <div className="panel-body">
+        {fresh && (
+          <div className={`close-headline ${deal.netProfit >= 0 ? 'good' : 'bad'}`}>
+            <span className="close-headline-label">
+              {deal.netProfit >= 0 ? 'Profit' : 'Loss'} on {deal.daysHeld}{' '}
+              {deal.daysHeld === 1 ? 'day' : 'days'} held
+            </span>
+            <Ticker
+              className="close-headline-figure"
+              value={Math.abs(deal.netProfit)}
+              format={(n) => money(Math.round(n))}
+              tint={false}
+            />
+            <span className="close-headline-sub">
+              {percent(deal.roi, 1)} annualised on the cash you tied up
+            </span>
+          </div>
+        )}
         <img
           src={src}
           alt={`Deal card for ${deal.address}: ${

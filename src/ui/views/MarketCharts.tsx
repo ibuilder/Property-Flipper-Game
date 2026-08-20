@@ -2,6 +2,7 @@ import { ARCS, NEIGHBORHOODS_BY_ID, arcIsVisible, type GameState } from '../../e
 import { money, moneyShort, percent } from '../format';
 import { ChartData, LineChart, SERIES, Sparkline } from '../graphics/Charts';
 import { Icon } from '../components/Art';
+import EmptyState from '../components/EmptyState';
 
 /**
  * The time-series panels.
@@ -20,9 +21,15 @@ export default function MarketCharts({ state }: { state: GameState }) {
           <Icon name="trending-up" />
             <h2>Trends</h2>
         </div>
-        <div className="empty">
-          Nothing plotted yet. History is sampled every few days — advance the clock.
-        </div>
+        <EmptyState
+          title="No history to plot yet"
+          preview={['Price per sqft', 'Market index', 'Interest rate', 'Days on market']}
+          hint="Advance the clock. The first points appear within a few days."
+        >
+          The market moves under you whether you are watching or not, and these lines are how you
+          see it coming: what the street is paying, how long houses are sitting, and what money
+          costs. Sampled every few days, so a campaign has a shape rather than a snapshot.
+        </EmptyState>
       </div>
     );
   }

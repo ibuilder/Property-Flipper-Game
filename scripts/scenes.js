@@ -111,39 +111,60 @@ const scenes = [
        * React see the change.
        */
       const box = document.querySelector('.modal input[type="number"]');
-      if (box) {
-        const setter = Object.getOwnPropertyDescriptor(
-          window.HTMLInputElement.prototype,
-          'value',
-        ).set;
-        /*
-         * Capped, because an offer above the bank balance is refused just as
-         * flatly as one below the reserve. First Flip opens with $175,000 and
-         * buy-side closing takes 2% on top, so this leaves room for both.
-         */
-        const over = Math.round(Number(box.value || 0) * 2.2) || 160_000;
-        setter.call(box, String(Math.min(over, 160_000)));
+      if (!box) return false;
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value',
+      ).set;
+
+      /*
+       * Bid up until it is taken, rather than overpaying by a fixed multiple.
+       *
+       * The box is seeded with the more conservative of the two maximum
+       * offers, which is usually *below* the seller's hidden reserve, so
+       * submitting it as-is is refused and the scene never gets a property.
+       * The first fix here multiplied it by 2.2, which bought the house and
+       * paid $56,791 for one asking $37,110 -- an offer no player would make
+       * and a track record that read "lost money" for the rest of the walk.
+       *
+       * Raising in steps is what a buyer would actually do and lands near the
+       * reserve rather than far above it. Capped by the opening bank balance
+       * less the 2% buy-side closing, because an offer above the cash on hand
+       * is refused as flatly as one below the reserve.
+       */
+      const seeded = Number(box.value || 0) || 30_000;
+      let bought = false;
+      for (const step of [1, 1.08, 1.16, 1.25, 1.35, 1.5, 1.7]) {
+        const offer = Math.min(Math.round(seeded * step), 170_000);
+        setter.call(box, String(offer));
         box.dispatchEvent(new Event('input', { bubbles: true }));
         await settle();
-      }
 
-      click(byText('.modal button', 'Submit offer'));
-      await settle();
-      /*
-       * Confirm in the *topmost* dialog.
-       *
-       * The offer button is a ConfirmButton, so it opens a second modal
-       * rather than committing. Searching `.modal .btn.primary` across the
-       * document matched the outer modal's own trigger first and simply
-       * re-clicked it, which is why this scene sat unreachable while looking
-       * like it was doing something.
-       */
-      const dialogs = document.querySelectorAll('.modal');
-      const top = dialogs[dialogs.length - 1];
-      if (top && dialogs.length > 1) {
-        click(top.querySelector('.btn.primary'));
+        click(byText('.modal button', 'Submit offer'));
         await settle();
+        /*
+         * Confirm in the *topmost* dialog.
+         *
+         * The offer button is a ConfirmButton, so it opens a second modal
+         * rather than committing. Searching `.modal .btn.primary` across the
+         * document matched the outer modal's own trigger first and simply
+         * re-clicked it, which is why this scene sat unreachable while looking
+         * like it was doing something.
+         */
+        const dialogs = document.querySelectorAll('.modal');
+        const top = dialogs[dialogs.length - 1];
+        if (top && dialogs.length > 1) {
+          click(top.querySelector('.btn.primary'));
+          await settle();
+        }
+        // A taken offer closes the listing modal and puts a row in Portfolio.
+        if (!document.querySelector('.modal input[type="number"]')) {
+          bought = true;
+          break;
+        }
       }
+      if (!bought) return false;
+
       closeModal();
       await settle();
       openTab('Portfolio');
@@ -208,6 +229,85 @@ const scenes = [
       pick('block');
       await settle();
       return !!document.querySelector('.board-frame svg');
+    },
+  },
+  {
+    name: 'sale',
+    reach: async () => {
+      /*
+       * Finish the flip, so the second half of the game is covered too.
+       *
+       * The walk used to stop on the day the house was bought, which left the
+       * ledger, the trends and the whole track record empty -- three screens
+       * audited with nothing in them, and the one screen that carries the
+       * argument that this game teaches something never seen at all.
+       *
+       * It also ends on the deal card, which is what the game shows the moment
+       * a flip closes. That is the payoff, and a payoff nothing walks through
+       * is a payoff nobody notices is broken.
+       */
+      const advance = () =>
+        click(
+          [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === '+30d'),
+        );
+      const manage = async () => {
+        openTab('Portfolio');
+        await settle();
+        return click(byText('tbody tr button', 'Manage') || document.querySelector('tbody tr'));
+      };
+
+      // Wait out the crew.
+      closeModal();
+      await settle();
+      for (let i = 0; i < 4; i++) {
+        advance();
+        await settle();
+        closeModal();
+        await settle();
+        await manage();
+        if (byText('.modal button', 'List at')) break;
+        closeModal();
+        await settle();
+      }
+      if (!click(byText('.modal button', 'List at'))) return false;
+      await settle();
+      let dialogs = document.querySelectorAll('.modal');
+      if (dialogs.length > 1) {
+        click(dialogs[dialogs.length - 1].querySelector('.btn.primary'));
+        await settle();
+      }
+
+      /*
+       * Then cut the price until somebody bites. The suggested list price sits
+       * above what buyers will actually pay, deliberately -- learning that is
+       * half the game -- so a walk that lists once and waits sits on the market
+       * for four hundred days and never closes.
+       */
+      for (let i = 0; i < 6; i++) {
+        closeModal();
+        await settle();
+        advance();
+        await settle();
+        closeModal();
+        await settle();
+        if (!(await manage())) return false;
+        if (byText('.modal button', 'Accept')) {
+          click(byText('.modal button', 'Accept'));
+          await settle();
+          dialogs = document.querySelectorAll('.modal');
+          if (dialogs.length > 1) {
+            click(dialogs[dialogs.length - 1].querySelector('.btn.primary'));
+            await settle();
+          }
+          break;
+        }
+        click(byText('.modal button', 'Cut 4%'));
+        await settle();
+      }
+
+      await settle();
+      // The card raises itself the moment the flip closes.
+      return !!byText('.modal', 'Sold —');
     },
   },
   {

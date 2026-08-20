@@ -6,6 +6,7 @@ import { Waterfall } from '../graphics/Charts';
 import CalibrationPanel from '../components/CalibrationPanel';
 import PostMortemPanel from '../components/PostMortemPanel';
 import DealCardModal from '../components/DealCardModal';
+import EmptyState from '../components/EmptyState';
 import { Icon } from '../components/Art';
 import House from '../graphics/House';
 
@@ -30,12 +31,28 @@ export default function DealsView() {
   if (!state) return null;
 
   if (deals.length === 0) {
+    const held = state.portfolio.length;
+    const listed = state.portfolio.filter((p) => p.ownership?.saleListing).length;
     return (
       <div className="panel">
         <div className="panel-head">
           <h2>Track record</h2>
         </div>
-        <div className="empty">No completed flips yet.</div>
+        <EmptyState
+          title="Nothing has closed yet"
+          preview={['Total profit', 'Hit rate', 'Return on your time', 'Average hold']}
+          hint={
+            held === 0
+              ? 'Buy something on the Market tab. Every flip you close is scored here, win or lose.'
+              : listed > 0
+                ? `${listed === held ? 'Your property is' : `${listed} of your ${held} are`} on the market. This fills in the day a sale closes.`
+                : `You are holding ${held === 1 ? 'one property' : `${held} properties`}. Finish the work, sell, and this fills in.`
+          }
+        >
+          This is where the game marks your homework. Not just what you made — whether the deal
+          did what you said it would when you bought it, where the margin actually went, and how
+          the house looked before and after.
+        </EmptyState>
       </div>
     );
   }
