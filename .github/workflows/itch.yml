@@ -11,13 +11,32 @@ name: Publish to itch.io
 # Without the API key the workflow skips rather than fails, so it is harmless
 # to merge before the account is wired up.
 #
-# Triggered by the release being *published*, not by the tag being pushed.
-# Both workflows fire on a tag, so on the first real release this one raced
-# ahead and went looking for artifacts the release job had not finished
-# building — it pushed the browser build and reported "Pushed 0 desktop
-# artifact(s)" without failing, which is exactly the kind of quiet nothing that
-# looks like success.
+# Triggered by the Release workflow finishing, not by the tag being pushed and
+# not by the release being published.
+#
+# Both of the obvious triggers are wrong, and each was tried:
+#
+#   `push: tags` fires at the same moment as Release, so this raced ahead and
+#   went looking for artifacts that were not built yet. It pushed the browser
+#   build, reported "Pushed 0 desktop artifact(s)", and passed — the kind of
+#   quiet nothing that looks like success.
+#
+#   `release: [published]` fixed the race and never fired at all. The release is
+#   created by `softprops/action-gh-release` using the default `GITHUB_TOKEN`,
+#   and GitHub deliberately does not raise workflow-triggering events for
+#   anything a `GITHUB_TOKEN` did — it is the loop guard. So 2.2.0 built, its
+#   four artifacts were attached, every check was green, and nothing reached
+#   itch.io. Nothing failed either, which is why it took a person going to look
+#   at the store page to notice.
+#
+# `workflow_run` is raised for the workflow completing regardless of which token
+# drove it, and it cannot start before Release has finished. The `success`
+# check inside the job is what stops it publishing after a failed build, since
+# `workflow_run` fires on failure too.
 on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
   release:
     types: [published]
   workflow_dispatch:
@@ -36,7 +55,12 @@ jobs:
       - name: Check the account is wired up
         id: check
         run: |
-          if [ -z "${{ secrets.ITCH_API_KEY }}" ]; then
+          # `workflow_run` fires whether Release succeeded or failed. Publishing
+          # the artifacts of a failed build is worse than publishing nothing.
+          if [ "${{ github.event_name }}" = "workflow_run" ]              && [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+            echo "Release concluded '${{ github.event.workflow_run.conclusion }}' — not publishing."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "${{ secrets.ITCH_API_KEY }}" ]; then
             echo "No ITCH_API_KEY set — skipping. See RELEASING.md."
             echo "ready=false" >> "$GITHUB_OUTPUT"
           elif [ -z "${{ vars.ITCH_USER }}" ] || [ -z "${{ vars.ITCH_GAME }}" ]; then
@@ -117,25 +141,55 @@ jobs:
           BUTLER_API_KEY: ${{ secrets.ITCH_API_KEY }}
         run: |
           shopt -s nullglob
+
+          # itch queues one build per channel and refuses the next until the
+          # previous has finished processing:
+          #
+          #   itch.io API error (400): /wharf/builds: channel windows's latest
+          #   build is still processing, try again later
+          #
+          # Both Windows artifacts go to the same channel, so the second one
+          # hit this every time. It arrives as a non-zero exit, `&&` swallowed
+          # it, and the run stayed green while the portable build was quietly
+          # never published. Waiting is the whole fix; the queue clears in
+          # seconds.
+          push() {
+            file=$1
+            channel=$2
+            for attempt in 1 2 3 4 5 6; do
+              if ./butler push "$file" "${{ vars.ITCH_USER }}/${{ vars.ITCH_GAME }}:$channel" --userversion "${{ steps.version.outputs.tag }}"; then
+                return 0
+              fi
+              wait_for=$((attempt * 10))
+              echo "  attempt $attempt for $(basename "$file") failed; waiting ${wait_for}s"
+              sleep "$wait_for"
+            done
+            echo "::error::Gave up pushing $(basename "$file") to :$channel after 6 attempts."
+            return 1
+          }
+
+          expected=0
           pushed=0
-          for f in desktop/*Setup*.exe desktop/*Portable*.exe; do
-            ./butler push "$f" "${{ vars.ITCH_USER }}/${{ vars.ITCH_GAME }}:windows" \
-              --userversion "${{ steps.version.outputs.tag }}" && pushed=$((pushed+1))
+          for spec in "windows:desktop/*Setup*.exe" "windows:desktop/*Portable*.exe" "mac:desktop/*.dmg" "linux:desktop/*.AppImage"; do
+            channel=${spec%%:*}
+            for f in ${spec#*:}; do
+              expected=$((expected + 1))
+              push "$f" "$channel" && pushed=$((pushed + 1))
+            done
           done
-          for f in desktop/*.dmg; do
-            ./butler push "$f" "${{ vars.ITCH_USER }}/${{ vars.ITCH_GAME }}:mac" \
-              --userversion "${{ steps.version.outputs.tag }}" && pushed=$((pushed+1))
-          done
-          for f in desktop/*.AppImage; do
-            ./butler push "$f" "${{ vars.ITCH_USER }}/${{ vars.ITCH_GAME }}:linux" \
-              --userversion "${{ steps.version.outputs.tag }}" && pushed=$((pushed+1))
-          done
-          echo "Pushed $pushed desktop artifact(s)."
-          # Zero is a failure, not a result. The whole point of this job is
-          # that the downloads on itch match the release, and silently pushing
-          # nothing leaves them stale with a green tick next to it.
-          if [ "$pushed" -eq 0 ]; then
-            echo "::error::No desktop artifacts were pushed — expected .exe, .dmg and .AppImage from the release."
+
+          echo "Pushed $pushed of $expected desktop artifact(s)."
+
+          # Every artifact, not merely one of them. This failed only on zero,
+          # so a run that published three of four passed with a green tick and
+          # left one platform on the previous release -- the exact failure it
+          # was written to prevent, one notch along.
+          if [ "$expected" -eq 0 ]; then
+            echo "::error::No desktop artifacts found — expected .exe, .dmg and .AppImage from the release."
+            exit 1
+          fi
+          if [ "$pushed" -ne "$expected" ]; then
+            echo "::error::Only $pushed of $expected desktop artifacts reached itch.io."
             exit 1
           fi
 
