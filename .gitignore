@@ -17,3 +17,6 @@ balance-output.txt
 .DS_Store
 Thumbs.db
 
+
+# Written by tests/marketing-assets.test.ts while round-tripping the encoder.
+docs/marketing/.roundtrip.test.png

@@ -21,6 +21,7 @@
     "smoke": "node scripts/smoke.mjs",
     "audit": "node scripts/audit.mjs",
     "shots": "node scripts/shots.mjs",
+    "marketing": "node scripts/marketing-assets.mjs",
     "bundle:web": "npm run build:renderer && node scripts/bundle-web.mjs",
     "test": "vitest run",
     "test:watch": "vitest",

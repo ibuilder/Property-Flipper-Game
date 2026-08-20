@@ -91,7 +91,7 @@ works either way. Copying into a restricted directory is fine; only the rename i
 npm test
 ```
 
-491 tests. `tests/engine.test.ts` covers correctness; `rental`, `auction`, `financing`,
+517 tests. `tests/engine.test.ts` covers correctness; `rental`, `auction`, `financing`,
 `progression` and `arcs` each cover their own subsystem; `tests/store.test.ts` pins the multi-day
 skip behaviour; and `tests/balance.test.ts` runs a rules-following bot through complete campaigns
 across 100 seeds to check the economics are both winnable and punishing. Balance results are written
@@ -108,7 +108,7 @@ npm run audit
 ```
 
 Launches the real renderer in Electron at 1280×800 — the size the store embed uses, not the wider
-one the shell was designed at — walks nine screens, and fails the build on any of six things: text
+one the shell was designed at — walks ten screens, and fails the build on any of six things: text
 under AA contrast, a control that misses the WCAG 2.2 target-size minimum, a scroll container that
 scrolls by less than its own scrollbar, two controls drawn on top of each other, content spilling
 out of a height it was given, or content sitting above the top of a scroll container where nothing
@@ -123,11 +123,22 @@ screen with nowhere to scroll to.
 npm run shots
 ```
 
-Walks the same nine screens and photographs each one at 1280×800 into `docs/shots/`. The scene list
+Walks the same ten screens and photographs each one at 1280×800 into `docs/shots/`. The scene list
 is shared with the audit — reaching those screens is the fiddly part — and `Math.random` is pinned,
-so the same town, the same houses and the same numbers come out every run. These are the store
-screenshots; making them by hand means they are wrong the first time anything moves and nobody
-notices.
+so the same town, the same houses and the same numbers come out every run. The walk plays a whole
+flip: buy after bidding up through four rejections, scope the work, wait out the crew, list, cut the
+price, sell. These are the store screenshots; making them by hand means they are wrong the first
+time anything moves and nobody notices.
+
+```bash
+npm run marketing
+```
+
+Cuts the commissioned key art in `docs/marketing/source/` to the aspect ratio each storefront wants
+— cover, banner, link preview. The PNG codec and resampler are a hundred lines in
+`scripts/image.mjs` rather than a native dependency, and `tests/marketing-assets.test.ts`
+round-trips them, because hand-written image code fails by producing a file that opens fine and is
+subtly wrong.
 
 To check the packaged desktop app actually starts:
 

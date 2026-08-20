@@ -73,7 +73,7 @@ flows straight into your maximum offer.
 wrong; a thorough one, 90%. Findings are disclosed to the seller, who has to
 concede most of the repair cost or lose the deal. That renegotiation is the
 entire economic reason due diligence exists — and skipping it costs about
-$59,000 a campaign, measured.
+**$32,000** a campaign, measured across a hundred seeds.
 
 **Scope the work and price the risk.** Eighteen line items across eight
 categories. Set a contingency reserve; hidden defects surface as change orders
@@ -111,10 +111,10 @@ setting — difficulty changes how much room you have to be wrong, never what a
 deal is worth.
 
 It is measured, too. A bot that follows the 70% rule, inspects before offering
-and reserves 15% contingency wins 77% of tutorial campaigns and ends with about
-**$278,829**. The same bot paying 92% of ARV with no inspection and no
-contingency wins 47% and ends with **$154,486**. That gap is the whole thesis,
-and it is checked on every commit across thirty seeded campaigns.
+and reserves 15% contingency wins **72%** of tutorial campaigns and ends with
+about **$262,816**. The same bot paying 92% of ARV wins **63%** and ends with
+**$218,515**. That gap is the whole thesis, and it is checked on every commit
+across a hundred seeded campaigns.
 
 There is also a **Learn** mode: five short scenarios, each isolating exactly one
 way a flip goes wrong.
@@ -136,34 +136,131 @@ Source: https://github.com/ibuilder/Property-Flipper-Game
 
 ---
 
-## Screenshots
+## Images
 
-`npm run shots` writes nine PNGs at 1280 x 800 into `docs/shots/`, photographed
-from the real app by the same scene walk the accessibility audit uses. The
-random seed is pinned, so the same town and the same numbers come out every run
-and re-running does not churn the files.
+Two generators, and they are not interchangeable.
 
-**Upload these five, in this order.** itch shows the first one largest and it is
-the one that has to sell the game.
+`npm run marketing` cuts the commissioned key art to each storefront's aspect
+ratio. `npm run shots` photographs the running game. Key art is allowed to be a
+poster; a screenshot is a claim about what the software looks like.
+
+| Slot | File | Size |
+| --- | --- | --- |
+| Cover / thumbnail | `docs/marketing/cover-630x500.png` | 630 x 500 |
+| Page banner | `docs/marketing/banner-1920x620.png` | 1920 x 620 |
+| Link preview | `docs/marketing/social-1200x630.png` | 1200 x 630 |
+
+**Screenshots — upload these five, in this order.** itch shows the first
+largest and it is the one that has to sell the game.
 
 | # | File | Why |
 | --- | --- | --- |
-| 1 | `03-deal.png` | The deal analyzer, with the 70% rule and the itemised cost stack disagreeing and the sentence underneath saying which is right and by how much. The whole product in one image. |
-| 2 | `06-board.png` | The coloured town at block zoom, with a crew on site. The one that reads as a game rather than as a spreadsheet. |
-| 3 | `05-renovation.png` | Work in progress: contracted cost, contingency remaining, carrying cost per day, and every line item with its own price and duration. |
-| 4 | `02-market.png` | The same town in the line style — a survey plat under a price ramp. Shows the board is a data view, not decoration. |
-| 5 | `08-skills.png` | Mastery, which is the argument that this teaches something: four things you have to demonstrate twice in deals you actually closed. |
+| 1 | `docs/shots/03-deal.png` | The deal analyzer, with the 70% rule and the itemised cost stack disagreeing and the sentence underneath saying which is right and by how much. The whole product in one image. |
+| 2 | `docs/shots/06-board.png` | The coloured town at block zoom, with a crew on site. The one that reads as a game rather than as a spreadsheet. |
+| 3 | `docs/shots/05-renovation.png` | Work in progress: contracted cost, contingency remaining, carrying cost per day, and every line item with its own price and duration. |
+| 4 | `docs/shots/07-sale.png` | The flip closing: the loss headline, and the card underneath naming what decided it. The game marking its own homework, which is the thing nothing else in this genre does. |
+| 5 | `docs/shots/02-market.png` | The same town in the line style — a survey plat under a price ramp. Shows the board is a data view, not decoration. |
 
-The other four -- `01-menu`, `04-owned`, `07-finance`, `09-track-record` -- are
-captured for the audit's sake and are thin on day one, which is where the walk
-stops. If you want the before/after pair and the P&L waterfall from the track
-record, that one has to come from a played session: the harness's purchase
-deliberately overpays so that a sale is guaranteed, and a screenshot of a flip
-that lost money is not an advertisement.
+The walk now plays a complete flip, so `08-finance` and `10-track-record` have
+real numbers in them and are usable as sixth and seventh if itch takes them.
+`01-menu`, `04-owned` and `09-skills` are captured for the audit's sake.
 
-A **deal card** is worth adding as a sixth if itch allows it -- it is the
-artefact a player takes away and the cheapest advertising this will ever get.
-`docs/design/deal-card.svg` is a rendered example, written by the test run.
+> The bot loses money on that flip, and shot 4 says so. It picked a cosmetic
+> scope on a house in rough condition, ate two change orders through the
+> contingency, and the card names the reason. That is a fair advertisement for
+> what this game is: a screenshot of the simulation refusing to let a bad
+> assumption through. If a winning example is wanted instead, play one and grab
+> the card — every closed flip renders one.
 
-The board also renders to `docs/images/board-colour.svg` and `board-line.svg`
-from the test run, if a vector version is wanted anywhere.
+**Do not upload the three UI mockups.** They are branded *Flip Empire*, they
+show a dozen features that do not exist, one of them states the 70% rule wrongly,
+and they carry the usual generated-text damage. Reasons in full in
+[docs/marketing/README.md](marketing/README.md).
+
+---
+
+## Theme
+
+itch **Edit theme**. Taken from the game's own dark palette so the page and the
+embed do not fight each other across the frame boundary.
+
+| Setting | Value |
+| --- | --- |
+| Background | `#0f172a` |
+| Background 2 | `#1e293b` |
+| Background 2 alpha | `0.95` |
+| Text | `#f8fafc` |
+| Link | `#fbbf24` |
+| Button | `#22c55e` |
+| Header | `#fbbf24` |
+| Body font | Inter |
+| Header font | Montserrat |
+| Layout | Screenshots in the sidebar |
+
+---
+
+## Tags
+
+`simulation` `real-estate` `management` `economy` `educational` `finance`
+`strategy` `tycoon` `singleplayer` `no-ads` `offline` `open-source`
+
+itch allows ten; the first ten above are the ones worth the slots. `real-estate`
+and `educational` are the two that carry traffic this game can actually convert
+— there is very little in either tag and almost nothing that is both.
+
+---
+
+## System requirements
+
+Written from what the app is rather than from a template. It is an Electron
+shell around a renderer that draws SVG and does arithmetic; there is no 3D, no
+asset streaming, and nothing that touches the network.
+
+**Minimum**
+
+- Windows 10 (1809 or later) 64-bit, macOS 11, or a 64-bit Linux with glibc 2.28+
+- Any 64-bit dual-core processor
+- 4 GB RAM
+- 400 MB disk
+- No GPU requirement, no internet connection, no account
+
+**Or none of the above** — the browser build is a single self-contained HTML
+file and runs in any current browser, including on a phone or tablet. The market
+table is wider than a phone and scrolls sideways inside its own frame, so it is
+playable on a phone and more comfortable on a tablet.
+
+---
+
+## Install instructions
+
+**Play in the browser:** press the button above. Nothing to install, and saves
+live in the browser's own storage.
+
+**Windows:** `Property Flipper-2.1.0-Setup.exe` to install, or
+`Property Flipper-2.1.0-Portable.exe` to run without installing. Unsigned builds
+raise a SmartScreen warning on first launch — *More info* then *Run anyway*.
+
+**macOS:** open the `.dmg` and drag Property Flipper to Applications. Unsigned
+builds need *right-click → Open* the first time, because Gatekeeper will not
+open them from a double-click.
+
+**Linux:** download the `.AppImage`, `chmod +x` it, and run it. No dependencies.
+
+---
+
+## Links
+
+| Field | Value |
+| --- | --- |
+| Source code | <https://github.com/ibuilder/Property-Flipper-Game> |
+| Issues / bugs | <https://github.com/ibuilder/Property-Flipper-Game/issues> |
+| Licence | MIT |
+
+---
+
+## Other renders
+
+`docs/design/deal-card.svg` is an example of the card the game hands you when a
+flip closes — the artefact a player is most likely to post, and the cheapest
+advertising this will ever get. `docs/images/board-colour.svg` and
+`board-line.svg` are vector versions of the town, both written by the test run.
