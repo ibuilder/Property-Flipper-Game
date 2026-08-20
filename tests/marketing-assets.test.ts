@@ -175,6 +175,34 @@ describe('the committed store assets', () => {
     }
   });
 
+  it('publishes the link-preview card where the markup says it is', () => {
+    /*
+     * Open Graph is a promise made to a crawler that nothing on the page keeps.
+     * Nothing fetches these tags at runtime, so a card that moved, was renamed,
+     * or was never generated fails silently and forever -- every link anybody
+     * posts just shows a bare URL, and there is no error anywhere to notice.
+     *
+     * `public/` is copied verbatim into the build by Vite, so a file there is a
+     * file at the site root. This checks the two ends agree.
+     */
+    const html = readFileSync('index.html', 'utf8');
+    const image = html.match(/property="og:image"\s+content="([^"]+)"/)?.[1];
+    expect(image, 'index.html declares no og:image').toBeTruthy();
+
+    // Absolute, because a crawler has no base to resolve against.
+    expect(image).toMatch(/^https:\/\//);
+
+    const file = `public/${image!.split('/').pop()}`;
+    expect(existsSync(file), `${image} resolves to ${file}, which does not exist`).toBe(true);
+
+    // The dimensions declared in the markup have to be the real ones: several
+    // platforms lay the card out from the tags before the image arrives.
+    const img = readPng(file);
+    expect(html).toContain(`content="${img.w}"`);
+    expect(html).toContain(`content="${img.h}"`);
+    expect([img.w, img.h]).toEqual([1200, 630]);
+  });
+
   it('is under the 3MB itch accepts, with room to spare', () => {
     for (const [file] of expected) {
       const bytes = readFileSync(file).length;

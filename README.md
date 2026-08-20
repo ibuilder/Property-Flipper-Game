@@ -91,7 +91,7 @@ works either way. Copying into a restricted directory is fine; only the rename i
 npm test
 ```
 
-517 tests. `tests/engine.test.ts` covers correctness; `rental`, `auction`, `financing`,
+518 tests. `tests/engine.test.ts` covers correctness; `rental`, `auction`, `financing`,
 `progression` and `arcs` each cover their own subsystem; `tests/store.test.ts` pins the multi-day
 skip behaviour; and `tests/balance.test.ts` runs a rules-following bot through complete campaigns
 across 100 seeds to check the economics are both winnable and punishing. Balance results are written

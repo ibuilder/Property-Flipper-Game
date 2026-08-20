@@ -444,11 +444,71 @@ integration and are written up in `docs/design/art-brief.md`:
   re-baseline. The gap between discipline and recklessness widened from 30
   points to 37, so the signal the harness exists to protect got stronger.
 
+### F. Store presence — **built, minus the buttons only you can press**
+
+Added after the itch page turned out to be a default template with one paragraph
+on it, and after five pieces of AI-generated art arrived alongside a marketing
+plan. Everything here that is code is done; what is left needs an account.
+
+- ~~**Real screenshots.**~~ **Done.** `npm run shots` walks ten screens and
+  photographs them at 1280 x 800 with the RNG pinned, so the same town comes out
+  every run. The walk plays a complete flip -- bid up through four rejections,
+  scope the work, wait out the crew, list, cut, sell -- which is also how the
+  audit finally reached the second half of the game.
+- ~~**Cover, banner, link preview.**~~ **Done.** `npm run marketing` cuts the
+  commissioned key art to each storefront's aspect ratio, through a PNG codec
+  and resampler written here rather than a native dependency.
+- ~~**Open Graph tags.**~~ **Done.** Every link to the demo unfurls with the
+  card instead of a bare URL. The card is generated into `public/` by the same
+  script so the two cannot drift, and a test checks the markup and the file
+  still agree -- that promise is made to a crawler and kept by nothing at
+  runtime, so it would otherwise fail silently and forever.
+- ~~**Page copy, theme, tags, system requirements, install notes.**~~ **Done**,
+  in `docs/itch-page.md`. Two stale balance claims corrected on the way: the
+  numbers on it were from the thirty-seed era.
+
+**Not done, and not code:**
+
+- **Upload the assets and paste the copy.** butler pushes builds; it does not
+  set a cover image or a page body. That is the itch web UI, and it is yours.
+- **A trailer.** The plan asks for two to three minutes. The hook is already
+  decided by what the game does: the deal analyzer with the two maximum offers
+  disagreeing, then a flip going wrong and the card naming why.
+- **Animated GIFs for social.** Three obvious ones -- the profit counting up on
+  a closed flip, the facade changing as work completes, the board zooming from
+  town to lot. All three are now things that visibly move, which they were not
+  before this push. Encoding them is a real piece of work and nothing here does
+  it yet.
+- **A press kit.** Standard format, and everything in it already exists
+  somewhere in `docs/`. Worth generating rather than writing, for the same
+  reason the screenshots are.
+- **Devlog, Discord, Reddit, streamer outreach.** All of Phases 3 and 4 of the
+  plan. None of it is engineering and none of it can be automated honestly.
+
+### G. Ideas taken from the mockups
+
+The three UI mockups that came with the art are not going on the store page --
+`docs/marketing/README.md` says why -- but two ideas in them are worth having
+and neither is drawn anywhere else:
+
+- **A compliance meter on the deal.** The mockup puts a bar showing how far the
+  deal sits from the 70% line, not just the number. This game already computes
+  both maximum offers and the gap between them; showing that gap as a distance
+  rather than a difference is a small change with a real teaching payoff.
+- **An explicit before/after on the renovation screen.** The facade already
+  changes as work completes and the track record already pairs the two states.
+  Putting them side by side *while the work is running*, against the scope that
+  is producing the change, is the one place the pairing is missing.
+
+Both are UI over numbers that already exist. Neither is scheduled.
+
 ### Still yours
 
 Signing certificates, the itch HTML embed (project kind is stuck on
-Downloadable), and human playtesting. The cover image is done — it is rendered
-from the commissioned poster now rather than laid out by a script.
+Downloadable), the store page upload itself, and human playtesting. The cover
+image is done twice over now: a rendered one from the commissioned poster, and
+`docs/marketing/cover-630x500.png` cut from the key art at the size itch asks
+for.
 
 The art is essentially complete: ten archetypes matching `content.ts`, forty
 condition overlays, three seasonal sets, both furniture finishes placed, Scout

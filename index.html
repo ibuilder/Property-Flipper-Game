@@ -8,6 +8,46 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;"
     />
     <title>Property Flipper</title>
+    <meta
+      name="description"
+      content="A real estate flipping simulation that charges you for everything the real thing charges you for. Buy distressed, underwrite honestly, and get out before the carry eats the margin."
+    />
+
+    <!--
+      Link previews.
+
+      Absolute URLs, because a crawler resolves these against nothing. That
+      pins them to the Pages demo, which is the only place this project
+      publishes at a stable address; anywhere else the game is served from
+      falls back to showing a bare link, which is what it did everywhere before.
+
+      `social-card.png` is written by `npm run marketing` into `public/`, which
+      Vite copies verbatim into the build. Generated rather than committed by
+      hand so it cannot drift away from the cover it is cut from.
+
+      The CSP above does not apply: nothing on the page fetches these. They are
+      read out of the markup by whatever is unfurling the link.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Property Flipper" />
+    <meta property="og:title" content="Property Flipper" />
+    <meta
+      property="og:description"
+      content="Most flipping games let you buy at value and sell at value and call the difference profit. This one charges you closing costs, commission, points and carry — which is exactly what the 70% rule is standing in for."
+    />
+    <meta property="og:url" content="https://ibuilder.github.io/Property-Flipper-Game/" />
+    <meta
+      property="og:image"
+      content="https://ibuilder.github.io/Property-Flipper-Game/social-card.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Property Flipper: a derelict house on the left, the same house renovated on the right, and a rising chart between them."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#131e29" />
   </head>
   <body>
     <div id="root"></div>

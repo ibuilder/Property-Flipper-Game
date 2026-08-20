@@ -56,6 +56,16 @@ const JOBS = [
     h: 630,
     anchorY: 0.08,
     note: 'Open Graph / link preview card for anywhere the URL gets pasted.',
+    /*
+     * Also written into `public/`, which Vite copies verbatim into the build.
+     *
+     * The card has to be fetchable at a stable URL for a crawler to use it, and
+     * the only place this project publishes anything at a stable URL is the
+     * Pages demo. Written from here rather than copied by hand, because a
+     * social card that silently stops matching the cover is the exact failure
+     * this script exists to prevent.
+     */
+    also: path.join(root, 'public', 'social-card.png'),
   },
 ];
 
@@ -67,7 +77,12 @@ for (const job of JOBS) {
   try {
     const img = readPng(from);
     const dest = path.join(out, job.file);
-    writePng(dest, fit(img, job.w, job.h, job.anchorY));
+    const cut = fit(img, job.w, job.h, job.anchorY);
+    writePng(dest, cut);
+    if (job.also) {
+      mkdirSync(path.dirname(job.also), { recursive: true });
+      writePng(job.also, cut);
+    }
     const kb = Math.round(statSync(dest).size / 1024);
     console.log(`  ${job.file.padEnd(24)} ${job.w}x${job.h}  ${String(kb).padStart(4)}kB  ${job.note}`);
   } catch (err) {
