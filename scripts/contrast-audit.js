@@ -132,10 +132,16 @@
    * twice. It rides along with the contrast walk because the expensive part is
    * reaching the seven screens, and that work is already done.
    */
-  const targetFailures = (scene) => {
-    const SELECTOR = 'button,a[href],input,select,textarea,[role="button"],[tabindex="0"]';
+  const CONTROL_SELECTOR =
+    'button,a[href],input,select,textarea,[role="button"],[tabindex="0"]';
+
+  /**
+   * Every control on screen, measured at the box that actually receives the
+   * click. Shared by the size check and the collision check below.
+   */
+  const controlBoxes = () => {
     const boxes = [];
-    for (const el of document.querySelectorAll(SELECTOR)) {
+    for (const el of document.querySelectorAll(CONTROL_SELECTOR)) {
       const cs = getComputedStyle(el);
       if (cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) continue;
       if (el.disabled) continue;
@@ -171,14 +177,29 @@
       if (boxes.some((x) => x.el === hit)) continue; // one label, one target
       boxes.push({ el: hit, b });
     }
+    return boxes;
+  };
 
-    // Closest edge-to-edge distance; 0 when they touch or overlap.
-    const offset = (a, b) => {
-      const dx = Math.max(0, Math.max(a.left - b.right, b.left - a.right));
-      const dy = Math.max(0, Math.max(a.top - b.bottom, b.top - a.bottom));
-      return Math.hypot(dx, dy);
-    };
+  // Closest edge-to-edge distance; 0 when they touch or overlap.
+  const offset = (a, b) => {
+    const dx = Math.max(0, Math.max(a.left - b.right, b.left - a.right));
+    const dy = Math.max(0, Math.max(a.top - b.bottom, b.top - a.bottom));
+    return Math.hypot(dx, dy);
+  };
 
+  // `el.className` is an SVGAnimatedString on SVG elements, which stringifies
+  // to "[object SVGAnimatedString]" and names nothing. The attribute is a
+  // string on both.
+  const name = (el) => {
+    const cls = (el.getAttribute('class') || '').trim();
+    return cls ? cls.split(/\s+/).slice(0, 2).join('.') : el.tagName.toLowerCase();
+  };
+
+  const label = (el) =>
+    (el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 24);
+
+  const targetFailures = (scene) => {
+    const boxes = controlBoxes();
     const out = [];
     for (const x of boxes) {
       if (x.b.width >= 24 && x.b.height >= 24) continue;
@@ -203,15 +224,198 @@
       if (x.el.tagName === 'g' && x.el.closest('.board-frame')) continue;
       out.push({
         scene,
-        selector:
-          (x.el.className && String(x.el.className).trim().split(/\s+/).slice(0, 2).join('.')) ||
-          x.el.tagName.toLowerCase(),
-        text: (x.el.textContent || x.el.getAttribute('aria-label') || '').trim().slice(0, 24),
+        selector: name(x.el),
+        text: label(x.el),
         w: Math.round(x.b.width),
         h: Math.round(x.b.height),
       });
     }
     return out;
+  };
+
+  /**
+   * Content above the top of its own scroll container.
+   *
+   * A scroll container that also centres on the scrolling axis puts half its
+   * overflow at a negative offset, and `scrollTop` cannot go below zero, so
+   * that half is not reachable by any means the player has. The main menu did
+   * this: `display: flex` with `align-items: center` and `overflow-y: auto`, so
+   * on an 800px-tall window -- the size the store page specifies -- the first
+   * 180px of the menu, the game's title included, was above the top of the
+   * screen with the scrollbar already at the top.
+   *
+   * Measured against where scrolling can actually reach rather than against
+   * what is on screen now, so it holds wherever the container happens to be
+   * scrolled to when the audit arrives.
+   */
+  const unreachable = (scene) => {
+    const found = [];
+    for (const el of document.querySelectorAll('*')) {
+      const cs = getComputedStyle(el);
+      if (cs.overflowY !== 'auto' && cs.overflowY !== 'scroll') continue;
+      if (el.clientHeight <= 0) continue;
+      const top = el.getBoundingClientRect().top + parseFloat(cs.borderTopWidth || '0');
+      for (const kid of el.children) {
+        const kcs = getComputedStyle(kid);
+        if (kcs.position === 'absolute' || kcs.position === 'fixed') continue;
+        if (kcs.display === 'none') continue;
+        // How far above the fully-scrolled-up position this child begins.
+        const above = top - el.scrollTop - kid.getBoundingClientRect().top;
+        if (above <= 1) continue;
+        found.push({ scene, selector: name(el), child: name(kid), above: Math.round(above) });
+      }
+    }
+    return found;
+  };
+
+  /**
+   * A box given a fixed height, holding content that does not fit in it.
+   *
+   * `.topbar` was `height: 60px` around a button row with `flex-wrap: wrap`,
+   * which is a contradiction the browser resolves by drawing outside the box:
+   * at 1280 the seventh control wrapped to a second line and that line was
+   * painted through the tab strip below. A declared height and wrappable
+   * content are only compatible while the content happens to fit, and nothing
+   * says when it stops.
+   *
+   * Only `visible` overflow counts. A fixed height over `hidden`, `auto` or
+   * `clip` is a decision about what to do with the excess; over `visible` it is
+   * an accident waiting for a longer word.
+   *
+   * Geometry, so once per scene.
+   */
+  const spills = (scene) => {
+    const found = [];
+    for (const el of document.querySelectorAll('*')) {
+      const cs = getComputedStyle(el);
+      if (cs.overflowY !== 'visible' || el.clientHeight <= 0) continue;
+      if (el.scrollHeight - el.clientHeight <= 2) continue;
+
+      /*
+       * Only laid-out children count.
+       *
+       * `getComputedStyle().height` reports the *used* height, so it reads as a
+       * pixel value whether the author wrote one or the content produced it --
+       * there is no way to ask "was this height declared?". Asking who is
+       * sticking out answers the same question better. Every blueprint panel
+       * has corner marks positioned 6px outside it on purpose; the top bar had
+       * a flex row in normal flow that no longer fit. Absolute and fixed
+       * children were placed where they are deliberately, so the ones still in
+       * flow are the finding.
+       */
+      const rect = el.getBoundingClientRect();
+      const limit = rect.top + parseFloat(cs.borderTopWidth || '0') + el.clientHeight;
+      let worst = 0;
+      for (const kid of el.children) {
+        const kcs = getComputedStyle(kid);
+        if (kcs.position === 'absolute' || kcs.position === 'fixed') continue;
+        if (kcs.display === 'none') continue;
+        worst = Math.max(worst, kid.getBoundingClientRect().bottom - limit);
+      }
+      // Sub-pixel rounding and the odd descender are not this.
+      if (worst <= 2) continue;
+      found.push({ scene, selector: name(el), height: el.clientHeight, over: Math.round(worst) });
+    }
+    return found;
+  };
+
+  /**
+   * Two live controls drawn on top of each other.
+   *
+   * The top bar was a fixed 60px tall with a wrapping row of buttons in it. At
+   * 1280 -- the width the store page tells people to play at -- `Menu` wrapped
+   * to a second line and was painted straight through the `Track record` tab
+   * below it. Both were clickable, one was on top, and nothing in the audit
+   * noticed because each was individually large enough and legible enough.
+   *
+   * A pair only counts when both are reachable where they are: at their own
+   * centres, hit testing has to land on them. That is what keeps every control
+   * behind a modal backdrop -- covered, inert, and overlapping half the dialog
+   * -- from being reported as a collision. Nesting is skipped for the same
+   * reason: an icon inside a button is not two things fighting for one pixel.
+   */
+  const collisions = (scene) => {
+    const boxes = controlBoxes().filter((x) => {
+      const cx = x.b.left + x.b.width / 2;
+      const cy = x.b.top + x.b.height / 2;
+      if (cx < 0 || cy < 0 || cx > innerWidth || cy > innerHeight) return false;
+      const at = document.elementFromPoint(cx, cy);
+      return !!at && (at === x.el || x.el.contains(at) || at.contains(x.el));
+    });
+
+    const out = [];
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i];
+        const b = boxes[j];
+        if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+        /*
+         * The board is exempt, for the reason its lots are exempt from the
+         * size rule: it is a projection. Two houses standing side by side on
+         * an isometric street have bounding *rectangles* that overlap by
+         * design while the drawn shapes do not touch, and hit testing follows
+         * the shapes. Comparing rectangles here would report the map as
+         * broken every time it drew a street correctly.
+         */
+        if (a.el.closest('.board-frame') && b.el.closest('.board-frame')) continue;
+        const w = Math.min(a.b.right, b.b.right) - Math.max(a.b.left, b.b.left);
+        const h = Math.min(a.b.bottom, b.b.bottom) - Math.max(a.b.top, b.b.top);
+        // A shared 1px border is two controls sitting next to each other.
+        if (w <= 1 || h <= 1) continue;
+        out.push({
+          scene,
+          a: `${name(a.el)} "${label(a.el)}"`,
+          b: `${name(b.el)} "${label(b.el)}"`,
+          w: Math.round(w),
+          h: Math.round(h),
+        });
+      }
+    }
+    return out;
+  };
+
+  /**
+   * Scroll containers that scroll by less than a scrollbar.
+   *
+   * A box that scrolls one axis cannot be `visible` on the other -- CSS
+   * computes it to `auto` -- so a few stray pixels of decoration inside a
+   * vertically-scrolling panel grow a full-width horizontal scrollbar under
+   * content that was never too wide. The deal analyser had one: the blueprint
+   * corner marks hang 6px outside the panel they decorate, and 5 of those
+   * pixels landed in the scrollable area. It was found in a screenshot rather
+   * than in play, which is the argument for checking it here.
+   *
+   * The test is whether the scroll is worth its own bar. A table genuinely
+   * wider than its column scrolls by hundreds of pixels and is doing its job; a
+   * container that scrolls by less than the ~15px the scrollbar itself occupies
+   * is spending more room announcing the scroll than it has to show.
+   *
+   * Geometry again, so once per scene rather than once per theme.
+   */
+  const slivers = (scene) => {
+    const BAR = 15;
+    const found = [];
+    for (const el of document.querySelectorAll('*')) {
+      const cs = getComputedStyle(el);
+      for (const axis of ['x', 'y']) {
+        const mode = axis === 'x' ? cs.overflowX : cs.overflowY;
+        if (mode !== 'auto' && mode !== 'scroll') continue;
+        const client = axis === 'x' ? el.clientWidth : el.clientHeight;
+        const scroll = axis === 'x' ? el.scrollWidth : el.scrollHeight;
+        const over = scroll - client;
+        if (client <= 0 || over <= 0 || over >= BAR) continue;
+        found.push({
+          scene,
+          axis,
+          selector:
+            (el.className && String(el.className).trim().split(/\s+/).slice(0, 2).join('.')) ||
+            el.tagName.toLowerCase(),
+          client,
+          over,
+        });
+      }
+    }
+    return found;
   };
 
   /**
@@ -242,131 +446,29 @@
     return [...dark, ...light];
   };
 
-  // ---- navigation helpers -------------------------------------------------
-
-  const byText = (sel, text) =>
-    [...document.querySelectorAll(sel)].find((e) => e.textContent.includes(text));
-
-  const click = (el) => {
-    if (!el) return false;
-    el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    return true;
-  };
-
-  const openTab = (label) => click(byText('.tab, button', label));
-  const closeModal = () =>
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-
-  // ---- scenes -------------------------------------------------------------
-  //
-  // Each returns whether it reached the screen. A scene that cannot be reached
-  // is reported rather than skipped quietly: an audit that silently shrinks
-  // its own sample is worse than one that fails.
-
-  const scenes = [
-    { name: 'menu', reach: async () => true },
-    {
-      name: 'market',
-      reach: async () => {
-        const ok = click(byText('button', 'The First Flip'));
-        await settle();
-        return ok && !!document.querySelector('tbody tr');
-      },
-    },
-    {
-      name: 'deal',
-      reach: async () => {
-        const row = document.querySelector('tbody tr');
-        click(row);
-        await settle();
-        return !!document.querySelector('.modal');
-      },
-    },
-    {
-      name: 'owned',
-      reach: async () => {
-        // Buy it, so the portfolio and its panels have something in them.
-        // The offer button is a ConfirmButton: it opens a second dialog rather
-        // than committing, which is why this scene was unreachable at first.
-        /*
-         * Pay over the odds first.
-         *
-         * The offer box is seeded with the more conservative of the two
-         * maximum offers, which is usually *below* the seller's hidden
-         * reserve -- so submitting it is refused and the scene never gets a
-         * property. The audit is not testing whether the bot can underwrite;
-         * it needs an owned house to look at, so it overpays deliberately.
-         *
-         * React owns the input's value, so setting `.value` directly is
-         * ignored. The native setter plus a bubbled input event is what makes
-         * React see the change.
-         */
-        const box = document.querySelector('.modal input[type="number"]');
-        if (box) {
-          const setter = Object.getOwnPropertyDescriptor(
-            window.HTMLInputElement.prototype,
-            'value',
-          ).set;
-          setter.call(box, String(Math.round(Number(box.value || 0) * 2.2) || 400000));
-          box.dispatchEvent(new Event('input', { bubbles: true }));
-          await settle();
-        }
-
-        click(byText('.modal button', 'Submit offer'));
-        await settle();
-        /*
-         * Confirm in the *topmost* dialog.
-         *
-         * The offer button is a ConfirmButton, so it opens a second modal
-         * rather than committing. Searching `.modal .btn.primary` across the
-         * document matched the outer modal's own trigger first and simply
-         * re-clicked it, which is why this scene sat unreachable while looking
-         * like it was doing something.
-         */
-        const dialogs = document.querySelectorAll('.modal');
-        const top = dialogs[dialogs.length - 1];
-        if (top && dialogs.length > 1) {
-          click(top.querySelector('.btn.primary'));
-          await settle();
-        }
-        closeModal();
-        await settle();
-        openTab('Portfolio');
-        await settle();
-        return !!document.querySelector('tbody tr');
-      },
-    },
-    {
-      name: 'finance',
-      reach: async () => {
-        openTab('Finance');
-        await settle();
-        return true;
-      },
-    },
-    {
-      name: 'skills',
-      reach: async () => {
-        openTab('Skills');
-        await settle();
-        return !!document.querySelector('.mastery-grid');
-      },
-    },
-    {
-      name: 'track-record',
-      reach: async () => {
-        openTab('Track record');
-        await settle();
-        return true;
-      },
-    },
-  ];
+  /*
+   * Navigation and the scene list come from scripts/scenes.js, which the main
+   * process evaluates first. They are shared with the screenshot capture so the
+   * two cannot drift apart -- reaching these screens is the fiddly part and it
+   * is worth having exactly one copy of it.
+   */
+  const shared = window.__PF_SCENES;
+  if (!shared) throw new Error('contrast-audit: scripts/scenes.js was not loaded first');
+  const { scenes, byText, click, openTab, closeModal } = shared;
+  void byText;
+  void click;
+  void openTab;
+  void closeModal;
 
   const all = [];
   const reached = [];
   const missed = [];
 
   const targets = [];
+  const slivered = [];
+  const collided = [];
+  const spilled = [];
+  const stranded = [];
   for (const scene of scenes) {
     let ok = false;
     try {
@@ -381,6 +483,10 @@
     reached.push(scene.name);
     all.push(...(await auditScene(scene.name)));
     targets.push(...targetFailures(scene.name));
+    slivered.push(...slivers(scene.name));
+    collided.push(...collisions(scene.name));
+    spilled.push(...spills(scene.name));
+    stranded.push(...unreachable(scene.name));
   }
 
   // One bad rule usually paints twenty cells, and twenty identical lines hide
@@ -405,6 +511,15 @@
     else tseen.set(key, { ...t, count: 1 });
   }
 
+  // And again for slivers: one bad rule can slice every row of a list.
+  const sseen = new Map();
+  for (const v of slivered) {
+    const key = `${v.scene}|${v.axis}|${v.selector}|${v.over}`;
+    const at = sseen.get(key);
+    if (at) at.count++;
+    else sseen.set(key, { ...v, count: 1 });
+  }
+
   return {
     scenes: reached,
     missed,
@@ -413,5 +528,10 @@
     unique,
     targetFailures: targets.length,
     targets: [...tseen.values()].sort((a, b) => a.w * a.h - b.w * b.h),
+    sliverCount: slivered.length,
+    slivers: [...sseen.values()].sort((a, b) => a.over - b.over),
+    collisions: collided,
+    spills: spilled,
+    unreachable: stranded,
   };
 })();

@@ -39,6 +39,28 @@ export interface Toast {
   tone: 'ok' | 'error';
 }
 
+/**
+ * The toast an action result deserves, or null if it asked to stay quiet.
+ *
+ * An empty message means silence, and it has to be honoured here because this
+ * is the only place a result becomes a toast. `noteCoachLine` returns
+ * `{ ok: true, message: '' }` and says in a comment that it is silent -- it
+ * only records that the coach spoke. It was not silent: it painted an empty
+ * green plate at the bottom of the screen and played the new-log sound every
+ * time a coach rule fired, which is once per rule per day. Caught in a
+ * screenshot of the deal modal, where the coach always speaks: a 38x21 toast
+ * with nothing written in it.
+ *
+ * A failure with no message still speaks, with a fallback. A refusal the
+ * player cannot see is worse than a clumsy one -- they press the button again.
+ */
+export function toastFor(result: ActionResult, id: number): Toast | null {
+  if (result.ok) {
+    return result.message === '' ? null : { id, message: result.message, tone: 'ok' };
+  }
+  return { id, message: result.message || 'That did not work.', tone: 'error' };
+}
+
 let snapshot: Snapshot = { state: null, version: 0, toast: null, digest: null };
 const listeners = new Set<() => void>();
 let toastId = 0;
@@ -116,11 +138,14 @@ export function useAction() {
     } catch (err) {
       result = { ok: false, message: err instanceof Error ? err.message : String(err) };
     }
-    toastId += 1;
-    snapshot.toast = { id: toastId, message: result.message, tone: result.ok ? 'ok' : 'error' };
-    // A refused action never reaches the log, so give it its own sound.
-    if (!result.ok) play('warn');
-    else soundNewLog();
+    const toast = toastFor(result, toastId + 1);
+    if (toast) {
+      toastId += 1;
+      snapshot.toast = toast;
+      // A refused action never reaches the log, so give it its own sound.
+      if (!result.ok) play('warn');
+      else soundNewLog();
+    }
     emit();
     return result;
   }, []);

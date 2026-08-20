@@ -159,6 +159,40 @@ export default function Board({
     setZoom(fitZoom(frameWidth, extent.width));
   }, [frameWidth, extent.width, zoomTouched]);
 
+  /*
+   * Zoom about the middle of what you were looking at.
+   *
+   * Scroll offsets survive a zoom change unaltered, so going from `town` to
+   * `block` -- which nearly doubles the drawing -- left the frame at 0,0 and
+   * the player looking at the top-left corner of the board, which on this
+   * layout is empty street. Zooming in on a map is meant to keep the thing you
+   * were pointing at; instead it moved the town off screen and looked like the
+   * houses had gone.
+   *
+   * The centre is kept as a fraction of the scrollable content, taken before
+   * the change and restored after layout. When the drawing fits the frame
+   * there is nothing to scroll and the fraction is a harmless 0.5.
+   */
+  const centre = useRef({ x: 0.5, y: 0.5 });
+  const readCentre = () => {
+    const el = frameRef.current;
+    if (!el || el.scrollWidth <= 0 || el.scrollHeight <= 0) return;
+    centre.current = {
+      x: (el.scrollLeft + el.clientWidth / 2) / el.scrollWidth,
+      y: (el.scrollTop + el.clientHeight / 2) / el.scrollHeight,
+    };
+  };
+
+  useLayoutEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    // Rounded: a fractional scroll offset lands on a half pixel and the board
+    // renders a few pixels differently from one identical run to the next,
+    // which shows up as churn in the captured screenshots.
+    el.scrollLeft = Math.round(centre.current.x * el.scrollWidth - el.clientWidth / 2);
+    el.scrollTop = Math.round(centre.current.y * el.scrollHeight - el.clientHeight / 2);
+  }, [zoom]);
+
   /* Scout's size, chosen against the board as rendered rather than once. */
   const sprite = useMemo(
     () => spriteUnit(frameWidth, extent.width, scale),
@@ -234,6 +268,8 @@ export default function Board({
               key={z}
               className={`seg-opt${z === zoom ? ' on' : ''}`}
               onClick={() => {
+                // Before the drawing resizes, not after.
+                readCentre();
                 setZoomTouched(true);
                 setZoom(z);
               }}

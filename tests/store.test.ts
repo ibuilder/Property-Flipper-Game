@@ -7,7 +7,9 @@ import {
   makeOffer,
   trueValue,
 } from '../src/engine';
+import { noteCoachLine } from '../src/engine/game';
 import { currentReserve } from '../src/engine/market';
+import { toastFor } from '../src/ui/store';
 
 /**
  * Multi-day skip behaviour.
@@ -71,5 +73,53 @@ describe('advanceDaysUntilAttention', () => {
     const res = advanceDaysUntilAttention(state, 30);
     expect(res.daysAdvanced).toBe(0);
     expect(state.day).toBe(1);
+  });
+});
+
+/**
+ * Which action results are allowed to speak.
+ *
+ * `useAction` is the only place an `ActionResult` becomes a toast, so it is the
+ * only place the "silent" contract can be kept. It was not being kept:
+ * `noteCoachLine` returns `{ ok: true, message: '' }` with a comment saying a
+ * toast every time the coach speaks would be a notification about a
+ * notification, and got one anyway -- an empty green plate, 38x21 CSS px, at
+ * the bottom of the screen, plus the new-log sound, once per coach rule per
+ * day. It was found in a screenshot of the deal modal rather than in play,
+ * because with no text in it there is nothing to read and nothing to name.
+ */
+describe('toastFor', () => {
+  it('stays silent when a successful action asked to say nothing', () => {
+    expect(toastFor({ ok: true, message: '' }, 1)).toBeNull();
+  });
+
+  it('keeps the coach silent, which is the case that motivated this', () => {
+    const state = createGame('first_flip', 4242);
+    const result = noteCoachLine(state, 'seventy_rule');
+    // The engine still records the line -- silence is about the toast, not the
+    // bookkeeping.
+    expect(state.coachLog['seventy_rule']?.count).toBe(1);
+    expect(toastFor(result, 1)).toBeNull();
+  });
+
+  it('still speaks for anything with something to say', () => {
+    expect(toastFor({ ok: true, message: 'Offer accepted.' }, 7)).toEqual({
+      id: 7,
+      message: 'Offer accepted.',
+      tone: 'ok',
+    });
+    expect(toastFor({ ok: false, message: 'Not enough cash.' }, 8)).toEqual({
+      id: 8,
+      message: 'Not enough cash.',
+      tone: 'error',
+    });
+  });
+
+  it('never swallows a refusal, even one that forgot to explain itself', () => {
+    // The player pressed a button and nothing happened; they will press it
+    // again. A clumsy message beats no message.
+    const toast = toastFor({ ok: false, message: '' }, 3);
+    expect(toast?.tone).toBe('error');
+    expect(toast?.message).not.toBe('');
   });
 });

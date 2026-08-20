@@ -91,17 +91,118 @@ function createWindow(): void {
          * Electron is already a dependency and CI already launches it on
          * three platforms, so this costs no new tooling.
          */
+        const readScript = (name: string) =>
+          fs.readFile(path.join(app.getAppPath(), 'scripts', name), 'utf8');
+
         if (process.env.PROPERTY_FLIPPER_AUDIT === '1') {
-          const src = await fs.readFile(
-            path.join(app.getAppPath(), 'scripts', 'contrast-audit.js'),
-            'utf8',
+          /*
+           * Audited at the size people play at, not the size it was designed
+           * at.
+           *
+           * This ran at the default 1440x940, which is the window the shell was
+           * built for and the one place its layout has the most room. The itch
+           * embed is 1280x800 and that is what the store page tells players to
+           * use, so a defect that only appears below 1440 shipped unexamined --
+           * the top bar's controls wrapped there and the wrapped line was
+           * painted through the tab strip. Measuring the generous case and
+           * shipping the tight one is backwards.
+           */
+          mainWindow!.setContentSize(1280, 800);
+          await new Promise((r) => setTimeout(r, 400));
+
+          // Navigation first: both harnesses share one copy of how to reach
+          // each screen, because reaching them is the fiddly part.
+          await mainWindow!.webContents.executeJavaScript(await readScript('scenes.js'));
+          const report = await mainWindow!.webContents.executeJavaScript(
+            await readScript('contrast-audit.js'),
           );
-          // The audit drives itself through its own scene list; this process
-          // only launches it. Keeping the navigation next to the measurement
-          // means the two cannot drift, and it stays out of app code.
-          const report = await mainWindow!.webContents.executeJavaScript(src);
           console.log(`audit: ${JSON.stringify(report)}`);
           return app.exit(report.unique.length > 0 ? 2 : 0);
+        }
+
+        /*
+         * Store screenshots, captured from the running app.
+         *
+         * The same seven screens the audit walks, photographed rather than
+         * measured. Capturing has to happen out here in the main process --
+         * a page cannot photograph itself -- so the scenes are reached one at
+         * a time and the window is captured between each.
+         *
+         * A screenshot taken by hand is out of date the moment anything moves
+         * and nobody notices, which is the same argument as the README images.
+         * These are the pictures an itch page needs, so they are made the same
+         * way as everything else here: by the machine, from the real app.
+         */
+        if (process.env.PROPERTY_FLIPPER_SHOTS === '1') {
+          const outDir = path.join(app.getAppPath(), 'docs', 'shots');
+          await fs.mkdir(outDir, { recursive: true });
+          /*
+           * Emptied first. The files are numbered by position in the walk, so
+           * inserting a scene renumbers everything after it and the old names
+           * survive as orphans -- two runs left `05-finance.png` sitting beside
+           * `05-renovation.png` and `07-finance.png`, and nothing said which
+           * was current.
+           */
+          for (const f of await fs.readdir(outDir)) {
+            if (f.endsWith('.png')) await fs.unlink(path.join(outDir, f));
+          }
+
+          // The size the itch page copy specifies for the embed, so the shots
+          // match what a player will actually see in the frame.
+          mainWindow!.setContentSize(1280, 800);
+          await new Promise((r) => setTimeout(r, 400));
+
+          await mainWindow!.webContents.executeJavaScript(await readScript('scenes.js'));
+          const names: string[] = await mainWindow!.webContents.executeJavaScript(
+            'window.__PF_SCENES.scenes.map((s) => s.name)',
+          );
+
+          const taken: string[] = [];
+          const missed: string[] = [];
+          for (let i = 0; i < names.length; i++) {
+            const ok = await mainWindow!.webContents.executeJavaScript(
+              `window.__PF_SCENES.scenes[${i}].reach()`,
+            );
+            if (!ok) {
+              missed.push(names[i]);
+              continue;
+            }
+
+            /*
+             * Tidy the screen before photographing it.
+             *
+             * Two things spoil a shot and neither is a bug in the app. The
+             * first-run explainers are doing their job for a new player and
+             * covering the product for a storefront, so they are dismissed.
+             * And a scene reached by clicking through leaves the page and any
+             * open dialog wherever the last click left them -- the menu shot
+             * came out starting mid-sentence -- so everything is returned to
+             * the top first.
+             */
+            await mainWindow!.webContents.executeJavaScript(`(async () => {
+              for (const b of document.querySelectorAll('button')) {
+                if (/^(Got it|Dismiss|Skip)$/i.test((b.textContent || '').trim())) {
+                  b.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                }
+              }
+              await new Promise((r) => setTimeout(r, 250));
+              window.scrollTo(0, 0);
+              for (const el of document.querySelectorAll('*')) {
+                // Except the board, which is a map: it centres itself on the
+                // zoom it is at, and "return it to the top" means pointing the
+                // camera at the empty street in the corner.
+                if (el.closest('.board-frame')) continue;
+                if (el.scrollTop > 0) el.scrollTop = 0;
+              }
+            })()`);
+            await new Promise((r) => setTimeout(r, 350));
+            const image = await mainWindow!.webContents.capturePage();
+            const file = path.join(outDir, `${String(i + 1).padStart(2, '0')}-${names[i]}.png`);
+            await fs.writeFile(file, image.toPNG());
+            taken.push(path.basename(file));
+          }
+          console.log(`shots: ${JSON.stringify({ taken, missed })}`);
+          return app.exit(missed.length > 0 ? 2 : 0);
         }
 
         app.exit(0);

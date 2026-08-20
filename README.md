@@ -107,9 +107,27 @@ this README that disagrees with the game is a failing build rather than a stale 
 npm run audit
 ```
 
-Launches the real renderer in Electron, walks seven screens, and fails the build on any text under
-AA contrast or any control that misses the WCAG 2.2 target-size minimum. A screen it cannot reach
-is a hard failure rather than a quiet skip.
+Launches the real renderer in Electron at 1280×800 — the size the store embed uses, not the wider
+one the shell was designed at — walks nine screens, and fails the build on any of six things: text
+under AA contrast, a control that misses the WCAG 2.2 target-size minimum, a scroll container that
+scrolls by less than its own scrollbar, two controls drawn on top of each other, content spilling
+out of a height it was given, or content sitting above the top of a scroll container where nothing
+can reach it. A screen it cannot reach is a hard failure rather than a quiet skip.
+
+The last four came from photographing the game for its store page and looking at the results: the
+top bar's controls wrapped at 1280 and the wrapped line was painted through the tab strip, and the
+main menu centred itself inside its own scrollbar so its title was 180px above the top of the
+screen with nowhere to scroll to.
+
+```bash
+npm run shots
+```
+
+Walks the same nine screens and photographs each one at 1280×800 into `docs/shots/`. The scene list
+is shared with the audit — reaching those screens is the fiddly part — and `Math.random` is pinned,
+so the same town, the same houses and the same numbers come out every run. These are the store
+screenshots; making them by hand means they are wrong the first time anything moves and nobody
+notices.
 
 To check the packaged desktop app actually starts:
 

@@ -75,11 +75,19 @@ child.on('exit', (code) => {
   }
 
   const targets = report.targets ?? [];
+  const slivers = report.slivers ?? [];
+  const collisions = report.collisions ?? [];
+  const spills = report.spills ?? [];
+  const stranded = report.unreachable ?? [];
   console.log(
     `audit: ${report.scenes.length} scenes (${report.scenes.join(', ')}), ` +
       `${report.darkFailures} dark and ${report.lightFailures} light below AA ` +
       `(${report.unique.length} distinct), ` +
-      `${report.targetFailures ?? 0} targets under 24px (${targets.length} distinct)`,
+      `${report.targetFailures ?? 0} targets under 24px (${targets.length} distinct), ` +
+      `${report.sliverCount ?? 0} scrollbars for a sliver (${slivers.length} distinct), ` +
+      `${collisions.length} controls drawn over each other, ` +
+      `${spills.length} boxes overflowing a fixed height, ` +
+      `${stranded.length} ${stranded.length === 1 ? 'box' : 'boxes'} nobody can scroll to the top of`,
   );
 
   // A scene the audit could not reach is a scene it is not defending. Silently
@@ -89,12 +97,84 @@ child.on('exit', (code) => {
     process.exit(2);
   }
 
-  if (report.unique.length === 0 && targets.length === 0) {
+  if (
+    report.unique.length === 0 &&
+    targets.length === 0 &&
+    slivers.length === 0 &&
+    collisions.length === 0 &&
+    spills.length === 0 &&
+    stranded.length === 0
+  ) {
     console.log(
-      `audit: every piece of text meets AA in both themes and every control ` +
-        `meets WCAG 2.5.8, across ${report.scenes.length} scenes.`,
+      `audit: every piece of text meets AA in both themes, every control ` +
+        `meets WCAG 2.5.8, no scrollbar is doing less work than the room it ` +
+        `takes, no two controls share a pixel, nothing is drawn outside a ` +
+        `height it was given, and every scroll container can reach its own ` +
+        `first line, across ${report.scenes.length} scenes.`,
     );
     process.exit(0);
+  }
+
+  /*
+   * A scroll container that scrolls by less than its own scrollbar is wide.
+   *
+   * Almost always a few pixels of decoration escaping a box that scrolls the
+   * other axis: CSS will not let one axis be `visible` across from `auto`, so
+   * the stray pixels get a full-length bar. Reported apart from the two access
+   * checks because it is a layout defect, not an accessibility one.
+   */
+  /*
+   * Two clickable things on the same pixels. Whichever is on top wins, and the
+   * other is a control the player can see and cannot press.
+   */
+  /*
+   * A declared height around content that can wrap. The excess is painted over
+   * whatever comes next.
+   */
+  /*
+   * Content at a negative scroll offset. The scrollbar is already at the top
+   * and there is more above it.
+   */
+  if (stranded.length > 0) {
+    console.log('');
+    for (const v of stranded) {
+      console.log(
+        `  ${String(`${v.above}px`).padStart(7)}  above the top of  ` +
+          `${String(v.scene).padEnd(12)} ${v.selector} > ${v.child}`,
+      );
+    }
+  }
+
+  if (spills.length > 0) {
+    console.log('');
+    for (const v of spills) {
+      console.log(
+        `  ${String(`+${v.over}px`).padStart(7)}  outside a ${v.height}px height   ` +
+          `${String(v.scene).padEnd(12)} ${v.selector}`,
+      );
+    }
+  }
+
+  if (collisions.length > 0) {
+    console.log('');
+    for (const c of collisions) {
+      console.log(
+        `  ${String(`${c.w}x${c.h}`).padStart(7)}  overlap   ${String(c.scene).padEnd(12)} ` +
+          `${c.a}
+           over ${c.b}`,
+      );
+    }
+  }
+
+  if (slivers.length > 0) {
+    console.log('');
+    for (const v of slivers) {
+      const times = v.count > 1 ? ` ×${v.count}` : '';
+      console.log(
+        `  ${String(`${v.over}px`).padStart(7)}  (scrolls ${v.axis} inside ${v.client}px; ` +
+          `the bar costs ~15)  ${String(v.scene).padEnd(12)} ${v.selector}${times}`,
+      );
+    }
   }
 
   /*
@@ -125,7 +205,18 @@ child.on('exit', (code) => {
     );
   }
   console.log('');
-  process.exit(report.unique.length || targets.length ? 2 : code === 0 ? 0 : 2);
+  process.exit(
+    report.unique.length ||
+    targets.length ||
+    slivers.length ||
+    collisions.length ||
+    spills.length ||
+    stranded.length
+      ? 2
+      : code === 0
+        ? 0
+        : 2,
+  );
 });
 
 child.on('error', (err) => {

@@ -355,15 +355,38 @@ button {
   height: 100%;
 }
 
+/*
+ * The top bar is a single row until it cannot be, and then it is a taller one.
+ *
+ * It was `height: 60px` with a wrapping button row inside it, which is a
+ * contradiction: at 1280 -- the size the store page tells people to play at --
+ * the seven controls no longer fit beside seven stat blocks, `Menu` wrapped to
+ * a second line, and that line was drawn straight through the tab bar
+ * underneath. A fixed height cannot hold content that is allowed to wrap.
+ *
+ * `min-height` keeps the 60px look whenever the row fits, and lets the bar grow
+ * instead of spilling when it does not -- which also covers the case no
+ * breakpoint can: a player whose net worth has reached eight figures has wider
+ * stats than the one who just started.
+ *
+ * The tighter gap below 1360 is what keeps it on one line at 1280 in the first
+ * place; the wrap is the safety net, not the plan.
+ */
 .topbar {
   display: flex;
   align-items: center;
   gap: 28px;
   padding: 0 20px;
-  height: 60px;
+  min-height: 60px;
   background: var(--bg-raised);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+}
+
+@media (max-width: 1360px) {
+  .topbar {
+    gap: 18px;
+  }
 }
 
 .brand {
@@ -1391,6 +1414,17 @@ label.field .label {
   max-height: calc(100vh - 180px);
   overflow-y: auto;
   overscroll-behavior: contain;
+  /*
+   * A gutter for the blueprint corner marks, which hang 6px outside the panel
+   * they decorate.
+   *
+   * Scrolling one axis makes the other `auto` -- CSS will not let a box be
+   * `visible` across from `auto` -- so those 5 stray pixels grew a full-width
+   * horizontal scrollbar along the bottom of the analyser. Clipping instead
+   * would have cut the crosshairs into corner nubs; the marks are meant to
+   * straddle the corner, so the container makes room for them.
+   */
+  padding-inline: 6px;
 }
 
 .live-kicker {
@@ -1973,18 +2007,30 @@ table.stress-grid td.base {
 
 /* ------------------------------------------------------------------- menu */
 
+/*
+ * Centred by auto margins, not by `align-items`.
+ *
+ * A flex container that scrolls and centres on the same axis loses the
+ * beginning of its own content: the overflow goes both ways, and the half above
+ * the box sits at a negative offset no scrollbar can reach. On an 800px-tall
+ * window -- the size the store page tells people to play at -- `scrollTop` was
+ * already 0 with the first 180px of the menu, title included, above the top of
+ * the screen and no way to get to it.
+ *
+ * Auto margins take only the space that is left over, so they centre a short
+ * menu and do nothing at all to a tall one.
+ */
 .menu {
   height: 100%;
   overflow-y: auto;
   display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 40px 20px;
 }
 
 .menu-inner {
   width: 100%;
   max-width: 760px;
+  margin: auto;
 }
 
 .menu h1 {
