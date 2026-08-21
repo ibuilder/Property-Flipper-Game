@@ -20,3 +20,8 @@ Thumbs.db
 
 # Written by tests/marketing-assets.test.ts while round-tripping the encoder.
 docs/marketing/.roundtrip.test.png
+
+# Frames captured by `npm run clips`; the GIF is the artefact, and KEEP_FRAMES=1
+# leaves these behind on purpose while a clip is being worked out.
+docs/clips/*.png
+docs/marketing/.gif.test.gif

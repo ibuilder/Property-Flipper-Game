@@ -477,16 +477,50 @@ plan. Everything here that is code is done; what is left needs an account.
 - **A trailer.** The plan asks for two to three minutes. The hook is already
   decided by what the game does: the deal analyzer with the two maximum offers
   disagreeing, then a flip going wrong and the card naming why.
-- **Animated GIFs for social.** Three obvious ones -- the profit counting up on
-  a closed flip, the facade changing as work completes, the board zooming from
-  town to lot. All three are now things that visibly move, which they were not
-  before this push. Encoding them is a real piece of work and nothing here does
-  it yet.
+- ~~**Animated GIFs for social.**~~ **Done**, two of them: `npm run clips`
+  writes `docs/clips/offer-meter.gif` and `board-zoom.gif`. GIF because it is
+  the only motion format that autoplays inline and silently everywhere without
+  a click, and hand-rolled for the same reason as the PNG codec -- a
+  per-platform binary is not worth three animations. The LZW is the part that
+  can be quietly wrong: an off-by-one in the code-width timing produces a file
+  of the right length with a valid header that decodes to noise a few rows in,
+  and every viewer renders it without complaint. It is round-tripped on indices
+  in `tests/gif.test.ts` across all three width boundaries and a dictionary
+  reset, after being caught by measuring decoded pixels in a browser -- mean
+  channel error 40.95 against 0.33 for a correct stream.
+
+  A third clip -- the profit counting up on a closed flip -- is worth adding
+  and is not done; it needs the walk to play a whole flip first, which the
+  screenshot walk already knows how to do.
 - **A press kit.** Standard format, and everything in it already exists
   somewhere in `docs/`. Worth generating rather than writing, for the same
   reason the screenshots are.
 - **Devlog, Discord, Reddit, streamer outreach.** All of Phases 3 and 4 of the
   plan. None of it is engineering and none of it can be automated honestly.
+
+### G-0. A teaching branch that never fires
+
+Found while trying to film the offer meter's amber state, and it is a fact
+about the content rather than the interface.
+
+**The 70% rule is never the generous one.** Across 1,260 listings, every
+campaign, on cash and on hard money alike, `mao70 > maoDetailed` happens zero
+times. The itemised ceiling sits about **5.8% of ARV above** the rule of thumb,
+consistently, and hard money only moves it by under 3% -- not enough to cross.
+
+Two things follow. The deal analyser's *"the rule of thumb is $X too
+generous"* branch has never been shown to anybody, and neither has the offer
+meter's amber state. Both are correct code guarding a case the economics do not
+currently produce.
+
+That is not obviously a bug. A tutorial whose heuristic is reliably conservative
+is a tutorial that teaches the heuristic safely, which is the stated design. But
+the game's pitch is that the rule is *a proxy you can audit*, and a proxy that
+is never wrong in the player's favour is one they will never learn to distrust
+-- so the most interesting half of the lesson is currently unreachable. Making
+it reachable means content with genuinely expensive carry: a slow neighbourhood,
+a long schedule, or a rate high enough that the flat 30% haircut stops covering
+it. That is a balance decision, and it belongs to you.
 
 ### G. Ideas taken from the mockups
 

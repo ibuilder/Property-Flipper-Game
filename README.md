@@ -91,7 +91,7 @@ works either way. Copying into a restricted directory is fine; only the rename i
 npm test
 ```
 
-535 tests. `tests/engine.test.ts` covers correctness; `rental`, `auction`, `financing`,
+547 tests. `tests/engine.test.ts` covers correctness; `rental`, `auction`, `financing`,
 `progression` and `arcs` each cover their own subsystem; `tests/store.test.ts` pins the multi-day
 skip behaviour; and `tests/balance.test.ts` runs a rules-following bot through complete campaigns
 across 100 seeds to check the economics are both winnable and punishing. Balance results are written
@@ -129,6 +129,20 @@ so the same town, the same houses and the same numbers come out every run. The w
 flip: buy after bidding up through four rejections, scope the work, wait out the crew, list, cut the
 price, sell. These are the store screenshots; making them by hand means they are wrong the first
 time anything moves and nobody notices.
+
+```bash
+npm run marketing
+```
+
+```bash
+npm run clips
+```
+
+Records short animations of the running game into `docs/clips/` — an offer walked up past its
+ceiling, and the board zooming from town to lot. GIF because it is the only motion format that
+autoplays inline and silently on every forum and timeline; the encoder is `scripts/gif.mjs`, for the
+same reason the PNG codec is hand-written. `tests/gif.test.ts` round-trips the LZW on indices across
+every code-width boundary, because the failure mode is a valid-looking file that decodes to noise.
 
 ```bash
 npm run marketing

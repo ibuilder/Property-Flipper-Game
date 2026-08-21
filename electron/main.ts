@@ -205,6 +205,80 @@ function createWindow(): void {
           return app.exit(missed.length > 0 ? 2 : 0);
         }
 
+        /*
+         * Short animations for social.
+         *
+         * Same walk, same window, but capturing repeatedly while something
+         * moves rather than once when it has settled. `capturePage` is the
+         * slow part at roughly a tenth of a second a frame, so the clips are
+         * declared in steps and the capture rate *is* the frame rate -- there
+         * is no point asking for 30fps from a pipe that cannot deliver it.
+         */
+        if (process.env.PROPERTY_FLIPPER_CLIPS === '1') {
+          /*
+           * Forward the renderer's console to ours.
+           *
+           * Driving a clip is fiddly -- finding a listing with a particular
+           * shape, checking a control is even enabled -- and without this the
+           * only signal when it goes wrong is `missed`, which says nothing
+           * about why. Clips only; the audit and the screenshots have their
+           * own structured reports and would just be noisier for it.
+           */
+          mainWindow!.webContents.on('console-message', (_e, _level, message) => {
+            if (message.startsWith('CLIP ')) console.log(message);
+          });
+
+          const outDir = path.join(app.getAppPath(), 'docs', 'clips');
+          await fs.mkdir(outDir, { recursive: true });
+          for (const f of await fs.readdir(outDir)) {
+            if (f.endsWith('.png')) await fs.unlink(path.join(outDir, f));
+          }
+
+          mainWindow!.setContentSize(1280, 800);
+          await new Promise((r) => setTimeout(r, 400));
+          await mainWindow!.webContents.executeJavaScript(await readScript('scenes.js'));
+
+          const names: string[] = await mainWindow!.webContents.executeJavaScript(
+            'window.__PF_SCENES.clips.map((c) => c.name)',
+          );
+
+          const made: string[] = [];
+          const missed: string[] = [];
+          for (let i = 0; i < names.length; i++) {
+            const ok = await mainWindow!.webContents.executeJavaScript(
+              `window.__PF_SCENES.clips[${i}].reach()`,
+            );
+            if (!ok) {
+              missed.push(names[i]);
+              continue;
+            }
+            // Dismiss the first-run explainers, same as the screenshots do.
+            await mainWindow!.webContents.executeJavaScript(`(async () => {
+              for (const b of document.querySelectorAll('button')) {
+                if (/^(Got it|Dismiss|Skip)$/i.test((b.textContent || '').trim())) {
+                  b.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                }
+              }
+              await new Promise((r) => setTimeout(r, 250));
+            })()`);
+
+            const steps: number = await mainWindow!.webContents.executeJavaScript(
+              `window.__PF_SCENES.clips[${i}].steps.length`,
+            );
+            for (let s = 0; s < steps; s++) {
+              await mainWindow!.webContents.executeJavaScript(
+                `window.__PF_SCENES.clips[${i}].steps[${s}]()`,
+              );
+              const image = await mainWindow!.webContents.capturePage();
+              const file = path.join(outDir, `${names[i]}-${String(s).padStart(3, '0')}.png`);
+              await fs.writeFile(file, image.toPNG());
+            }
+            made.push(`${names[i]}:${steps}`);
+          }
+          console.log(`clips: ${JSON.stringify({ made, missed })}`);
+          return app.exit(missed.length > 0 ? 2 : 0);
+        }
+
         app.exit(0);
       } catch (err) {
         fail(`could not query the renderer: ${String(err)}`);

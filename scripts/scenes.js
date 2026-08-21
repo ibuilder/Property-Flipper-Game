@@ -335,5 +335,109 @@ const scenes = [
     },
   },
 ];
-  window.__PF_SCENES = { scenes, settle, sleep, byText, click, openTab, closeModal };
+/* ---- clips ---------------------------------------------------------------
+ *
+ * Short animations for social, which is the one thing on the marketing plan
+ * that needs the game to be *moving* rather than photographed. Each clip says
+ * how to reach its starting state and then supplies a list of steps; the main
+ * process captures one frame after every step, so a clip is however many steps
+ * long it declares.
+ *
+ * One mechanism covers both kinds of clip. Where the motion is a tween the
+ * steps are just short waits, and the capture rate becomes the frame rate.
+ * Where the motion is the player doing something -- typing an offer, changing
+ * zoom -- each step is the action and the frames land on the states that
+ * matter. Nothing here needs to know which kind it is.
+ */
+
+const nativeValue = (el, v) => {
+  // React installs its own value setter; assigning `.value` directly is
+  // swallowed and the component never re-renders.
+  Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(el, v);
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+};
+
+const clips = [
+  {
+    /*
+     * An offer walked up past the ceiling.
+     *
+     * Green with headroom, then over, then well over, with the figure and the
+     * sentence changing underneath. Four seconds, and it is the argument the
+     * whole game makes: there is a number above which this stops being a deal,
+     * and it is not the asking price.
+     *
+     * The meter's amber state -- over the itemised maximum, under the rule of
+     * thumb -- is deliberately not filmed, because it cannot be reached.
+     * Measured across 1,260 listings in all four campaigns, on cash and on
+     * hard money, the rule of thumb is *never* the generous one: the itemised
+     * ceiling sits about 5.8% of ARV above it. Financing moves it by under 3%,
+     * which is not enough to cross. See the roadmap.
+     */
+    name: 'offer-meter',
+    reach: async () => {
+      click(byText('button', 'The First Flip'));
+      await settle();
+      click(document.querySelector('tbody tr'));
+      await settle();
+      return !!document.querySelector('.offer-meter');
+    },
+    steps: (() => {
+      const box = () => document.querySelector('.modal input[type="number"]');
+      const out = [];
+      out.push(async () => {
+        window.__clipBase = Number(box().value || 30000);
+        nativeValue(box(), String(Math.round(window.__clipBase * 0.62)));
+        await sleep(320);
+      });
+      // Up in even steps, from comfortably inside to comfortably outside.
+      for (let i = 1; i <= 15; i++) {
+        out.push(async () => {
+          nativeValue(box(), String(Math.round(window.__clipBase * (0.62 + i * 0.042))));
+          await sleep(140);
+        });
+      }
+      // Hold on the last frame so a preview that freezes shows the point.
+      for (let i = 0; i < 6; i++) out.push(async () => sleep(140));
+      return out;
+    })(),
+  },
+  {
+    /*
+     * The board, zoomed. Three stops, each held, then back out -- the clip
+     * that reads as a game rather than a spreadsheet.
+     */
+    name: 'board-zoom',
+    reach: async () => {
+      closeModal();
+      await settle();
+      openTab('Market');
+      await settle();
+      const pick = (label) =>
+        click([...document.querySelectorAll('button')].find((b) => b.textContent.trim() === label));
+      pick('colour');
+      await settle();
+      pick('town');
+      await settle();
+      return !!document.querySelector('.board-frame svg');
+    },
+    steps: (() => {
+      const pick = (label) =>
+        click([...document.querySelectorAll('button')].find((b) => b.textContent.trim() === label));
+      const hold = (n, fn) => {
+        const out = [fn];
+        for (let i = 1; i < n; i++) out.push(async () => sleep(110));
+        return out;
+      };
+      return [
+        ...hold(5, async () => sleep(110)),
+        ...hold(6, async () => { pick('block'); await sleep(240); }),
+        ...hold(7, async () => { pick('lot'); await sleep(240); }),
+        ...hold(6, async () => { pick('town'); await sleep(240); }),
+      ];
+    })(),
+  },
+];
+
+  window.__PF_SCENES = { scenes, clips, settle, sleep, byText, click, openTab, closeModal };
 })();

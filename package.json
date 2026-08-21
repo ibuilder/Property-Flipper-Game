@@ -22,6 +22,7 @@
     "audit": "node scripts/audit.mjs",
     "shots": "node scripts/shots.mjs",
     "marketing": "node scripts/marketing-assets.mjs",
+    "clips": "node scripts/clips.mjs",
     "bundle:web": "npm run build:renderer && node scripts/bundle-web.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
