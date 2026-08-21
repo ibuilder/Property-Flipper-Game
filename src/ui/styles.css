@@ -2092,6 +2092,150 @@ table.stress-grid td.base {
   padding-top: 1px;
 }
 
+/* ------------------------------------------------------------ offer meter */
+
+/*
+ * The offer, against the two maximums, on one line.
+ *
+ * The three tones carry the meaning and the geometry carries the argument: the
+ * distance between the two ticks *is* the disagreement between the rule of
+ * thumb and the arithmetic, and on a deal where they agree the ticks sit on
+ * top of each other and there is nothing to notice, which is correct.
+ *
+ * Colour is not the only signal. The amber state also changes the sentence
+ * under the bar, because a meter that says something with hue alone says it to
+ * nobody who cannot see the hue.
+ */
+.offer-meter {
+  margin-top: 14px;
+  padding: 12px 14px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-inset);
+}
+
+.offer-meter.warn {
+  border-color: var(--warn);
+}
+
+.offer-meter.bad {
+  border-color: var(--bad);
+}
+
+.offer-meter-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+
+.offer-meter-label {
+  font-size: 9.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  /* `--text-faint` is tuned against the panel ground and measures 4.22:1 on the
+     inset one in the light theme, which the audit caught the moment this
+     component existed. `--text-dim` is the token that clears AA on both. */
+  color: var(--text-dim);
+}
+
+.offer-meter-figure {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.offer-meter.good .offer-meter-figure {
+  color: var(--good);
+}
+
+.offer-meter.warn .offer-meter-figure {
+  color: var(--warn);
+}
+
+.offer-meter.bad .offer-meter-figure {
+  color: var(--bad);
+}
+
+.offer-meter-track {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--bg-raised);
+  overflow: visible;
+}
+
+.offer-meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 5px;
+  background: var(--good);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .offer-meter-fill {
+    transition: width 0.18s ease-out, background-color 0.18s;
+  }
+}
+
+.offer-meter.warn .offer-meter-fill {
+  background: var(--warn);
+}
+
+.offer-meter.bad .offer-meter-fill {
+  background: var(--bad);
+}
+
+/*
+ * The two maximums, as marks the fill runs past rather than stops at. Drawn
+ * taller than the track so they stay findable once the fill is under them.
+ */
+.offer-meter-tick {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.offer-meter-tick.rule {
+  background: color-mix(in srgb, var(--color-text) 42%, transparent);
+}
+
+.offer-meter-tick.itemised {
+  background: var(--color-text);
+}
+
+.offer-meter-scale {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 11px;
+  /* See `.offer-meter-label`: the inset ground needs the dim token, not faint. */
+  color: var(--text-dim);
+}
+
+.offer-meter-note {
+  flex: 1;
+  text-align: center;
+  font-size: 11.5px;
+}
+
+.offer-meter.warn .offer-meter-note {
+  color: var(--warn);
+}
+
+.offer-meter.bad .offer-meter-note {
+  color: var(--bad);
+}
+
 /* --------------------------------------------------------- closing a flip */
 
 /*

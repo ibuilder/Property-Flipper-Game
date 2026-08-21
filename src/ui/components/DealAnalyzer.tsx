@@ -12,6 +12,7 @@ import {
   type StressTest,
 } from '../../engine';
 import { VERDICT_COPY, money, percent } from '../format';
+import { standing } from '../dealMeter';
 import ExplainTable from './ExplainTable';
 import Figure from './Figure';
 import StressTable from './StressTable';
@@ -116,6 +117,11 @@ export default function DealAnalyzer({
           />
         </div>
       </div>
+
+      {/* Where the offer being typed sits between the two plates above.
+          The plates give the numbers; this gives the distance, which is the
+          part that moves while you type and the part a player has to feel. */}
+      <OfferMeter analysis={analysis} offer={offer} />
 
       {showRuleExplainer && Math.abs(ruleGap) > analysis.arv * 0.015 && (
         <p className="faint" style={{ fontSize: 12, marginTop: 10, lineHeight: 1.5 }}>
@@ -320,5 +326,73 @@ export default function DealAnalyzer({
       )}
       {stress && <StressTable test={stress} field={stressField} />}
     </>
+  );
+}
+
+/**
+ * The offer, drawn against the two maximums.
+ *
+ * Deliberately not a gauge with a needle. The two maximums are the
+ * information; the bar exists to put them and the offer on one line so the
+ * gap between them has a length. The amber state -- over the itemised number
+ * and under the rule of thumb -- is the one worth drawing, because it is the
+ * only failure in this game that has no other visible symptom: every figure
+ * still looks reasonable, and the deal is already lost.
+ */
+function OfferMeter({ analysis, offer }: { analysis: DealAnalysis; offer: number }) {
+  const s = standing(analysis.arv, analysis.mao70, analysis.maoDetailed, offer);
+  if (!(analysis.arv > 0)) return null;
+
+  const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
+
+  return (
+    <div className={`offer-meter ${s.tone}`}>
+      <div className="offer-meter-head">
+        <span className="offer-meter-label">Your offer against the ceiling</span>
+        <span className="offer-meter-figure">
+          {s.headroom >= 0
+            ? `${money(s.headroom)} under`
+            : `${money(-s.headroom)} over`}
+        </span>
+      </div>
+
+      <div
+        className="offer-meter-track"
+        role="img"
+        aria-label={
+          `Offer ${money(offer)}, ${percent(s.ofArv, 1)} of the ${money(analysis.arv)} after-repair value. ` +
+          `Itemised maximum ${money(analysis.maoDetailed)}, rule-of-thumb maximum ${money(analysis.mao70)}. ` +
+          (s.headroom >= 0
+            ? `${money(s.headroom)} of headroom.`
+            : `${money(-s.headroom)} over the itemised maximum.`)
+        }
+      >
+        <span className="offer-meter-fill" style={{ width: pct(s.offerAt) }} />
+        <span className="offer-meter-tick rule" style={{ left: pct(s.ruleAt) }} title="70% rule" />
+        <span
+          className="offer-meter-tick itemised"
+          style={{ left: pct(s.itemisedAt) }}
+          title="Itemised maximum"
+        />
+      </div>
+
+      <div className="offer-meter-scale">
+        <span>{money(0)}</span>
+        <span className="offer-meter-note">
+          {s.tone === 'warn' ? (
+            <>
+              The 70% rule would let this through. The itemised number does not.
+            </>
+          ) : s.tone === 'bad' ? (
+            <>Over both maximums. There is no margin left to lose.</>
+          ) : (
+            <>
+              {percent(s.ofArv, 1)} of ARV
+            </>
+          )}
+        </span>
+        <span>{money(analysis.arv)} ARV</span>
+      </div>
+    </div>
   );
 }

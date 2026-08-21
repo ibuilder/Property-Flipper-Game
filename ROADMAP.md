@@ -491,10 +491,15 @@ The three UI mockups that came with the art are not going on the store page --
 `docs/marketing/README.md` says why -- but two ideas in them are worth having
 and neither is drawn anywhere else:
 
-- **A compliance meter on the deal.** The mockup puts a bar showing how far the
-  deal sits from the 70% line, not just the number. This game already computes
-  both maximum offers and the gap between them; showing that gap as a distance
-  rather than a difference is a small change with a real teaching payoff.
+- ~~**A compliance meter on the deal.**~~ **Done.** The offer is drawn against
+  both maximums on one line, so the gap between the rule of thumb and the
+  arithmetic has a length rather than being two numbers to subtract. Three
+  states, and the middle one is why it exists: an offer over the itemised
+  maximum and under the rule of thumb is the trap the 70% rule sets on an
+  atypical deal, and it is the only failure in this game with no other visible
+  symptom -- every figure still looks reasonable and the margin is gone. The
+  audit caught the new component's own labels at 4.22:1 in the light theme
+  before it shipped.
 - **An explicit before/after on the renovation screen.** The facade already
   changes as work completes and the track record already pairs the two states.
   Putting them side by side *while the work is running*, against the scope that
