@@ -259,6 +259,23 @@ open them from a double-click.
 
 ---
 
+## Devlogs
+
+itch pushes a devlog to everyone who follows the project and surfaces it in the
+feed and on tag pages, which makes it the cheapest reach available and the one
+part of the marketing plan that is worth writing carefully.
+
+`docs/devlog/` holds them as Markdown, ready to paste into
+**Dashboard → Devlog → New post**. The first is
+[2026-08-20-photographing-the-game.md](devlog/2026-08-20-photographing-the-game.md) —
+what shipped in 2.2.0, framed around the six defects that turned up when the
+screenshots started being taken by machine. Written that way on purpose: itch's
+audience is largely other developers, "here is a bug my tooling caught and yours
+would too" travels further than "here is my update", and it explains what the
+game is on the way past.
+
+---
+
 ## Other renders
 
 `docs/design/deal-card.svg` is an example of the card the game hands you when a
