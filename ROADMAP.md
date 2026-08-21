@@ -469,8 +469,11 @@ plan. Everything here that is code is done; what is left needs an account.
 
 **Not done, and not code:**
 
-- **Upload the assets and paste the copy.** butler pushes builds; it does not
-  set a cover image or a page body. That is the itch web UI, and it is yours.
+- ~~**Upload the assets and paste the copy.**~~ **Done.** Cover, banner and all
+  five screenshots are on the page, along with the copy, theme, tags, the
+  1280x800 embed and the first devlog. How the images got there is written up
+  in `docs/itch-page.md`, because the buttons open a native file dialog and the
+  way round it is not obvious.
 - **A trailer.** The plan asks for two to three minutes. The hook is already
   decided by what the game does: the deal analyzer with the two maximum offers
   disagreeing, then a flip going wrong and the card naming why.

@@ -179,6 +179,44 @@ and they carry the usual generated-text damage. Reasons in full in
 
 ---
 
+## Uploading the images
+
+Written down because it took an afternoon to work out and it is needed again
+every time the screenshots change.
+
+itch's cover, banner and screenshot buttons all build their `<input type=file>`
+when you click them and open the operating system's file dialog, which is not
+something a browser-automation tool can reach. Three findings get round it:
+
+1. **The cover and the banner go through itch's own upload API** and can be
+   driven directly: POST `action=prepare` to `/dashboard/upload-image` (add
+   `?game_id=<id>` for the banner, whose `type` is `layout`), POST the file to
+   the presigned target it names, then POST `csrf_token` to its `success_url`.
+   Put the returned id in `game[cover_image_id]` or
+   `layout[banner_image][image_id]` and save.
+
+2. **Screenshots cannot be done that way.** The same three calls succeed and
+   the form carries `screenshot[<id>][position]` correctly, and the server
+   discards them on save — a screenshot has to be a game-scoped *image* record,
+   which only itch's own handler creates. Uploading and wiring the ids by hand
+   looks like it worked, right up until the page is reloaded.
+
+3. **So borrow itch's own picker.** Stub `HTMLElement.prototype.click` so it
+   records the file input instead of opening the dialog, call the widget's
+   `pick_screenshots()`, restore the stub, then put the files in the input it
+   left behind and dispatch `change`. itch's real handler does the rest, and the
+   images come back properly associated.
+
+   One catch that costs an hour: itch appends that input as a direct child of
+   `<html>`, outside `<body>`, where the accessibility tree cannot see it. Move
+   it into `document.body` first or nothing can address it.
+
+**The uploads finish out of order**, and the ids are not handed out in the order
+the files were submitted — do not assume the mapping. Read the rendered
+thumbnails, match them to the files by eye, then set the order and save again.
+
+---
+
 ## Theme
 
 itch **Edit theme**. Taken from the game's own dark palette so the page and the
