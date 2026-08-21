@@ -15,19 +15,44 @@ import { deflateSync, inflateSync } from 'node:zlib';
 
 const CHANNELS = { 0: 1, 2: 3, 4: 2, 6: 4 };
 
+/**
+ * The most pixels this will decode: 64 megapixels, or a 8000x8000 image.
+ *
+ * The header states the dimensions and nothing checks them against the data
+ * that follows, which is a decompression bomb waiting to be handed one. A
+ * two-byte edit to the height field of a valid 630x500 cover made this allocate
+ * 165MB and run for nearly three seconds; the same edit to a different byte
+ * asks for gigabytes and takes the process down with an allocation failure
+ * rather than an error anybody can act on.
+ *
+ * Nothing here reads a file it did not write, so this is not a live exposure --
+ * it is a bound on an exported, tested function that will get reused, and the
+ * standard everywhere else in this codebase is that a failure says what it is.
+ */
+const MAX_PIXELS = 64 * 1024 * 1024;
+
 /** @returns {{ w: number, h: number, data: Buffer }} RGBA, 4 bytes per pixel. */
 export function readPng(path) {
   const buf = readFileSync(path);
-  if (buf.readUInt32BE(0) !== 0x89504e47) throw new Error(`${path} is not a PNG`);
+  // Checked before the read, because an 8-byte file throws a RangeError out of
+  // `readUInt32BE` that names a buffer offset rather than the file.
+  if (buf.length < 8 || buf.readUInt32BE(0) !== 0x89504e47) {
+    throw new Error(`${path} is not a PNG`);
+  }
 
   let off = 8;
   let head = null;
   const idat = [];
   let palette = null;
   let alpha = null;
-  while (off < buf.length) {
+  while (off + 8 <= buf.length) {
     const len = buf.readUInt32BE(off);
     const type = buf.toString('ascii', off + 4, off + 8);
+    // A chunk that runs past the end of the file is a truncated or lying file,
+    // not a chunk. `subarray` would silently hand back a short one.
+    if (off + 12 + len > buf.length) {
+      throw new Error(`${path}: ${type} chunk claims ${len} bytes and the file ends first`);
+    }
     const data = buf.subarray(off + 8, off + 8 + len);
     if (type === 'IHDR') {
       head = {
@@ -46,13 +71,37 @@ export function readPng(path) {
   if (head.depth !== 8 || head.interlace !== 0) {
     throw new Error(`${path}: only 8-bit non-interlaced PNG is supported (${JSON.stringify(head)})`);
   }
+  // Zero in either axis used to come back as an image with no pixels in it,
+  // which is not an error until something divides by it two functions later.
+  if (head.w < 1 || head.h < 1) {
+    throw new Error(`${path}: header says ${head.w}x${head.h}, which is not an image`);
+  }
+  if (head.w * head.h > MAX_PIXELS) {
+    throw new Error(
+      `${path}: header claims ${head.w}x${head.h} (${Math.round((head.w * head.h) / 1e6)}Mpx), ` +
+        `over the ${MAX_PIXELS / 1e6}Mpx limit`,
+    );
+  }
+  if (idat.length === 0) throw new Error(`${path} has no image data`);
 
   const ch = head.colour === 3 ? 1 : CHANNELS[head.colour];
   if (!ch) throw new Error(`${path}: unsupported colour type ${head.colour}`);
+  if (head.colour === 3 && !palette) {
+    throw new Error(`${path}: says it is paletted and carries no PLTE chunk`);
+  }
 
   const { w, h } = head;
   const stride = w * ch;
   const raw = inflateSync(Buffer.concat(idat));
+  // The decompressed stream has to hold exactly one filter byte plus one
+  // scanline per row. Short means truncated; the unfilter loop would otherwise
+  // read zeroes off the end and produce a picture that is half real.
+  const want = h * (stride + 1);
+  if (raw.length < want) {
+    throw new Error(
+      `${path}: ${raw.length} bytes of pixel data for a ${w}x${h} image that needs ${want}`,
+    );
+  }
   const flat = Buffer.alloc(h * stride);
 
   // Undo the per-scanline filters. This is the whole of PNG decoding.

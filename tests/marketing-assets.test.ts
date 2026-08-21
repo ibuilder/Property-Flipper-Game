@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { crop, fit, readPng, resize, writePng } from '../scripts/image.mjs';
 
@@ -60,6 +60,80 @@ describe('the PNG round trip', () => {
     expect([...buf.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     expect(buf.toString('ascii', 12, 16)).toBe('IHDR');
     expect(buf.toString('ascii', buf.length - 8, buf.length - 4)).toBe('IEND');
+  });
+});
+
+/**
+ * What a malformed file does.
+ *
+ * `readPng` is a parser, and this project's whole standard is that a failure
+ * says what it is. Handed damaged input it did four things that are not that:
+ * a two-byte edit to the height field of a valid cover made it allocate 165MB
+ * and run for nearly three seconds; a zero in either axis came back as an
+ * image with no pixels rather than an error, which stays silent until `resize`
+ * divides by it; a paletted header with no palette threw a TypeError about
+ * reading a property of null; and an empty file threw a RangeError naming a
+ * buffer offset.
+ *
+ * Nothing here reads a file it did not write, so none of that was a live
+ * exposure. It is an exported and tested function that will get reused, and
+ * these are the shapes a reuse would hit first.
+ */
+describe('a damaged PNG', () => {
+  const good = () => readFileSync('docs/marketing/cover-630x500.png');
+  const write = (buf: Buffer) => {
+    writeFileSync(SCRATCH, buf);
+    return SCRATCH;
+  };
+  const edit = (fn: (b: Buffer) => void) => {
+    const b = Buffer.from(good());
+    fn(b);
+    return write(b);
+  };
+
+  it('refuses a header asking for more pixels than exist anywhere', () => {
+    // The bomb. 630 x 65535 is two bytes away from the real cover.
+    const started = Date.now();
+    expect(() => readPng(edit((b) => b.writeUInt32BE(0x0000ffff, 20)))).toThrow(/Mpx|needs/);
+    // And refuses it without doing the work first.
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
+  it('refuses a header whose dimensions overflow allocation', () => {
+    expect(() => readPng(edit((b) => b.writeUInt32BE(0x7fffffff, 16)))).toThrow(/Mpx/);
+  });
+
+  it('refuses zero in either axis instead of returning an empty image', () => {
+    expect(() => readPng(edit((b) => b.writeUInt32BE(0, 16)))).toThrow(/not an image/);
+    expect(() => readPng(edit((b) => b.writeUInt32BE(0, 20)))).toThrow(/not an image/);
+  });
+
+  it('names the file when it is not a PNG at all', () => {
+    expect(() => readPng(write(Buffer.alloc(0)))).toThrow(/is not a PNG/);
+    expect(() => readPng(write(Buffer.from('hello')))).toThrow(/is not a PNG/);
+    expect(() => readPng(edit((b) => (b[1] = 0)))).toThrow(/is not a PNG/);
+  });
+
+  it('says a paletted file is missing its palette, rather than dying on null', () => {
+    expect(() => readPng(edit((b) => (b[25] = 3)))).toThrow(/PLTE/);
+  });
+
+  it('rejects a truncated file at every point it can be cut', () => {
+    for (const frac of [0.02, 0.25, 0.5, 0.9, 0.999]) {
+      const b = good();
+      const cut = b.subarray(0, Math.floor(b.length * frac));
+      expect(() => readPng(write(Buffer.from(cut))), `cut at ${frac}`).toThrow(Error);
+    }
+  });
+
+  it('rejects a chunk that claims more bytes than the file holds', () => {
+    expect(() => readPng(edit((b) => b.writeUInt32BE(0xfffffff0, 8)))).toThrow(/chunk claims/);
+  });
+
+  it('rejects the formats it does not implement, by name', () => {
+    expect(() => readPng(edit((b) => (b[24] = 16)))).toThrow(/8-bit non-interlaced/);
+    expect(() => readPng(edit((b) => (b[28] = 1)))).toThrow(/8-bit non-interlaced/);
+    expect(() => readPng(edit((b) => (b[25] = 99)))).toThrow(/colour type 99/);
   });
 });
 
