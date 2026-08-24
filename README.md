@@ -139,7 +139,7 @@ npm run clips
 ```
 
 Records short animations of the running game into `docs/clips/` — an offer walked up past its
-ceiling, and the board zooming from town to lot. GIF because it is the only motion format that
+ceiling, the board zooming from town to lot, and a flip closing onto its deal card. GIF because it is the only motion format that
 autoplays inline and silently on every forum and timeline; the encoder is `scripts/gif.mjs`, for the
 same reason the PNG codec is hand-written. `tests/gif.test.ts` round-trips the LZW on indices across
 every code-width boundary, because the failure mode is a valid-looking file that decodes to noise.

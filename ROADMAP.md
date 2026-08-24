@@ -489,9 +489,12 @@ plan. Everything here that is code is done; what is left needs an account.
   reset, after being caught by measuring decoded pixels in a browser -- mean
   channel error 40.95 against 0.33 for a correct stream.
 
-  A third clip -- the profit counting up on a closed flip -- is worth adding
-  and is not done; it needs the walk to play a whole flip first, which the
-  screenshot walk already knows how to do.
+  A third, `sale-card.gif`, plays a whole flip and starts filming on the click
+  that accepts the buyer's offer. It catches the card rising into place; it does
+  not really catch the figure counting, because that tween is 420ms and a
+  `capturePage` costs about a tenth of a second, so there are only a handful of
+  samples in it. Slowing the tween for the camera would film something players
+  never see, so it is left alone and noted here instead.
 - **A press kit.** Standard format, and everything in it already exists
   somewhere in `docs/`. Worth generating rather than writing, for the same
   reason the screenshots are.

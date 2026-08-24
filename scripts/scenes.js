@@ -404,11 +404,104 @@ const clips = [
   },
   {
     /*
+     * The payoff, counting.
+     *
+     * Play a whole flip, stop with the buyer's offer on screen, and start
+     * filming on the click that accepts it. What follows is the moment the
+     * game was missing until this week: the card raises itself and the figure
+     * travels to the number, win or lose.
+     *
+     * This one loses money, and it is filmed anyway. The bot picks a cosmetic
+     * scope on a house in rough condition and eats two change orders through
+     * the contingency, which is the mistake the game exists to charge for -- a
+     * clip of the simulation refusing to let a bad assumption through says
+     * more about what this is than a clip of a win would.
+     */
+    name: 'sale-card',
+    reach: async () => {
+      // Walk the same route the screenshots take, up to owning a renovated
+      // house: market, listing, offer, scope, crew.
+      for (const name of ['market', 'deal', 'owned', 'renovation']) {
+        const scene = scenes.find((s) => s.name === name);
+        if (!scene || !(await scene.reach())) return false;
+      }
+
+      const advance = () =>
+        click([...document.querySelectorAll('button')].find((b) => b.textContent.trim() === '+30d'));
+      const manage = async () => {
+        openTab('Portfolio');
+        await settle();
+        return click(byText('tbody tr button', 'Manage') || document.querySelector('tbody tr'));
+      };
+
+      closeModal();
+      await settle();
+      for (let i = 0; i < 4; i++) {
+        advance();
+        await settle();
+        closeModal();
+        await settle();
+        await manage();
+        if (byText('.modal button', 'List at')) break;
+        closeModal();
+        await settle();
+      }
+      if (!click(byText('.modal button', 'List at'))) return false;
+      await settle();
+      let dialogs = document.querySelectorAll('.modal');
+      if (dialogs.length > 1) {
+        click(dialogs[dialogs.length - 1].querySelector('.btn.primary'));
+        await settle();
+      }
+
+      // Cut until a buyer bites, then stop -- the accept is the first frame.
+      for (let i = 0; i < 6; i++) {
+        closeModal();
+        await settle();
+        advance();
+        await settle();
+        closeModal();
+        await settle();
+        if (!(await manage())) return false;
+        if (byText('.modal button', 'Accept')) return true;
+        click(byText('.modal button', 'Cut 4%'));
+        await settle();
+      }
+      return false;
+    },
+    steps: (() => {
+      const hold = (n, ms = 90) => Array.from({ length: n }, () => async () => sleep(ms));
+      return [
+        // Two frames of the offer before anything happens, so the loop has a
+        // beginning rather than starting mid-animation.
+        ...hold(2),
+        async () => {
+          click(byText('.modal button', 'Accept'));
+          await sleep(90);
+          const dialogs = document.querySelectorAll('.modal');
+          if (dialogs.length > 1) click(dialogs[dialogs.length - 1].querySelector('.btn.primary'));
+          // No wait here on purpose. The figure travels for 420ms and a
+          // capture costs about a tenth of a second, so anything slept before
+          // the first frame is a frame of the tween lost -- the first version
+          // waited 60ms and caught none of it.
+        },
+        ...hold(0, 0),
+        ...hold(6, 0),
+        ...hold(14, 90),
+      ];
+    })(),
+  },
+  {
+    /*
      * The board, zoomed. Three stops, each held, then back out -- the clip
      * that reads as a game rather than a spreadsheet.
      */
     name: 'board-zoom',
     reach: async () => {
+      // Self-contained, like every clip: each one starts from the menu on a
+      // freshly reloaded renderer rather than inheriting the last one's game.
+      click(byText('button', 'The First Flip'));
+      await settle();
       closeModal();
       await settle();
       openTab('Market');

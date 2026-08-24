@@ -297,6 +297,21 @@ open them from a double-click.
 
 ---
 
+## Clips
+
+`npm run clips` writes three short GIFs to `docs/clips/`, for Reddit, Bluesky and
+anywhere else that takes an image but not a video. They are not store assets --
+itch shows screenshots, not animations -- but they are the only thing on the
+marketing plan that needs the game to be *moving*.
+
+| File | What it shows |
+| --- | --- |
+| `offer-meter.gif` | An offer walked up past its ceiling. Green with headroom, then over, with the figure and the sentence changing underneath. |
+| `board-zoom.gif` | The coloured town from `town` to `block` to `lot` and back. The one that reads as a game. |
+| `sale-card.gif` | A flip closing: the buyer's offer accepted, and the card rising with the result on it. |
+
+---
+
 ## Devlogs
 
 itch pushes a devlog to everyone who follows the project and surfaces it in the

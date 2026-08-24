@@ -245,6 +245,26 @@ function createWindow(): void {
           const made: string[] = [];
           const missed: string[] = [];
           for (let i = 0; i < names.length; i++) {
+            /*
+             * A fresh renderer per clip.
+             *
+             * Unlike the scenes, which are a single walk where each screen
+             * builds on the last, every clip starts from the menu and expects
+             * to. Run back to back in one session the second one opens on a
+             * game already in progress and cannot find the button it wants --
+             * which reads as "could not reach" and says nothing about why.
+             * Reloading also throws away the injected scene list, so it goes
+             * back in afterwards.
+             */
+            if (i > 0) {
+              mainWindow!.reload();
+              await new Promise((resolve) =>
+                mainWindow!.webContents.once('did-finish-load', () => resolve(null)),
+              );
+              await new Promise((r) => setTimeout(r, 700));
+              await mainWindow!.webContents.executeJavaScript(await readScript('scenes.js'));
+            }
+
             const ok = await mainWindow!.webContents.executeJavaScript(
               `window.__PF_SCENES.clips[${i}].reach()`,
             );
