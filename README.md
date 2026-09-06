@@ -30,7 +30,8 @@ what the post-mortem decided was the cause:
 
 This is a ground-up rewrite of [ibuilder/Property-Flipper-Game](https://github.com/ibuilder/Property-Flipper-Game),
 which was a Python/Pygame project. See [REWRITE.md](REWRITE.md) for what was wrong with the
-original and why the design changed.
+original and why the design changed. The remaining upgrade, storefront, and
+test sequence is in [docs/plan-upgrade-platforms-test.md](docs/plan-upgrade-platforms-test.md).
 
 ---
 
