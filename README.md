@@ -151,8 +151,9 @@ npm run marketing
 
 Cuts the commissioned key art in `docs/marketing/source/` to the aspect ratio each storefront wants
 — cover, banner, link preview, and Steam capsules. `npm run presskit` copies those plus the
-screenshots into `docs/press-kit/`. `npm run steam:package` stages GitHub-release artifacts for
-SteamCMD; see [docs/steam.md](docs/steam.md).
+screenshots into `docs/press-kit/`. `npm run steam:package` stages the launchable build (unpacked or
+portable, not the installer) for SteamCMD; `npm run itch:status` checks butler channels share one
+tag. See [docs/storefronts.md](docs/storefronts.md).
 
 To check the packaged desktop app actually starts:
 

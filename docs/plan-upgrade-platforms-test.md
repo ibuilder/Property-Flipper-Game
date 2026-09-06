@@ -123,8 +123,8 @@ Steamworks feature set. The game is offline and has no accounts.
    a 374×448 library capsule as extra cuts in `scripts/marketing-assets.mjs`
    if Steam’s current sizes are not already covered.
 2. Upload the same three OS artifacts the release workflow already builds.
-   Linux stays AppImage unless Steam’s Linux depot wants a unpacked directory
-   — prefer unpacking in CI over a new format.
+   Prefer unpacked / Portable / mac zip / AppImage in the Steam depot — not the
+   NSIS installer or a DMG. `npm run steam:package` does that ordering.
 3. Store page copy can start from `docs/itch-page.md`. Do not use the Flip
    Empire mockups (`docs/marketing/README.md` explains why).
 4. Trailer: 2–3 minutes. Hook already decided in the roadmap: analyzer with
@@ -206,9 +206,9 @@ already smoke-tested the **same** binaries you upload.
 
 | Gap | Test to add |
 | --- | --- |
-| itch channels can silently hold mixed versions | After butler push, a CI step (or a documented checklist) that `butler status` versions match the git tag on all five channels. |
+| itch channels can silently hold mixed versions | **Done.** `npm run itch:status -- --expect vX.Y.Z --require` after butler push; the itch workflow retries and fails the job if a channel is still on another tag. |
+| Steam install ≠ GitHub artifact | Package from `gh release download` of the tag. `steam-package` prefers unpacked/portable/zip/AppImage and warns on Setup.exe / DMG. One install-from-Steam smoke per OS remains owner-side. |
 | Unsigned vs signed confusion | Release summary already prints the signed/unsigned sentence; keep it. After certs: Windows `Get-AuthenticodeSignature` Status `Valid` + timestamp; macOS `spctl --assess` (already in `release.yml`). |
-| Steam install ≠ GitHub artifact | One “install from Steam, hash or version overlay matches the tag” smoke per OS. |
 | Layout at store sizes | Extend `scripts/scenes.js` / audit to **960×540** (itch recommended embed), **1280×800** (current), and **375×812** (phone). Phone is allowed to single-column; it is not allowed to clip primary actions. |
 | Steam Deck | Manual: tutorial deal + save round-trip. Record pass/fail; do not claim Deck support without a pass. |
 

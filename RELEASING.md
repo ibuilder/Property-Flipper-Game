@@ -165,8 +165,9 @@ choose `web-only`.
 
 ## Steam
 
-Same binaries as the GitHub release. Stage them with `npm run steam:package`
-and upload with SteamCMD. See [docs/steam.md](docs/steam.md). The app ID and
+Same binaries as the GitHub release. See [docs/storefronts.md](docs/storefronts.md)
+and [docs/steam.md](docs/steam.md). Stage with `npm run steam:package` (unpacked
+or portable first, not the installer) and upload with SteamCMD. The app ID and
 partner account cannot be created from this repository.
 
 ---
