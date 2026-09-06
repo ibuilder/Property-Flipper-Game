@@ -1,4 +1,4 @@
-import { DEFECTS_BY_ID, Rng } from '../../engine';
+import { DEFECTS_BY_ID, Rng, scopeIdForDefect } from '../../engine';
 import type { HouseSubject } from '../../engine';
 
 /**
@@ -183,8 +183,13 @@ export function buildHouseArt(prop: HouseSubject, day = 150): HouseArt {
   const progress = Math.max(0, Math.min(1, prop.renovationProgress ?? 0));
 
   // Any defect that is known and unrepaired makes the house look worse than
-  // condition alone suggests -- that is the point of an inspection.
-  const knownDefects = prop.defects.filter((d) => d.revealed && !d.repaired).length;
+  // condition alone suggests -- that is the point of an inspection. Work the
+  // crew has already finished counts here too: leaving the pin up after the
+  // roof is on is the same lie as leaving the holes.
+  const openDefects = prop.defects.filter(
+    (d) => d.revealed && !d.repaired && !done.has(scopeIdForDefect(d.defId)),
+  );
+  const knownDefects = openDefects.length;
 
   // --- massing -----------------------------------------------------------
   const big = Math.max(0, Math.min(1, (prop.sqft - 650) / (2800 - 650)));
@@ -329,20 +334,16 @@ export function buildHouseArt(prop: HouseSubject, day = 150): HouseArt {
 
   // --- known problems, pinned where they actually are ---------------------
   const geometry = { bodyX, bodyY, bodyW, bodyH, peakY, groundY: GROUND_Y, door, windows };
-  const markers: DefectMarker[] = prop.defects
-    .filter((d) => d.revealed && !d.repaired)
-    .map((d) => {
-      const anchor = DEFECT_ANCHORS[d.defId];
-      const at = anchor
-        ? anchor(geometry)
-        : { x: bodyX + bodyW * 0.5, y: bodyY + bodyH * 0.5 };
-      return {
-        defId: d.defId,
-        x: at.x,
-        y: at.y,
-        severity: DEFECTS_BY_ID[d.defId]?.severity ?? 'moderate',
-      };
-    });
+  const markers: DefectMarker[] = openDefects.map((d) => {
+    const anchor = DEFECT_ANCHORS[d.defId];
+    const at = anchor ? anchor(geometry) : { x: bodyX + bodyW * 0.5, y: bodyY + bodyH * 0.5 };
+    return {
+      defId: d.defId,
+      x: at.x,
+      y: at.y,
+      severity: DEFECTS_BY_ID[d.defId]?.severity ?? 'moderate',
+    };
+  });
 
   // --- work in progress ---------------------------------------------------
   // A skip alone did not read as "a crew is here". Scaffolding along the

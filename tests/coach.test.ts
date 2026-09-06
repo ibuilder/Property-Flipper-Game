@@ -16,6 +16,7 @@ import {
   type GameState,
 } from '../src/engine';
 import { RULES, type CoachContext } from '../src/ui/coach/rules';
+import { scoutRecallAllowed } from '../src/ui/coach/Coach';
 import { deserialize, serialize } from '../src/engine/save';
 
 const SCOPE = ['paint_interior', 'flooring_lvp', 'landscaping_curb'];
@@ -267,3 +268,13 @@ describe('the coach log', () => {
     expect(state.coachLocked).toBe(false);
   });
 });
+
+describe('Scout recall during an assessment lock', () => {
+  it('does not offer Call Scout while he is locked, even if he was already muted', () => {
+    expect(scoutRecallAllowed(true, true)).toBe(false);
+    expect(scoutRecallAllowed(true, false)).toBe(false);
+    expect(scoutRecallAllowed(false, true)).toBe(true);
+    expect(scoutRecallAllowed(false, false)).toBe(false);
+  });
+});
+

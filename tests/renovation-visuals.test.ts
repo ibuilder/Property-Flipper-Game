@@ -227,4 +227,29 @@ describe('the house changes while the work is happening', () => {
     );
     expect(nowArt.roof.gaps.length).toBeLessThan(startArt.roof.gaps.length);
   });
+
+  it('takes a defect pin off when that repair finishes, not when the job books', () => {
+    const { state, prop } = boughtWreck(52);
+    const defect = prop.defects[0];
+    expect(defect, 'fixture house has no defects to pin').toBeTruthy();
+    defect.revealed = true;
+    startRenovation(state, prop.id, [`defect:${defect.defId}`, 'paint_interior'], 0.1);
+    const job = prop.ownership!.renovation!;
+
+    const atStart = buildHouseArt(
+      { ...prop, renovating: true, workInProgress: [], renovationProgress: 0 },
+      100,
+    );
+    expect(atStart.markers.some((m) => m.defId === defect.defId)).toBe(true);
+
+    job.daysElapsed = job.totalDays;
+    const done = workFinishedSoFar(job);
+    expect(done).toContain(`defect:${defect.defId}`);
+    const finished = buildHouseArt(
+      { ...prop, renovating: true, workInProgress: done, renovationProgress: 1 },
+      100,
+    );
+    expect(finished.markers.some((m) => m.defId === defect.defId)).toBe(false);
+    expect(prop.defects.find((d) => d.defId === defect.defId)?.repaired).not.toBe(true);
+  });
 });

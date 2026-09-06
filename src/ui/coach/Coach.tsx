@@ -28,6 +28,17 @@ import { RULES, type CoachContext, type CoachRule } from './rules';
  * checkable.
  */
 
+/**
+ * Whether the shell may show "Call Scout".
+ *
+ * An assessment lock wins: a muted-and-locked run used to render the recall
+ * button because mute was checked first, which is a prompt a graded scenario
+ * is not supposed to offer.
+ */
+export function scoutRecallAllowed(locked: boolean, muted: boolean): boolean {
+  return muted && !locked;
+}
+
 export default function Coach({ context: base }: { context: CoachContext }) {
   // Whatever screen is open publishes what it is looking at; the shell only
   // knows about the game state.
@@ -87,6 +98,8 @@ export default function Coach({ context: base }: { context: CoachContext }) {
       /* the setting simply will not persist */
     }
   };
+
+  if (state.coachLocked) return null;
 
   if (muted) {
     return (
