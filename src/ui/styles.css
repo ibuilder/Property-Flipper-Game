@@ -1058,6 +1058,17 @@ label.field .label {
   background: var(--bg-inset);
 }
 
+.job-before-after {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+  margin: 0 0 14px;
+}
+
+.job-before-after .house-hero {
+  max-height: 160px;
+}
+
 /* The facade is generated from simulation state, so a condition change
    should read as a change rather than a swap. */
 @media (prefers-reduced-motion: no-preference) {
@@ -2516,6 +2527,9 @@ table.stress-grid td.base {
   color: var(--text-faint);
   margin: 12px 0 4px;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .scope-group-label:first-child {

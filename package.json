@@ -23,6 +23,8 @@
     "shots": "node scripts/shots.mjs",
     "marketing": "node scripts/marketing-assets.mjs",
     "clips": "node scripts/clips.mjs",
+    "presskit": "node scripts/press-kit.mjs",
+    "steam:package": "node scripts/steam-package.mjs",
     "bundle:web": "npm run build:renderer && node scripts/bundle-web.mjs",
     "test": "vitest run",
     "test:watch": "vitest",

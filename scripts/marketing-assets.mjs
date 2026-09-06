@@ -67,6 +67,38 @@ const JOBS = [
      */
     also: path.join(root, 'public', 'social-card.png'),
   },
+  {
+    file: 'steam-header-460x215.png',
+    from: 'key-art-before-after.png',
+    w: 460,
+    h: 215,
+    anchorY: 0.08,
+    note: 'Steam header capsule.',
+  },
+  {
+    file: 'steam-capsule-616x353.png',
+    from: 'key-art-before-after.png',
+    w: 616,
+    h: 353,
+    anchorY: 0.1,
+    note: 'Steam main capsule (store browse).',
+  },
+  {
+    file: 'steam-small-231x87.png',
+    from: 'key-art-cutaway.png',
+    w: 231,
+    h: 87,
+    anchorY: 0.35,
+    note: 'Steam small capsule (search / lists).',
+  },
+  {
+    file: 'steam-library-600x900.png',
+    from: 'key-art-cutaway.png',
+    w: 600,
+    h: 900,
+    anchorY: 0.42,
+    note: 'Steam library capsule (portrait).',
+  },
 ];
 
 mkdirSync(out, { recursive: true });

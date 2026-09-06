@@ -150,10 +150,9 @@ npm run marketing
 ```
 
 Cuts the commissioned key art in `docs/marketing/source/` to the aspect ratio each storefront wants
-— cover, banner, link preview. The PNG codec and resampler are a hundred lines in
-`scripts/image.mjs` rather than a native dependency, and `tests/marketing-assets.test.ts`
-round-trips them, because hand-written image code fails by producing a file that opens fine and is
-subtly wrong.
+— cover, banner, link preview, and Steam capsules. `npm run presskit` copies those plus the
+screenshots into `docs/press-kit/`. `npm run steam:package` stages GitHub-release artifacts for
+SteamCMD; see [docs/steam.md](docs/steam.md).
 
 To check the packaged desktop app actually starts:
 

@@ -176,9 +176,10 @@ export function startGame(levelId: string, seed?: number, difficulty?: Difficult
   emit();
 }
 
-export function startScenario(def: ScenarioDef, seed?: number): void {
+export function startScenario(def: ScenarioDef, seed?: number, coachLocked = false): void {
   const actualSeed = seed ?? Math.floor(Math.random() * 2 ** 31);
   snapshot.state = createScenarioGame(def, actualSeed);
+  snapshot.state.coachLocked = coachLocked;
   snapshot.toast = null;
   emit();
 }

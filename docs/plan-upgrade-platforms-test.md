@@ -146,11 +146,12 @@ Not a new simulation. Presentation and teaching holes that are already named.
 
 | Item | Why it is next | Risk |
 | --- | --- | --- |
-| **Renovation before/after, on the job screen** | Facade already changes when work completes; track record already pairs states. Side-by-side *while the crew is working* is the missing pairing (`ROADMAP.md` §7 G). | UI only. Must not change quotes or schedules. |
-| **`kitchen` and `bath` icons** | Six of eight scope categories have icons; marking six of eight looks broken so none are shown (`docs/design/art-wanted.md`). | Art delivery, then `npm run art` + `tests/ui-art.test.ts`. |
-| **Instructor / class board** | Scenario codes exist; there is still no section board, CSV concept report, or coach-lock for assessment (`redesign-3.0-status.md`). Highest-leverage if the audience is classrooms. | New UI over existing `scenarios.ts` / `mastery.ts`. Saves stay local. |
-| **Press kit generator** | Screenshots, cover, banner, social card already exist. Assemble one folder the way `npm run marketing` already cuts store sizes. | Script + test that the kit contains named files at named sizes. |
-| **Barlow / Barlow Condensed** | Open design decision: bundling costs tens of KB in the single-file build. | Size vs fidelity. Measure the HTML bundle before committing. |
+| **Renovation before/after, on the job screen** | **Done.** `JobBeforeAfter` on the running job, using `boughtAs` vs the live facade (WIP does not move value). |
+| **`kitchen` and `bath` icons** | **Done.** Scope headings mark all eight categories. |
+| **Instructor / class board** | **Done, local.** Concept CSV copy, Scout lock on the save (v17), assessment checkbox when starting a lesson. No hosted section board — nothing is hosted. |
+| **Press kit generator** | **Done.** `npm run presskit`. Steam capsules from `npm run marketing`. `npm run steam:package` stages release artifacts. |
+| **PWA / Add to Home Screen** | **Done.** `public/manifest.webmanifest` — the honest mobile path, not a native store client. |
+| **Barlow / Barlow Condensed** | Still open. Bundling costs tens of KB in the single-file build. |
 
 **Deliberately later, because they move every campaign:**
 
@@ -242,15 +243,11 @@ PR.
 
 ## 5. Suggested sequence of PRs
 
-1. **This plan** (docs only).
-2. **Marketing size cuts Steam still needs** + press-kit folder script, with
-   codec tests. No gameplay.
-3. **Renovation before/after** on the owned-property / job screen. Audit +
-   shots regenerated.
-4. **Instructor board** (if classrooms are still the first audience) *or*
-   skip to Steam depot files if the audience decision is “itch + Steam game”.
-5. **Steam packaging** in `.github/workflows/release.yml` (upload is still
-   a partner-account action unless a Steam token is later added).
+1. **This plan** (docs only) — done.
+2. **Marketing size cuts Steam still needs** + press-kit folder script — **done in this branch**.
+3. **Renovation before/after** — **done**.
+4. **Instructor tools** (CSV + coach lock) — **done**.
+5. **Steam packaging** (`npm run steam:package`, `docs/steam.md`) — **done**. Upload still needs a partner account.
 6. **Balance PRs** only after Stream D sessions, and only with a harness
    re-baseline.
 

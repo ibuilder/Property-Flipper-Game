@@ -129,3 +129,24 @@ export function describeMastery(progress: readonly ConceptProgress[]): string | 
   }
   return `${done.length} of ${progress.length} demonstrated. A concept counts when you have done it twice, not when you have read about it.`;
 }
+
+/**
+ * One row per concept, for an instructor who is not loading the save.
+ *
+ * Columns are the proof, not a score: demonstrated count, mastered or not,
+ * and the deals that counted. A spreadsheet that invented a grade would
+ * compete with the mastery panel.
+ */
+export function conceptReportCsv(deals: readonly ClosedDeal[]): string {
+  const rows = [
+    ['concept', 'name', 'demonstrated', 'needed', 'mastered', 'deals'].join(','),
+  ];
+  for (const p of conceptProgress(deals)) {
+    const def = CONCEPTS.find((c) => c.id === p.id)!;
+    const dealsCell = `"${p.deals.map((d) => d.replaceAll('"', '""')).join('; ')}"`;
+    rows.push(
+      [p.id, `"${def.name.replaceAll('"', '""')}"`, String(p.demonstrated), String(DEMONSTRATIONS_FOR_MASTERY), p.mastered ? 'yes' : 'no', dealsCell].join(','),
+    );
+  }
+  return rows.join('\n') + '\n';
+}

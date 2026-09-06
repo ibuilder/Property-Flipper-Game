@@ -827,6 +827,14 @@ export interface GameState {
    * prevent.
    */
   coachLog: Record<string, { day: number; count: number }>;
+  /**
+   * When true, Scout does not speak.
+   *
+   * For assessment runs: an instructor can lock the coach so the session is
+   * the player's work rather than a prompted walkthrough. Default off, and
+   * it does not change any number the simulation runs.
+   */
+  coachLocked: boolean;
   /** Sampled time series for the charts. */
   history: HistoryPoint[];
   /**

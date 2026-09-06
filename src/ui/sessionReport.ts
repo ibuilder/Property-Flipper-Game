@@ -36,6 +36,7 @@ export function sessionReport(state: GameState): string {
     `${level?.name ?? state.levelId} on ${DIFFICULTY_META[state.difficulty].name} · seed ${state.seed}`,
   );
   lines.push(`Day ${state.day}${limit ? ` of ${limit}` : ''} · ${state.phase}`);
+  if (state.coachLocked) lines.push('Assessment run: Scout was locked.');
   if (state.outcomeMessage) lines.push(state.outcomeMessage);
   lines.push('');
 

@@ -53,7 +53,7 @@ export default function Coach({ context: base }: { context: CoachContext }) {
   const progress = useMemo(() => conceptProgress(state.closedDeals), [state.closedDeals.length]);
 
   const rule = useMemo(() => {
-    if (muted) return null;
+    if (muted || state.coachLocked) return null;
     const eligible = RULES.filter((r) => {
       const seen = history[r.id];
       if (seen && seen.count >= r.maxLifetime) return false;
@@ -77,7 +77,7 @@ export default function Coach({ context: base }: { context: CoachContext }) {
     return eligible.sort(
       (a, b) => b.priority - a.priority || leastProgress(a) - leastProgress(b),
     )[0];
-  }, [muted, context, history, progress, state.day]);
+  }, [muted, state.coachLocked, context, history, progress, state.day]);
 
   const setMute = (next: boolean) => {
     setMuted(next);

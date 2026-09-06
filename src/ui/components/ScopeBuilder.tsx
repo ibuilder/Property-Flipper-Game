@@ -11,6 +11,7 @@ import {
 } from '../../engine';
 import { money } from '../format';
 import ScopeTemplates from './ScopeTemplates';
+import { Icon, hasIcon } from './Art';
 
 const CATEGORY_LABEL: Record<ScopeCategory, string> = {
   cosmetic: 'Cosmetic',
@@ -33,6 +34,20 @@ const ORDER: ScopeCategory[] = [
   'addition',
   'staging',
 ];
+
+/** Shown only when every category has a drawing — marking six of eight looks broken. */
+const CATEGORY_ICON: Record<ScopeCategory, string> = {
+  cosmetic: 'layers',
+  kitchen: 'kitchen',
+  bath: 'bath',
+  systems: 'wrench',
+  exterior: 'home',
+  structural: 'hammer',
+  addition: 'key',
+  staging: 'clipboard-check',
+};
+
+const CATEGORY_ICONS_READY = ORDER.every((c) => hasIcon(CATEGORY_ICON[c]));
 
 /**
  * Line-item scope selection.
@@ -129,7 +144,12 @@ export default function ScopeBuilder({
 
       {ORDER.filter((c) => grouped.has(c)).map((cat) => (
         <div key={cat}>
-          <div className="scope-group-label">{CATEGORY_LABEL[cat]}</div>
+          <div className="scope-group-label">
+            {CATEGORY_ICONS_READY && (
+              <Icon name={CATEGORY_ICON[cat]} size={12} title={CATEGORY_LABEL[cat]} />
+            )}{' '}
+            {CATEGORY_LABEL[cat]}
+          </div>
           {grouped.get(cat)!.map((item) => {
             const quote = quoteScopeItem(item.id, property, state.world, state.skills, state.reputation.contractors);
             if (!quote) return null;

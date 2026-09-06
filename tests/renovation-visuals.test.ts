@@ -199,4 +199,32 @@ describe('the house changes while the work is happening', () => {
     expect(idle.works).toBeNull();
     expect(idle.skip).toBe(false);
   });
+
+  it('keeps the purchase snapshot still while the live facade follows the crew', () => {
+    const { state, prop } = boughtWreck(51);
+    expect(prop.ownership?.boughtAs, 'purchase did not take a snapshot').toBeTruthy();
+    startRenovation(state, prop.id, ['roof_replace', 'landscaping_curb'], 0.1);
+    const job = prop.ownership!.renovation!;
+    job.daysElapsed = job.totalDays;
+    const done = workFinishedSoFar(job);
+    expect(done.length).toBeGreaterThan(0);
+
+    const before = prop.ownership!.boughtAs!;
+    expect(before.id).toBe(prop.id);
+    expect(before.noiseSeed).toBe(prop.noiseSeed);
+    expect(before.completedWork).toHaveLength(0);
+    expect(before.workInProgress ?? []).toHaveLength(0);
+
+    const startArt = buildHouseArt(before, 100);
+    const nowArt = buildHouseArt(
+      {
+        ...prop,
+        renovating: true,
+        workInProgress: done,
+        renovationProgress: 1,
+      },
+      100,
+    );
+    expect(nowArt.roof.gaps.length).toBeLessThan(startArt.roof.gaps.length);
+  });
 });

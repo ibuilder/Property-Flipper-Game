@@ -197,6 +197,12 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.coachLog = s.coachLog ?? {};
     return s;
   },
+  // v16 predates the assessment lock. An old save resumes with Scout speaking,
+  // which is what it was doing.
+  16: (s: any) => {
+    s.coachLocked = s.coachLocked ?? false;
+    return s;
+  },
 };
 
 export function deserialize(raw: unknown): GameState {
@@ -240,4 +246,5 @@ function validate(state: any): void {
   state.history = state.history ?? [];
   state.watched = state.watched ?? [];
   state.coachLog = state.coachLog ?? {};
+  state.coachLocked = state.coachLocked ?? false;
 }

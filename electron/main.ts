@@ -107,6 +107,7 @@ function createWindow(): void {
            * painted through the tab strip. Measuring the generous case and
            * shipping the tight one is backwards.
            */
+          mainWindow!.setMinimumSize(640, 480);
           mainWindow!.setContentSize(1280, 800);
           await new Promise((r) => setTimeout(r, 400));
 

@@ -65,7 +65,7 @@ export default function SkillsView() {
   return (
     <>
       {/* What has been proved, above what has been bought. */}
-      <MasteryPanel deals={state.closedDeals} />
+      <MasteryPanel state={state} />
 
       <div className="panel">
         <div className="panel-head">

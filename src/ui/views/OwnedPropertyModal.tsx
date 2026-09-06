@@ -16,6 +16,7 @@ import {
   permitIssued,
   returnProfile,
   jobProgress,
+  workFinishedSoFar,
   listForSale,
   hasAppraisalGap,
   loanPayoff,
@@ -42,6 +43,7 @@ import Modal from '../components/Modal';
 import ConfirmButton from '../components/ConfirmButton';
 import FirstTime from '../components/FirstTime';
 import RentalPanel from './RentalPanel';
+import JobBeforeAfter from '../components/JobBeforeAfter';
 import { Icon } from '../components/Art';
 
 /** Manage an owned property: renovate, then list and negotiate the exit. */
@@ -505,6 +507,7 @@ function RenovationPanel({ property }: { property: Property }) {
   const job = property.ownership!.renovation!;
   const pct = jobProgress(job);
   const changeOrders = job.lines.filter((l) => l.changeOrder);
+  const finished = new Set(workFinishedSoFar(job));
 
   return (
     <div className="panel">
@@ -529,6 +532,8 @@ function RenovationPanel({ property }: { property: Property }) {
         <div className="bar" style={{ marginBottom: 14 }}>
           <span style={{ width: `${pct * 100}%` }} />
         </div>
+
+        <JobBeforeAfter property={property} day={state.day} />
 
         <div className="kv">
           <span className="k">Contracted</span>
@@ -565,6 +570,11 @@ function RenovationPanel({ property }: { property: Property }) {
                   <tr key={i}>
                     <td>
                       {label}
+                      {finished.has(line.itemId) && (
+                        <span className="pill good" style={{ marginLeft: 8 }}>
+                          done
+                        </span>
+                      )}
                       {line.changeOrder && (
                         <span className="pill bad" style={{ marginLeft: 8 }}>
                           change order
