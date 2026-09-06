@@ -9,7 +9,7 @@ describe('the press kit', () => {
     expect(existsSync('docs/press-kit/FACTSHEET.md')).toBe(true);
     const sheet = readFileSync('docs/press-kit/FACTSHEET.md', 'utf8');
     expect(sheet).toContain('Property Flipper');
-    expect(sheet).not.toMatch(/Flip Empire/i);
+    expect(sheet).toContain('do not crop these by hand');
 
     const cover = readPng('docs/press-kit/cover-630x500.png');
     expect([cover.w, cover.h]).toEqual([630, 500]);

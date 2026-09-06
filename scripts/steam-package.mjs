@@ -54,7 +54,8 @@ for (const [os, file] of Object.entries(files)) {
   staged += 1;
 }
 
-const appId = process.env.STEAM_APP_ID || 'YOUR_APP_ID';
+const rawId = process.env.STEAM_APP_ID || 'YOUR_APP_ID';
+const appId = /^\d+$/.test(rawId) ? rawId : 'YOUR_APP_ID';
 const vdf = `"AppBuild"
 {
   "AppID" "${appId}"
