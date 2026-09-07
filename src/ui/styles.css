@@ -2089,6 +2089,13 @@ table.stress-grid td.base {
   .btn-row {
     gap: 6px;
   }
+
+  /* A renovating portfolio row is ~9px taller than a vacant one. At 375×812
+     that was the whole difference between a page that fitted and a 9px
+     scrollbar on .content during the WIP sheet. */
+  .content {
+    padding: 9px 14px;
+  }
 }
 
 /* -------------------------------------------------------------------- log */
