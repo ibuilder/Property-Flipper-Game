@@ -28,6 +28,17 @@ import { RULES, type CoachContext, type CoachRule } from './rules';
  * checkable.
  */
 
+/**
+ * Whether the shell may show "Call Scout".
+ *
+ * An assessment lock wins: a muted-and-locked run used to render the recall
+ * button because mute was checked first, which is a prompt a graded scenario
+ * is not supposed to offer.
+ */
+export function scoutRecallAllowed(locked: boolean, muted: boolean): boolean {
+  return muted && !locked;
+}
+
 export default function Coach({ context: base }: { context: CoachContext }) {
   // Whatever screen is open publishes what it is looking at; the shell only
   // knows about the game state.
@@ -53,7 +64,7 @@ export default function Coach({ context: base }: { context: CoachContext }) {
   const progress = useMemo(() => conceptProgress(state.closedDeals), [state.closedDeals.length]);
 
   const rule = useMemo(() => {
-    if (muted) return null;
+    if (muted || state.coachLocked) return null;
     const eligible = RULES.filter((r) => {
       const seen = history[r.id];
       if (seen && seen.count >= r.maxLifetime) return false;
@@ -77,7 +88,7 @@ export default function Coach({ context: base }: { context: CoachContext }) {
     return eligible.sort(
       (a, b) => b.priority - a.priority || leastProgress(a) - leastProgress(b),
     )[0];
-  }, [muted, context, history, progress, state.day]);
+  }, [muted, state.coachLocked, context, history, progress, state.day]);
 
   const setMute = (next: boolean) => {
     setMuted(next);
@@ -87,6 +98,8 @@ export default function Coach({ context: base }: { context: CoachContext }) {
       /* the setting simply will not persist */
     }
   };
+
+  if (state.coachLocked) return null;
 
   if (muted) {
     return (

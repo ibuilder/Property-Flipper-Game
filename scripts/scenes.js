@@ -195,7 +195,7 @@ const scenes = [
         click(top.querySelector('.btn.primary'));
         await settle();
       }
-      return !!byText('.modal h2', 'Work in progress');
+      return !!byText('.modal h2', 'Work in progress') && !!document.querySelector('.job-before-after');
     },
   },
   {

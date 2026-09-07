@@ -13,10 +13,12 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false,
     "noEmit": true,
     "forceConsistentCasingInFileNames": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["src", "electron", "tests", "vite.config.ts"],
+  "include": ["src", "electron", "tests", "vite.config.ts", "scripts/itch-status.mjs"],
   "exclude": ["node_modules", "dist", "dist-electron", "release", "upstream"]
 }

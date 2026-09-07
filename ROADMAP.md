@@ -4,6 +4,10 @@ Where Property Flipper stands, what the market looks like, and what to build nex
 
 Last updated: August 2026.
 
+**Next sequence** (upgrade leftovers, storefronts, test gates) is in
+[docs/plan-upgrade-platforms-test.md](docs/plan-upgrade-platforms-test.md).
+Phases 1–5 below are already in the product; that plan does not re-derive them.
+
 ---
 
 ## 1. Where it stands today

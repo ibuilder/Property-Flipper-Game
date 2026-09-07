@@ -2,9 +2,13 @@ import {
   CONCEPTS,
   DEMONSTRATIONS_FOR_MASTERY,
   conceptProgress,
+  conceptReportCsv,
   describeMastery,
-  type ClosedDeal,
+  setCoachLocked,
+  type GameState,
 } from '../../engine';
+import { useAction } from '../store';
+import { Icon } from './Art';
 
 /**
  * What you have proved, as opposed to what you have been told.
@@ -18,9 +22,19 @@ import {
  * thing you tick off a list; these are supposed to read as survey marks on a
  * drawing, and the shape does more work there than any label would.
  */
-export default function MasteryPanel({ deals }: { deals: readonly ClosedDeal[] }) {
-  const progress = conceptProgress(deals);
+export default function MasteryPanel({ state }: { state: GameState }) {
+  const progress = conceptProgress(state.closedDeals);
   const summary = describeMastery(progress);
+  const act = useAction();
+
+  const copyReport = async () => {
+    const csv = conceptReportCsv(state.closedDeals);
+    try {
+      await navigator.clipboard.writeText(csv);
+    } catch {
+      /* clipboard may be denied; the button still names the action */
+    }
+  };
 
   return (
     <div className="panel">
@@ -29,6 +43,22 @@ export default function MasteryPanel({ deals }: { deals: readonly ClosedDeal[] }
         <span className="dim" style={{ fontSize: 12 }}>
           {progress.filter((p) => p.mastered).length} of {progress.length} demonstrated
         </span>
+        <button
+          className="btn small"
+          type="button"
+          onClick={() => void copyReport()}
+          title="CSV of every concept: demonstrated count, mastered or not, the deals that counted"
+        >
+          <Icon name="file-text" /> Copy concept report
+        </button>
+        <button
+          className="btn small"
+          type="button"
+          onClick={() => act((s) => setCoachLocked(s, !state.coachLocked))}
+          title="Quiet Scout for an assessment run. Does not change any number the simulation runs."
+        >
+          {state.coachLocked ? 'Unlock Scout' : 'Lock Scout'}
+        </button>
       </div>
       <div className="panel-body">
         <p className="dim" style={{ marginTop: 0, fontSize: 13, lineHeight: 1.55 }}>
@@ -66,6 +96,12 @@ export default function MasteryPanel({ deals }: { deals: readonly ClosedDeal[] }
         {summary && (
           <p className="faint" style={{ fontSize: 12, lineHeight: 1.5, margin: '12px 0 0' }}>
             {summary}
+          </p>
+        )}
+        {state.coachLocked && (
+          <p className="faint" style={{ fontSize: 12, lineHeight: 1.5, margin: '8px 0 0' }}>
+            Assessment run: Scout will not speak until you unlock him. Mastery still records
+            from closed deals.
           </p>
         )}
       </div>

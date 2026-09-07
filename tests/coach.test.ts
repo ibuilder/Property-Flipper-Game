@@ -6,14 +6,17 @@ import {
   DEMONSTRATIONS_FOR_MASTERY,
   analyzeDeal,
   conceptProgress,
+  conceptReportCsv,
   createGame,
   describeMastery,
   estimateArv,
   hasMastered,
+  setCoachLocked,
   type ClosedDeal,
   type GameState,
 } from '../src/engine';
 import { RULES, type CoachContext } from '../src/ui/coach/rules';
+import { scoutRecallAllowed } from '../src/ui/coach/Coach';
 import { deserialize, serialize } from '../src/engine/save';
 
 const SCOPE = ['paint_interior', 'flooring_lvp', 'landscaping_curb'];
@@ -127,6 +130,15 @@ describe('the mastery ledger', () => {
     state.closedDeals.push(deal({ purchasePrice: 90_000 }), deal({ purchasePrice: 90_000 }));
     expect(hasMastered(state, 'cost.stack')).toBe(true);
   });
+
+  it('writes a concept report that an instructor can paste without loading the save', () => {
+    const csv = conceptReportCsv([]);
+    expect(csv).toMatch(/^concept,name,demonstrated,needed,mastered,deals\n/);
+    expect(csv).toContain('cost.stack');
+    expect(csv).toMatch(/,no,/);
+    const twice = conceptReportCsv([deal({ purchasePrice: 90_000 }), deal({ purchasePrice: 90_000 })]);
+    expect(twice).toMatch(/cost\.stack.*,yes,/);
+  });
 });
 
 describe('Scout', () => {
@@ -237,6 +249,32 @@ describe('the coach log', () => {
     const file = JSON.parse(JSON.stringify(serialize(state)));
     file.version = 15;
     delete file.state.coachLog;
-    expect(deserialize(file).coachLog).toEqual({});
+    const back = deserialize(file);
+    expect(back.coachLog).toEqual({});
+    expect(back.coachLocked).toBe(false);
+  });
+
+  it('locks Scout without touching cash or deals', () => {
+    const state = createGame('sandbox', 1);
+    const cash = state.cash;
+    const r = setCoachLocked(state, true);
+    expect(r.ok).toBe(true);
+    expect(state.coachLocked).toBe(true);
+    expect(state.cash).toBe(cash);
+    expect(state.closedDeals).toHaveLength(0);
+    const back = deserialize(JSON.parse(JSON.stringify(serialize(state))));
+    expect(back.coachLocked).toBe(true);
+    setCoachLocked(state, false);
+    expect(state.coachLocked).toBe(false);
   });
 });
+
+describe('Scout recall during an assessment lock', () => {
+  it('does not offer Call Scout while he is locked, even if he was already muted', () => {
+    expect(scoutRecallAllowed(true, true)).toBe(false);
+    expect(scoutRecallAllowed(true, false)).toBe(false);
+    expect(scoutRecallAllowed(false, true)).toBe(true);
+    expect(scoutRecallAllowed(false, false)).toBe(false);
+  });
+});
+

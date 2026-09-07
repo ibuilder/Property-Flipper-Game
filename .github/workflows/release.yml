@@ -29,7 +29,9 @@ jobs:
           - os: windows-latest
             artifact: 'release/*.exe'
           - os: macos-latest
-            artifact: 'release/*.dmg'
+            artifact: |
+              release/*.dmg
+              release/*.zip
           - os: ubuntu-latest
             artifact: 'release/*.AppImage'
 

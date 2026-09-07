@@ -115,7 +115,7 @@ import {
 import { analyzeDeal } from './analyzer';
 import { buildScenarioProperty, type ScenarioDef } from './scenarios';
 
-export const SAVE_VERSION = 16;
+export const SAVE_VERSION = 17;
 
 /** How often the charts' time series is sampled, in days. */
 export const HISTORY_INTERVAL_DAYS = 5;
@@ -246,6 +246,7 @@ export function createGame(
     closedDeals: [],
     watched: [],
     coachLog: {},
+    coachLocked: false,
     history: [],
     scenarioId: null,
     scenario: null,
@@ -679,6 +680,21 @@ export function toggleWatch(state: GameState, propertyId: PropertyId): ActionRes
   }
   state.watched.push(propertyId);
   return { ok: true, message: 'Watching. You will be told if it goes.' };
+}
+
+/**
+ * Silence Scout for an assessment run.
+ *
+ * Writes nothing else: no money, no deals, no mastery. An instructor can lock
+ * the coach so a graded scenario is the player's work rather than a prompted
+ * one, and unlock it again without touching the rest of the save.
+ */
+export function setCoachLocked(state: GameState, locked: boolean): ActionResult {
+  state.coachLocked = locked;
+  return {
+    ok: true,
+    message: locked ? 'Scout is quiet for this run.' : 'Scout can speak again.',
+  };
 }
 
 /**

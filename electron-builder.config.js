@@ -71,7 +71,9 @@ module.exports = {
   // macOS and Linux take the PNG: electron-builder converts it to .icns and to
   // an icon set, and that conversion fails outright on the .ico.
   mac: {
-    target: ['dmg'],
+    // DMG is what people download from GitHub/itch. Zip is what Steam can
+    // actually launch (a .app in a depot, not a disk image to mount).
+    target: ['dmg', 'zip'],
     category: 'public.app-category.simulation-games',
     icon: 'build/icon.png',
     // Notarisation requires the hardened runtime, and the hardened runtime

@@ -230,6 +230,10 @@ describe('the committed store assets', () => {
     ['docs/marketing/cover-630x500.png', 630, 500],
     ['docs/marketing/banner-1920x620.png', 1920, 620],
     ['docs/marketing/social-1200x630.png', 1200, 630],
+    ['docs/marketing/steam-header-460x215.png', 460, 215],
+    ['docs/marketing/steam-capsule-616x353.png', 616, 353],
+    ['docs/marketing/steam-small-231x87.png', 231, 87],
+    ['docs/marketing/steam-library-600x900.png', 600, 900],
   ] as const;
 
   it.each(expected)('%s is present at %ix%i', (file, w, h) => {
@@ -260,6 +264,11 @@ describe('the committed store assets', () => {
      * file at the site root. This checks the two ends agree.
      */
     const html = readFileSync('index.html', 'utf8');
+    expect(html).toContain('manifest.webmanifest');
+    expect(existsSync('public/manifest.webmanifest')).toBe(true);
+    expect(existsSync('public/icon.png'), 'PWA icon missing — copy build/icon.png to public/').toBe(
+      true,
+    );
     const image = html.match(/property="og:image"\s+content="([^"]+)"/)?.[1];
     expect(image, 'index.html declares no og:image').toBeTruthy();
 

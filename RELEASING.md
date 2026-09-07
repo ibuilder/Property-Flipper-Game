@@ -163,6 +163,15 @@ choose `web-only`.
 
 ---
 
+## Steam
+
+Same binaries as the GitHub release. See [docs/storefronts.md](docs/storefronts.md)
+and [docs/steam.md](docs/steam.md). Stage with `npm run steam:package` (unpacked
+or portable first, not the installer) and upload with SteamCMD. The app ID and
+partner account cannot be created from this repository.
+
+---
+
 ## What is not automated
 
 - **Playtesting with people rather than the bot.** The balance harness proves a
