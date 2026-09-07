@@ -545,8 +545,17 @@ button {
 .content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px;
   min-width: 0;
+}
+
+.content > :last-child {
+  /* Extra last-child margin was a 9px y-sliver at 375×812 (renovation, with
+     the owned sheet open): the bar cost more room than the scroll it offered.
+     Panel marks hang 6px; they sit in this element's padding, not in a
+     made-up margin. */
+  margin-bottom: 0;
 }
 
 .sidebar {
@@ -1067,6 +1076,7 @@ label.field .label {
 
 .job-before-after .house-hero {
   max-height: 160px;
+  overflow: hidden;
 }
 
 /* The facade is generated from simulation state, so a condition change
@@ -2027,6 +2037,10 @@ table.stress-grid td.base {
     border-left: none;
     border-top: 1px solid var(--border);
     max-height: 34vh;
+    /* A cap without a scroll is how Scout's card painted through the body at
+       itch's 960×540 embed: 34vh of 540px is 183px, and the portrait does not
+       fit. */
+    overflow-y: auto;
   }
 
   .content {
@@ -2081,7 +2095,9 @@ table.stress-grid td.base {
 
 .log {
   flex: 1;
+  min-height: 72px;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 10px 14px;
   font-size: 12.5px;
   display: flex;

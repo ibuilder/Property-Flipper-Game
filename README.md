@@ -108,8 +108,10 @@ this README that disagrees with the game is a failing build rather than a stale 
 npm run audit
 ```
 
-Launches the real renderer in Electron at 1280×800 — the size the store embed uses, not the wider
-one the shell was designed at — walks ten screens, and fails the build on any of six things: text
+Launches the real renderer in Electron at 1280×800 (itch embed), 960×540 (the
+other common embed), and 375×812 (a phone). Phone is a stacked column; it is not
+allowed to clip primary actions. Override with `PROPERTY_FLIPPER_AUDIT_SIZES`.
+Walks ten screens, and fails the build on any of six things: text
 under AA contrast, a control that misses the WCAG 2.2 target-size minimum, a scroll container that
 scrolls by less than its own scrollbar, two controls drawn on top of each other, content spilling
 out of a height it was given, or content sitting above the top of a scroll container where nothing

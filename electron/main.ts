@@ -106,9 +106,19 @@ function createWindow(): void {
            * the top bar's controls wrapped there and the wrapped line was
            * painted through the tab strip. Measuring the generous case and
            * shipping the tight one is backwards.
+           *
+           * The outer harness also runs 960×540 (itch's other common embed) and
+           * 375×812 (a phone). Those only work if the window is allowed to be
+           * that small: minWidth 1100 would silently clamp a "phone" audit
+           * back to a tablet.
            */
-          mainWindow!.setMinimumSize(640, 480);
-          mainWindow!.setContentSize(1280, 800);
+          const sizeMatch = /^(\d+)x(\d+)$/.exec(
+            (process.env.PROPERTY_FLIPPER_AUDIT_SIZE || '1280x800').trim(),
+          );
+          const width = sizeMatch ? Number(sizeMatch[1]) : 1280;
+          const height = sizeMatch ? Number(sizeMatch[2]) : 800;
+          mainWindow!.setMinimumSize(Math.min(width, 320), Math.min(height, 400));
+          mainWindow!.setContentSize(width, height);
           await new Promise((r) => setTimeout(r, 400));
 
           // Navigation first: both harnesses share one copy of how to reach

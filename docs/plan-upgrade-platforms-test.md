@@ -195,7 +195,7 @@ Three layers. Automate what a bot can see; pay people for the rest.
 | `npm run typecheck` | Types | CI every push |
 | `npm test` | Engine correctness, save migrations, art ids vs `content.ts`, theme contrast tokens, board/backdrop invariants, GIF/PNG codecs, balance harness | CI every push; balance table in the job summary |
 | `npm run build && npm run smoke` | Packaged app starts; renderer mounts | CI on Ubuntu, Windows, macOS every push |
-| `npm run audit` | Real renderer at 1280×800: AA contrast, 24px targets, no overlap, no spill, no unreachable scroll | Linux CI |
+| `npm run audit` | Real renderer at **1280×800**, **960×540**, and **375×812**: AA contrast, 24px targets, no overlap, no spill, no unreachable scroll. Override with `PROPERTY_FLIPPER_AUDIT_SIZES`. | Linux CI |
 | `npm run bundle:web` | Single-file HTML builds | Linux CI + itch job |
 | `npm run shots` / `npm run clips` | Store images and GIFs match the running game | Manual / when UI moves |
 
@@ -209,7 +209,7 @@ already smoke-tested the **same** binaries you upload.
 | itch channels can silently hold mixed versions | **Done.** `npm run itch:status -- --expect vX.Y.Z --require` after butler push; the itch workflow retries and fails the job if a channel is still on another tag. |
 | Steam install ≠ GitHub artifact | Package from `gh release download` of the tag. `steam-package` prefers unpacked/portable/zip/AppImage and warns on Setup.exe / DMG. One install-from-Steam smoke per OS remains owner-side. |
 | Unsigned vs signed confusion | Release summary already prints the signed/unsigned sentence; keep it. After certs: Windows `Get-AuthenticodeSignature` Status `Valid` + timestamp; macOS `spctl --assess` (already in `release.yml`). |
-| Layout at store sizes | Extend `scripts/scenes.js` / audit to **960×540** (itch recommended embed), **1280×800** (current), and **375×812** (phone). Phone is allowed to single-column; it is not allowed to clip primary actions. |
+| Layout at store sizes | **Done.** `npm run audit` launches Electron once per size (`1280x800`, `960x540`, `375x812`). Phone is a stacked column; the sidebar scrolls at 34vh so Scout cannot paint through the body. Primary actions stay in the modal/tab flow rather than clipped off-canvas. |
 | Steam Deck | Manual: tutorial deal + save round-trip. Record pass/fail; do not claim Deck support without a pass. |
 
 ### 4.3 Product-change tests (Stream C)

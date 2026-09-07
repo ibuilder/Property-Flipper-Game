@@ -7,6 +7,10 @@
  * itself lives in scripts/contrast-audit.js and is executed inside the
  * renderer; this process only launches, parses and formats.
  *
+ * Default sizes are the ones a storefront actually uses: 1280×800 (itch embed
+ * and current shots), 960×540 (itch's other common embed), and 375×812 (a
+ * phone). Override with PROPERTY_FLIPPER_AUDIT_SIZES=1280x800.
+ *
  * Exits 2 when anything is below its WCAG AA bar, so it can gate CI. Exits 1
  * on a harness failure, which is a different problem and should read
  * differently.
@@ -36,51 +40,89 @@ const sandboxArgs = process.platform === 'linux' ? ['--no-sandbox', '--disable-g
 const command = useXvfb ? 'xvfb-run' : electron;
 const args = useXvfb ? ['-a', electron, '.', ...sandboxArgs] : ['.', ...sandboxArgs];
 
-const child = spawn(command, args, {
-  cwd: root,
-  env: {
-    ...process.env,
-    PROPERTY_FLIPPER_SMOKE: '1',
-    PROPERTY_FLIPPER_AUDIT: '1',
-    ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
-  },
-});
+const DEFAULT_SIZES = '1280x800,960x540,375x812';
 
-let out = '';
-child.stdout.on('data', (b) => (out += b));
-child.stderr.on('data', (b) => (out += b));
+function sizesFromEnv() {
+  const raw = process.env.PROPERTY_FLIPPER_AUDIT_SIZES || DEFAULT_SIZES;
+  const sizes = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => /^\d+x\d+$/.test(s));
+  return sizes.length > 0 ? sizes : ['1280x800'];
+}
 
-const kill = setTimeout(() => {
-  console.error('audit: timed out after 90s — killing');
-  child.kill('SIGKILL');
-  process.exit(1);
-}, 90_000);
+function runOnce(size) {
+  return new Promise((resolve, reject) => {
+    let out = '';
+    const child = spawn(command, args, {
+      cwd: root,
+      env: {
+        ...process.env,
+        PROPERTY_FLIPPER_SMOKE: '1',
+        PROPERTY_FLIPPER_AUDIT: '1',
+        PROPERTY_FLIPPER_AUDIT_SIZE: size,
+        ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
+      },
+    });
 
-child.on('exit', (code) => {
-  clearTimeout(kill);
+    child.stdout.on('data', (b) => (out += b));
+    child.stderr.on('data', (b) => (out += b));
 
-  const line = out.split('\n').find((l) => l.startsWith('audit: '));
-  if (!line) {
-    console.error(out.trim());
-    console.error('audit: the renderer never reported. See the output above.');
-    process.exit(1);
-  }
+    const kill = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error(`audit ${size}: timed out after 90s`));
+    }, 90_000);
 
-  let report;
-  try {
-    report = JSON.parse(line.slice('audit: '.length));
-  } catch {
-    console.error(`audit: could not parse the report:\n${line}`);
-    process.exit(1);
-  }
+    child.on('error', (err) => {
+      clearTimeout(kill);
+      reject(err);
+    });
 
+    child.on('exit', (code) => {
+      clearTimeout(kill);
+      const line = out.split('\n').find((l) => l.startsWith('audit: '));
+      if (!line) {
+        reject(new Error(`audit ${size}: the renderer never reported.\n${out.trim()}`));
+        return;
+      }
+      let report;
+      try {
+        report = JSON.parse(line.slice('audit: '.length));
+      } catch {
+        reject(new Error(`audit ${size}: could not parse the report:\n${line}`));
+        return;
+      }
+      resolve({ report, code: code ?? 1, size });
+    });
+  });
+}
+
+function reportFailed(report) {
   const targets = report.targets ?? [];
   const slivers = report.slivers ?? [];
   const collisions = report.collisions ?? [];
   const spills = report.spills ?? [];
   const stranded = report.unreachable ?? [];
+  return Boolean(
+    (report.missed && report.missed.length) ||
+      report.unique.length ||
+      targets.length ||
+      slivers.length ||
+      collisions.length ||
+      spills.length ||
+      stranded.length,
+  );
+}
+
+function printReport(report, size) {
+  const targets = report.targets ?? [];
+  const slivers = report.slivers ?? [];
+  const collisions = report.collisions ?? [];
+  const spills = report.spills ?? [];
+  const stranded = report.unreachable ?? [];
+  const label = size ? `${size} ` : '';
   console.log(
-    `audit: ${report.scenes.length} scenes (${report.scenes.join(', ')}), ` +
+    `audit: ${label}${report.scenes.length} scenes (${report.scenes.join(', ')}), ` +
       `${report.darkFailures} dark and ${report.lightFailures} light below AA ` +
       `(${report.unique.length} distinct), ` +
       `${report.targetFailures ?? 0} targets under 24px (${targets.length} distinct), ` +
@@ -90,51 +132,23 @@ child.on('exit', (code) => {
       `${stranded.length} ${stranded.length === 1 ? 'box' : 'boxes'} nobody can scroll to the top of`,
   );
 
-  // A scene the audit could not reach is a scene it is not defending. Silently
-  // auditing a smaller sample is how it passed while a real bug shipped.
   if (report.missed.length > 0) {
-    console.error(`audit: FAILED to reach ${report.missed.join(', ')} — coverage is incomplete.`);
-    process.exit(2);
+    console.error(
+      `audit: FAILED to reach ${report.missed.join(', ')} at ${size} — coverage is incomplete.`,
+    );
   }
 
-  if (
-    report.unique.length === 0 &&
-    targets.length === 0 &&
-    slivers.length === 0 &&
-    collisions.length === 0 &&
-    spills.length === 0 &&
-    stranded.length === 0
-  ) {
+  if (!reportFailed(report)) {
     console.log(
-      `audit: every piece of text meets AA in both themes, every control ` +
+      `audit: ${size} every piece of text meets AA in both themes, every control ` +
         `meets WCAG 2.5.8, no scrollbar is doing less work than the room it ` +
         `takes, no two controls share a pixel, nothing is drawn outside a ` +
         `height it was given, and every scroll container can reach its own ` +
         `first line, across ${report.scenes.length} scenes.`,
     );
-    process.exit(0);
+    return;
   }
 
-  /*
-   * A scroll container that scrolls by less than its own scrollbar is wide.
-   *
-   * Almost always a few pixels of decoration escaping a box that scrolls the
-   * other axis: CSS will not let one axis be `visible` across from `auto`, so
-   * the stray pixels get a full-length bar. Reported apart from the two access
-   * checks because it is a layout defect, not an accessibility one.
-   */
-  /*
-   * Two clickable things on the same pixels. Whichever is on top wins, and the
-   * other is a control the player can see and cannot press.
-   */
-  /*
-   * A declared height around content that can wrap. The excess is painted over
-   * whatever comes next.
-   */
-  /*
-   * Content at a negative scroll offset. The scrollbar is already at the top
-   * and there is more above it.
-   */
   if (stranded.length > 0) {
     console.log('');
     for (const v of stranded) {
@@ -177,13 +191,6 @@ child.on('exit', (code) => {
     }
   }
 
-  /*
-   * WCAG 2.2 SC 2.5.8, Target Size (Minimum), AA.
-   *
-   * Reported separately from contrast because it is a different failure with a
-   * different fix: a control too small to hit reliably, with no 24px of clear
-   * space around it to excuse the size.
-   */
   if (targets.length > 0) {
     console.log('');
     for (const t of targets) {
@@ -196,31 +203,34 @@ child.on('exit', (code) => {
     }
   }
 
-  console.log('');
-  for (const f of report.unique) {
-    const times = f.count > 1 ? ` ×${f.count}` : '';
-    console.log(
-      `  ${String(f.ratio).padStart(5)}:1  (needs ${f.bar})  ${f.theme.padEnd(5)} ` +
-        `${String(f.scene).padEnd(12)} ${f.size}px  ${f.selector}${times}\n         "${f.text}"`,
-    );
+  if (report.unique.length > 0) {
+    console.log('');
+    for (const f of report.unique) {
+      const times = f.count > 1 ? ` ×${f.count}` : '';
+      console.log(
+        `  ${String(f.ratio).padStart(5)}:1  (needs ${f.bar})  ${f.theme.padEnd(5)} ` +
+          `${String(f.scene).padEnd(12)} ${f.size}px  ${f.selector}${times}\n         "${f.text}"`,
+      );
+    }
   }
   console.log('');
-  process.exit(
-    report.unique.length ||
-    targets.length ||
-    slivers.length ||
-    collisions.length ||
-    spills.length ||
-    stranded.length
-      ? 2
-      : code === 0
-        ? 0
-        : 2,
-  );
-});
+}
 
-child.on('error', (err) => {
-  clearTimeout(kill);
-  console.error(`audit: could not launch Electron: ${err.message}`);
-  process.exit(1);
-});
+const sizes = sizesFromEnv();
+
+let failed = false;
+for (const size of sizes) {
+  let result;
+  try {
+    result = await runOnce(size);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
+  printReport(result.report, size);
+  if (reportFailed(result.report) || (result.code !== 0 && result.code !== 2)) failed = true;
+}
+
+if (failed) process.exit(2);
+console.log(`audit: ${sizes.join(', ')} all clear.`);
+process.exit(0);
