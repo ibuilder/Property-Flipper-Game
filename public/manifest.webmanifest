@@ -1,0 +1,17 @@
+{
+  "name": "Property Flipper",
+  "short_name": "Flipper",
+  "description": "A real estate flipping simulation that teaches actual deal underwriting.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f1319",
+  "theme_color": "#131e29",
+  "icons": [
+    {
+      "src": "./icon.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -13,7 +13,7 @@ with rather than discovered.
 | --- | --- | --- |
 | Light vs dark ground | **Dark default, light a real option** | Requested. It also is not a compromise: a blueprint is a cyanotype, and the handoff's own dark treatment is `--color-accent-900` / `--color-bg` / `--color-accent-400` from its own sheet. The dark theme is the same nine-step ramp read from the other end. |
 | The red rule | **Adopted** | "Red appears in exactly one place: a negative projected profit." The sharpest idea in the handoff. Two tests hold the line. |
-| Barlow / Barlow Condensed | **Not bundled** | The build is one self-contained file with no external fonts. Bundling costs ~40–80KB base64 and is a size decision that should be made deliberately. Falls back through platform condensed faces today, which is visibly not the same look. **Open.** |
+| Barlow / Barlow Condensed | **Bundled.** Five latin-subset woff2 faces as `data:` URLs in `src/ui/fonts.css` (~40KB). The live audit fails the build if a face does not load. Licence: `docs/design/FONT-LICENSE.txt`. |
 | Balance | **Presentation must not move it; new systems re-baseline deliberately** | The handoff says balance must not move *and* proposes permits and rivals, which necessarily move it. Those cannot both hold. Every commit so far is byte-identical on the harness. |
 
 ## Phase 1 — legibility · **done**

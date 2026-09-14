@@ -26,17 +26,10 @@ not disappear before the houses do.
 Nothing needed from your side. If a future set is drawn to a stated scale, say
 what it is and it becomes the ceiling rather than the guess.
 
-## 2. Two icons — `kitchen` and `bath`
+## 2. Two icons — `kitchen` and `bath` · **done**
 
-The renovation scope is grouped under eight category headings — `cosmetic`,
-`kitchen`, `bath`, `systems`, `exterior`, `structural`, `addition`, `staging` —
-over the most-scanned list in the game. Six of the eight have a good match in
-the 22 delivered icons. **`kitchen` and `bath` have none**, and marking six of
-eight reads as broken rather than partial, so none of them are marked.
-
-Two icons on the same 24px grid at 1.5 stroke: a `kitchen` (range or cabinet
-run) and a `bath` (tub or basin). Smallest item here by effort, and it is the
-difference between that checklist being marked and not.
+Shipped as `art/icons/icon-kitchen.svg` and `icon-bath.svg` on the same 24px
+grid. Scope category headings now mark all eight groups.
 
 ---
 

@@ -43,13 +43,14 @@ export default function ScenarioPicker({ onClose }: { onClose: () => void }) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<ScenarioDef | null>(null);
+  const [assessment, setAssessment] = useState(false);
   const done = loadDone();
 
   const openShared = () => {
     setError('');
     try {
       const def = decodeScenario(code);
-      startScenario(def);
+      startScenario(def, undefined, assessment);
       onClose();
     } catch (e) {
       setError(e instanceof ScenarioError ? e.message : 'That code could not be read.');
@@ -62,7 +63,7 @@ export default function ScenarioPicker({ onClose }: { onClose: () => void }) {
         initial={editing}
         onClose={() => setEditing(null)}
         onPlay={(def) => {
-          startScenario(def);
+          startScenario(def, undefined, assessment);
           onClose();
         }}
       />
@@ -76,6 +77,19 @@ export default function ScenarioPicker({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       width={820}
     >
+      <label className="scope-item" style={{ marginBottom: 12 }}>
+        <input
+          type="checkbox"
+          checked={assessment}
+          onChange={(e) => setAssessment(e.target.checked)}
+        />
+        <span>
+          <span className="name">Assessment run</span>
+          <span className="blurb" style={{ display: 'block' }}>
+            Scout stays quiet. Mastery still records. For a graded scenario, not a lesson.
+          </span>
+        </span>
+      </label>
       <div className="panel">
         <div className="panel-head">
           <h2>Lessons</h2>
@@ -90,7 +104,7 @@ export default function ScenarioPicker({ onClose }: { onClose: () => void }) {
               key={s.id}
               className="level-card"
               onClick={() => {
-                startScenario(s);
+                startScenario(s, undefined, assessment);
                 onClose();
               }}
             >

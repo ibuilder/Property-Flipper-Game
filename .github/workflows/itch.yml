@@ -201,6 +201,30 @@ jobs:
             exit 1
           fi
 
+      - name: Confirm every pushed channel is this tag
+        if: steps.check.outputs.ready == 'true'
+        env:
+          BUTLER_API_KEY: ${{ secrets.ITCH_API_KEY }}
+          ITCH_USER: ${{ vars.ITCH_USER }}
+          ITCH_GAME: ${{ vars.ITCH_GAME }}
+          BUTLER: ./butler
+        run: |
+          # butler status can lag a few seconds behind a successful push.
+          CHANNELS=html5,windows,windows-portable,mac,linux
+          if [ "${{ github.event.inputs.channels }}" = "web-only" ]; then
+            CHANNELS=html5
+          elif [ "${{ github.event.inputs.channels }}" = "desktop-only" ]; then
+            CHANNELS=windows,windows-portable,mac,linux
+          fi
+          for attempt in 1 2 3 4 5 6; do
+            if node scripts/itch-status.mjs --expect "${{ steps.version.outputs.tag }}" --require --channels "$CHANNELS"; then
+              exit 0
+            fi
+            sleep $((attempt * 8))
+          done
+          echo "::error::itch channels did not all report ${{ steps.version.outputs.tag }}."
+          exit 1
+
       - name: Summary
         if: steps.check.outputs.ready == 'true'
         run: |

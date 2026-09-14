@@ -30,7 +30,8 @@ what the post-mortem decided was the cause:
 
 This is a ground-up rewrite of [ibuilder/Property-Flipper-Game](https://github.com/ibuilder/Property-Flipper-Game),
 which was a Python/Pygame project. See [REWRITE.md](REWRITE.md) for what was wrong with the
-original and why the design changed.
+original and why the design changed. The remaining upgrade, storefront, and
+test sequence is in [docs/plan-upgrade-platforms-test.md](docs/plan-upgrade-platforms-test.md).
 
 ---
 
@@ -91,7 +92,7 @@ works either way. Copying into a restricted directory is fine; only the rename i
 npm test
 ```
 
-547 tests. `tests/engine.test.ts` covers correctness; `rental`, `auction`, `financing`,
+556 tests. `tests/engine.test.ts` covers correctness; `rental`, `auction`, `financing`,
 `progression` and `arcs` each cover their own subsystem; `tests/store.test.ts` pins the multi-day
 skip behaviour; and `tests/balance.test.ts` runs a rules-following bot through complete campaigns
 across 100 seeds to check the economics are both winnable and punishing. Balance results are written
@@ -107,8 +108,10 @@ this README that disagrees with the game is a failing build rather than a stale 
 npm run audit
 ```
 
-Launches the real renderer in Electron at 1280×800 — the size the store embed uses, not the wider
-one the shell was designed at — walks ten screens, and fails the build on any of six things: text
+Launches the real renderer in Electron at 1280×800 (itch embed), 960×540 (the
+other common embed), and 375×812 (a phone). Phone is a stacked column; it is not
+allowed to clip primary actions. Override with `PROPERTY_FLIPPER_AUDIT_SIZES`.
+Walks ten screens, and fails the build on any of six things: text
 under AA contrast, a control that misses the WCAG 2.2 target-size minimum, a scroll container that
 scrolls by less than its own scrollbar, two controls drawn on top of each other, content spilling
 out of a height it was given, or content sitting above the top of a scroll container where nothing
@@ -149,10 +152,10 @@ npm run marketing
 ```
 
 Cuts the commissioned key art in `docs/marketing/source/` to the aspect ratio each storefront wants
-— cover, banner, link preview. The PNG codec and resampler are a hundred lines in
-`scripts/image.mjs` rather than a native dependency, and `tests/marketing-assets.test.ts`
-round-trips them, because hand-written image code fails by producing a file that opens fine and is
-subtly wrong.
+— cover, banner, link preview, and Steam capsules. `npm run presskit` copies those plus the
+screenshots into `docs/press-kit/`. `npm run steam:package` stages the launchable build (unpacked or
+portable, not the installer) for SteamCMD; `npm run itch:status` checks butler channels share one
+tag. See [docs/storefronts.md](docs/storefronts.md).
 
 To check the packaged desktop app actually starts:
 

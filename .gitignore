@@ -5,6 +5,8 @@ release/
 dist-web/
 # Staging directory for the itch.io browser channel; built by CI.
 itch-web/
+dist-steam/
+docs/press-kit/
 
 # Local reference clone of the original Python project
 upstream/

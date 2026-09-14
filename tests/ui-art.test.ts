@@ -100,7 +100,7 @@ describe('the interface art', () => {
   });
 
   it('carries icons as usable path data on the stated grid', () => {
-    expect(Object.keys(ICONS).length).toBe(22);
+    expect(Object.keys(ICONS).length).toBe(24);
     for (const [name, paths] of Object.entries(ICONS)) {
       expect(paths.length, name).toBeGreaterThan(0);
       for (const d of paths) {

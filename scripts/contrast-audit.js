@@ -481,6 +481,41 @@
   void openTab;
   void closeModal;
 
+  const REQUIRED_FACES = [
+    { family: 'Barlow', weight: '400' },
+    { family: 'Barlow', weight: '500' },
+    { family: 'Barlow', weight: '600' },
+    { family: 'Barlow Condensed', weight: '500' },
+    { family: 'Barlow Condensed', weight: '600' },
+  ];
+
+  /*
+   * The CSP used to omit font-src, so every @font-face registered and then
+   * failed with status "error". document.fonts.ready still resolved. Checking
+   * status — not merely that the family name is on the body — is the test
+   * that would have caught that.
+   */
+  await document.fonts.ready;
+  const fonts = [];
+  for (const want of REQUIRED_FACES) {
+    const spec = `${want.weight} 16px "${want.family}"`;
+    try {
+      await document.fonts.load(spec);
+    } catch {
+      /* load() rejects when the face is missing; recorded below */
+    }
+    const face = [...document.fonts].find(
+      (f) => f.family.replace(/['"]/g, '') === want.family && String(f.weight) === want.weight,
+    );
+    if (!face || face.status !== 'loaded') {
+      fonts.push({
+        family: want.family,
+        weight: want.weight,
+        status: face ? face.status : 'missing',
+      });
+    }
+  }
+
   const all = [];
   const reached = [];
   const missed = [];
@@ -554,5 +589,6 @@
     collisions: collided,
     spills: spilled,
     unreachable: stranded,
+    fonts,
   };
 })();

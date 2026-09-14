@@ -9,6 +9,12 @@ place and not the others is how a set of assets stops matching itself.
 | `cover-630x500.png` | 630 × 500 | itch.io **Edit game → Cover image**. Shown in browse, search and every listing. |
 | `banner-1920x620.png` | 1920 × 620 | itch.io **Edit theme → Banner**. Sits above the description. |
 | `social-1200x630.png` | 1200 × 630 | Open Graph / link preview. Anywhere the URL gets pasted. |
+| `steam-header-920x430.png` | 920 × 430 | Steam header capsule (and library header). Steam generates the 460 × 215 display copy. |
+| `steam-capsule-1232x706.png` | 1232 × 706 | Steam main capsule. Steam generates the 616 × 353 display copy. |
+| `steam-small-462x174.png` | 462 × 174 | Steam small capsule. Steam generates the 231 × 87 display copy. |
+| `steam-vertical-748x896.png` | 748 × 896 | Steam vertical / store portrait capsule. |
+| `steam-library-600x900.png` | 600 × 900 | Steam library capsule. |
+| `steam-library-hero-3840x1240.png` | 3840 × 1240 | Steam library hero. Cropped to drop the title; Steam forbids text here. |
 
 Screenshots are **not** here. They come from `npm run shots`, which photographs
 the running game at 1280 × 800 into `docs/shots/`. See

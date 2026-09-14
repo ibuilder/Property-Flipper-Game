@@ -33,7 +33,7 @@ export default function PropertyFacts({ property }: { property: Property }) {
             <h2>The property</h2>
           <span className={`pill ${cond.tone}`}>{cond.text}</span>
         </div>
-        <House property={property} className="house-hero" showDefects />
+        <House property={property} className="house-hero" showDefects day={state.day} />
         <div className="panel-body">
           <div className="kv">
             <span className="k">Area</span>
