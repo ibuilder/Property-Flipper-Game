@@ -498,6 +498,12 @@
   await document.fonts.ready;
   const fonts = [];
   for (const want of REQUIRED_FACES) {
+    const spec = `${want.weight} 16px "${want.family}"`;
+    try {
+      await document.fonts.load(spec);
+    } catch {
+      /* load() rejects when the face is missing; recorded below */
+    }
     const face = [...document.fonts].find(
       (f) => f.family.replace(/['"]/g, '') === want.family && String(f.weight) === want.weight,
     );
