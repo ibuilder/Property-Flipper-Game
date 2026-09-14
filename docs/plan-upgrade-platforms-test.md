@@ -119,9 +119,9 @@ Code changes are thin: a Steam depot layout and a store checklist, not a
 Steamworks feature set. The game is offline and has no accounts.
 
 1. Register the Steamworks app. Capsules: reuse `npm run marketing` outputs
-   plus `docs/shots/` (already 1280×800, RNG-pinned). Add a 616×353 header and
-   a 374×448 library capsule as extra cuts in `scripts/marketing-assets.mjs`
-   if Steam’s current sizes are not already covered.
+   plus `docs/shots/` (already 1280×800, RNG-pinned). Steamworks upload sizes
+   are 920×430 / 1232×706 / 462×174 / 748×896 / 600×900 / 3840×1240 — not the
+   half-size display copies.
 2. Upload the same three OS artifacts the release workflow already builds.
    Prefer unpacked / Portable / mac zip / AppImage in the Steam depot — not the
    NSIS installer or a DMG. `npm run steam:package` does that ordering.
@@ -151,7 +151,7 @@ Not a new simulation. Presentation and teaching holes that are already named.
 | **Instructor / class board** | **Done, local.** Concept CSV copy, Scout lock on the save (v17), assessment checkbox when starting a lesson. No hosted section board — nothing is hosted. |
 | **Press kit generator** | **Done.** `npm run presskit`. Steam capsules from `npm run marketing`. `npm run steam:package` stages release artifacts. |
 | **PWA / Add to Home Screen** | **Done.** `public/manifest.webmanifest` — the honest mobile path, not a native store client. |
-| **Barlow / Barlow Condensed** | Still open. Bundling costs tens of KB in the single-file build. |
+| **Barlow / Barlow Condensed** | **Done.** Five subset woff2 faces in `src/ui/fonts.css`, imported from `src/main.tsx`. CSP allows `font-src 'self' data:`. The live audit fails if a face does not load. |
 
 **Deliberately later, because they move every campaign:**
 
@@ -248,7 +248,8 @@ PR.
 3. **Renovation before/after** — **done**.
 4. **Instructor tools** (CSV + coach lock) — **done**.
 5. **Steam packaging** (`npm run steam:package`, `docs/steam.md`) — **done**. Upload still needs a partner account.
-6. **Balance PRs** only after Stream D sessions, and only with a harness
+6. **Steamworks current capsule sizes** — **done in this branch** (upload sizes, not the old display copies).
+7. **Balance PRs** only after Stream D sessions, and only with a harness
    re-baseline.
 
 Owner-only, not PRs: itch secrets, signing certs, Steamworks app, trailer

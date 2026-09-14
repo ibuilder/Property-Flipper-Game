@@ -13,7 +13,10 @@ sits in [storefronts.md](storefronts.md).
    `STEAM_DEPOT_WINDOWS` / `STEAM_DEPOT_MACOS` / `STEAM_DEPOT_LINUX` when
    Steamworks assigned different numbers.
 2. Capsules come from `npm run marketing` — `docs/marketing/steam-*.png`.
-   Copy, do not recrop.
+   Copy, do not recrop. These are the **upload** sizes Steamworks accepts
+   (920×430 header, 1232×706 main, 462×174 small, 748×896 vertical, 600×900
+   library, 3840×1240 library hero). The older 460×215 / 616×353 / 231×87
+   files are display sizes; Steam will reject them as uploads.
 3. Store copy can start from [itch-page.md](itch-page.md). Do not upload the
    Flip Empire mockups ([marketing/README.md](marketing/README.md)).
 4. Trailer: two to three minutes. Hook: the deal analyzer with the two

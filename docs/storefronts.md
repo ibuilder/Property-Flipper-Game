@@ -29,6 +29,8 @@ portable on 2.2) fail it.
 ## Steam
 
 Capsules: `docs/marketing/steam-*.png` from `npm run marketing`. Copy, do not recrop.
+These are Steamworks **upload** sizes (header 920×430, main 1232×706, small 462×174,
+vertical 748×896, library 600×900, hero 3840×1240). Do not upload the old 460×215 display copies.
 Store text can start from [itch-page.md](itch-page.md). Do not use the Flip Empire mockups.
 
 ```bash

@@ -67,29 +67,44 @@ const JOBS = [
      */
     also: path.join(root, 'public', 'social-card.png'),
   },
+  /*
+   * Steamworks upload sizes, not the half-size they used to display at.
+   *
+   * August 2024 they stopped accepting 460×215 / 616×353 / 231×87. The files
+   * we used to emit are those display sizes; uploading them now is a rejected
+   * store page. Steam generates the smaller copies from these.
+   */
   {
-    file: 'steam-header-460x215.png',
+    file: 'steam-header-920x430.png',
     from: 'key-art-before-after.png',
-    w: 460,
-    h: 215,
+    w: 920,
+    h: 430,
     anchorY: 0.08,
-    note: 'Steam header capsule.',
+    note: 'Steam header capsule (also library header).',
   },
   {
-    file: 'steam-capsule-616x353.png',
+    file: 'steam-capsule-1232x706.png',
     from: 'key-art-before-after.png',
-    w: 616,
-    h: 353,
+    w: 1232,
+    h: 706,
     anchorY: 0.1,
     note: 'Steam main capsule (store browse).',
   },
   {
-    file: 'steam-small-231x87.png',
+    file: 'steam-small-462x174.png',
     from: 'key-art-cutaway.png',
-    w: 231,
-    h: 87,
+    w: 462,
+    h: 174,
     anchorY: 0.35,
     note: 'Steam small capsule (search / lists).',
+  },
+  {
+    file: 'steam-vertical-748x896.png',
+    from: 'key-art-cutaway.png',
+    w: 748,
+    h: 896,
+    anchorY: 0.42,
+    note: 'Steam vertical / store portrait capsule.',
   },
   {
     file: 'steam-library-600x900.png',
@@ -98,6 +113,19 @@ const JOBS = [
     h: 900,
     anchorY: 0.42,
     note: 'Steam library capsule (portrait).',
+  },
+  {
+    file: 'steam-library-hero-3840x1240.png',
+    from: 'key-art-cutaway.png',
+    w: 3840,
+    h: 1240,
+    /*
+     * Steam forbids text on the library hero. The cutaway puts the title in
+     * the upper third; a mid-frame crop keeps the house and drops the type.
+     * The master is 1536×1024, so this upscales — Steam still wants 3840.
+     */
+    anchorY: 0.62,
+    note: 'Steam library hero (no lettering).',
   },
 ];
 

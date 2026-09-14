@@ -230,10 +230,12 @@ describe('the committed store assets', () => {
     ['docs/marketing/cover-630x500.png', 630, 500],
     ['docs/marketing/banner-1920x620.png', 1920, 620],
     ['docs/marketing/social-1200x630.png', 1200, 630],
-    ['docs/marketing/steam-header-460x215.png', 460, 215],
-    ['docs/marketing/steam-capsule-616x353.png', 616, 353],
-    ['docs/marketing/steam-small-231x87.png', 231, 87],
+    ['docs/marketing/steam-header-920x430.png', 920, 430],
+    ['docs/marketing/steam-capsule-1232x706.png', 1232, 706],
+    ['docs/marketing/steam-small-462x174.png', 462, 174],
+    ['docs/marketing/steam-vertical-748x896.png', 748, 896],
     ['docs/marketing/steam-library-600x900.png', 600, 900],
+    ['docs/marketing/steam-library-hero-3840x1240.png', 3840, 1240],
   ] as const;
 
   it.each(expected)('%s is present at %ix%i', (file, w, h) => {
@@ -288,8 +290,15 @@ describe('the committed store assets', () => {
 
   it('is under the 3MB itch accepts, with room to spare', () => {
     for (const [file] of expected) {
+      if (file.includes('steam-library-hero')) continue;
       const bytes = readFileSync(file).length;
       expect(bytes, `${file} is ${Math.round(bytes / 1024)}kB`).toBeLessThan(3_000_000);
     }
+  });
+
+  it('keeps the library hero under Steamworks 10MB', () => {
+    const file = 'docs/marketing/steam-library-hero-3840x1240.png';
+    const bytes = readFileSync(file).length;
+    expect(bytes, `${file} is ${Math.round(bytes / 1024)}kB`).toBeLessThan(10_000_000);
   });
 });

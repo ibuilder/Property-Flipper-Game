@@ -103,6 +103,7 @@ function reportFailed(report) {
   const collisions = report.collisions ?? [];
   const spills = report.spills ?? [];
   const stranded = report.unreachable ?? [];
+  const fonts = report.fonts ?? [];
   return Boolean(
     (report.missed && report.missed.length) ||
       report.unique.length ||
@@ -110,7 +111,8 @@ function reportFailed(report) {
       slivers.length ||
       collisions.length ||
       spills.length ||
-      stranded.length,
+      stranded.length ||
+      fonts.length,
   );
 }
 
@@ -120,6 +122,7 @@ function printReport(report, size) {
   const collisions = report.collisions ?? [];
   const spills = report.spills ?? [];
   const stranded = report.unreachable ?? [];
+  const fonts = report.fonts ?? [];
   const label = size ? `${size} ` : '';
   console.log(
     `audit: ${label}${report.scenes.length} scenes (${report.scenes.join(', ')}), ` +
@@ -129,7 +132,8 @@ function printReport(report, size) {
       `${report.sliverCount ?? 0} scrollbars for a sliver (${slivers.length} distinct), ` +
       `${collisions.length} controls drawn over each other, ` +
       `${spills.length} boxes overflowing a fixed height, ` +
-      `${stranded.length} ${stranded.length === 1 ? 'box' : 'boxes'} nobody can scroll to the top of`,
+      `${stranded.length} ${stranded.length === 1 ? 'box' : 'boxes'} nobody can scroll to the top of` +
+      (fonts.length ? `, ${fonts.length} typefaces that did not load` : ''),
   );
 
   if (report.missed.length > 0) {
@@ -143,8 +147,8 @@ function printReport(report, size) {
       `audit: ${size} every piece of text meets AA in both themes, every control ` +
         `meets WCAG 2.5.8, no scrollbar is doing less work than the room it ` +
         `takes, no two controls share a pixel, nothing is drawn outside a ` +
-        `height it was given, and every scroll container can reach its own ` +
-        `first line, across ${report.scenes.length} scenes.`,
+        `height it was given, every scroll container can reach its own ` +
+        `first line, and Barlow actually loaded, across ${report.scenes.length} scenes.`,
     );
     return;
   }
@@ -199,6 +203,15 @@ function printReport(report, size) {
         `  ${String(`${t.w}x${t.h}`).padStart(7)}  (needs 24x24 or 24px clear)  ` +
           `${String(t.scene).padEnd(12)} ${t.selector}${times}
            "${t.text}"`,
+      );
+    }
+  }
+
+  if (fonts.length > 0) {
+    console.log('');
+    for (const f of fonts) {
+      console.log(
+        `         face ${f.status.padEnd(7)}  ${f.family} ${f.weight}`,
       );
     }
   }

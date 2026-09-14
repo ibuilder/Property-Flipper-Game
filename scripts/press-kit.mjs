@@ -20,10 +20,12 @@ const COPIES = [
   ['docs/marketing/cover-630x500.png', 'cover-630x500.png'],
   ['docs/marketing/banner-1920x620.png', 'banner-1920x620.png'],
   ['docs/marketing/social-1200x630.png', 'social-1200x630.png'],
-  ['docs/marketing/steam-header-460x215.png', 'steam-header-460x215.png'],
-  ['docs/marketing/steam-capsule-616x353.png', 'steam-capsule-616x353.png'],
+  ['docs/marketing/steam-header-920x430.png', 'steam-header-920x430.png'],
+  ['docs/marketing/steam-capsule-1232x706.png', 'steam-capsule-1232x706.png'],
+  ['docs/marketing/steam-small-462x174.png', 'steam-small-462x174.png'],
+  ['docs/marketing/steam-vertical-748x896.png', 'steam-vertical-748x896.png'],
   ['docs/marketing/steam-library-600x900.png', 'steam-library-600x900.png'],
-  ['docs/marketing/steam-small-231x87.png', 'steam-small-231x87.png'],
+  ['docs/marketing/steam-library-hero-3840x1240.png', 'steam-library-hero-3840x1240.png'],
   ['public/social-card.png', 'social-card.png'],
 ];
 
